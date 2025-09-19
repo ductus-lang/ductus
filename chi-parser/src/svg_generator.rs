@@ -1,11 +1,17 @@
-use kurbo::{BezPath, DEFAULT_ACCURACY, Point, Shape};
+use crate::interpreter::ControlPoint;
+use kurbo::{BezPath, DEFAULT_ACCURACY, PathEl, Point, Shape};
 
 pub struct SvgGenerator;
 
 impl SvgGenerator {
-    pub fn generate_svg(drawn_paths: &[BezPath], point_labels: &[(Point, String)]) -> String {
+    pub fn generate_svg(
+        drawn_paths: &[BezPath],
+        point_labels: &[(Point, String)],
+        control_points: &[ControlPoint],
+    ) -> String {
         let mut overall_bbox = None;
-        let has_debug = !point_labels.is_empty();
+        let has_debug = !point_labels.is_empty() || !control_points.is_empty();
+
         if !has_debug {
             for path in drawn_paths {
                 let bbox = path.bounding_box();
@@ -17,9 +23,14 @@ impl SvgGenerator {
                 }
             }
         }
+
         let (viewbox_str, width, height) = match overall_bbox {
             Some(bbox) => {
-                let margin = if point_labels.is_empty() { 10.0 } else { 50.0 }; // Increased margin for labels
+                let margin = if point_labels.is_empty() && control_points.is_empty() {
+                    10.0
+                } else {
+                    50.0
+                }; // Increased margin for labels
                 let x0 = bbox.x0 - margin;
                 let y0 = bbox.y0 - margin;
                 let width = bbox.width() + 2.0 * margin;
@@ -46,7 +57,7 @@ impl SvgGenerator {
     <style>
        <![CDATA[
        .chi-path {
-            fill: #f9e2af;
+            fill: #ffffff;
             stroke: #a6e3a1;
             stroke-width: 3;
         }
@@ -55,6 +66,7 @@ impl SvgGenerator {
 </defs>
 "#,
         );
+
         // Add CSS styles if in debug mode
         if has_debug {
             svg.push_str(
@@ -74,6 +86,23 @@ impl SvgGenerator {
             stroke:  #313244;
             stroke-width: 0.3;
             paint-order: stroke fill;
+        }
+        .control-point {
+            fill: #cba6f7;
+            stroke: #11111b;
+            stroke-width: 1;
+        }
+        .control-text {
+            font-family: monospace;
+            font-size: 12px;
+            fill: #94e2d5;
+            stroke: #11111b;
+            stroke-width: 0.2;
+            paint-order: stroke fill;
+        }
+        .control-line {
+            stroke: #cba6f7;
+            stroke-width: 1;
         }
         .grid {
             fill: url(#grid);
@@ -115,11 +144,46 @@ impl SvgGenerator {
             }
         }
 
+        // Add control lines first (so they appear behind everything)
+        if has_debug {
+            Self::add_control_lines(&mut svg, drawn_paths);
+        }
+
         // Add paths
         for path in drawn_paths {
             svg.push_str(&format!(
                 r#"  <path class="chi-path" d="{}"/>"#,
                 path.to_path(DEFAULT_ACCURACY).to_svg()
+            ));
+            svg.push('\n');
+        }
+
+        // Add control points
+        for control_point in control_points {
+            let (class, radius) = if control_point.is_control {
+                ("control-point", 5)
+            } else {
+                ("debug-point", 5)
+            };
+
+            svg.push_str(&format!(
+                r##"  <circle class="{}" cx="{}" cy="{}" r="{}"/>"##,
+                class, control_point.point.x, control_point.point.y, radius
+            ));
+            svg.push('\n');
+
+            let text_class = if control_point.is_control {
+                "control-text"
+            } else {
+                "debug-text"
+            };
+
+            svg.push_str(&format!(
+                r##"  <text class="{}" x="{}" y="{}">{}</text>"##,
+                text_class,
+                control_point.point.x + 8.0,
+                control_point.point.y - 8.0,
+                control_point.label
             ));
             svg.push('\n');
         }
@@ -145,5 +209,41 @@ impl SvgGenerator {
 
         svg.push_str("</svg>");
         svg
+    }
+
+    fn add_control_lines(svg: &mut String, drawn_paths: &[BezPath]) {
+        for path in drawn_paths {
+            let mut current_point = None;
+
+            for element in path.elements() {
+                match element {
+                    PathEl::MoveTo(point) => {
+                        current_point = Some(*point);
+                    }
+                    PathEl::LineTo(point) => {
+                        current_point = Some(*point);
+                    }
+                    PathEl::CurveTo(cp1, cp2, end) => {
+                        if let Some(start) = current_point {
+                            // Draw line from start to first control point
+                            svg.push_str(&format!(
+                                r#"  <line class="control-line" x1="{}" y1="{}" x2="{}" y2="{}"/>"#,
+                                start.x, start.y, cp1.x, cp1.y
+                            ));
+                            svg.push('\n');
+
+                            // Draw line from second control point to end
+                            svg.push_str(&format!(
+                                r#"  <line class="control-line" x1="{}" y1="{}" x2="{}" y2="{}"/>"#,
+                                cp2.x, cp2.y, end.x, end.y
+                            ));
+                            svg.push('\n');
+                        }
+                        current_point = Some(*end);
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
 }

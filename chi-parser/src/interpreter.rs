@@ -6,6 +6,13 @@ use tree_sitter::Node;
 use crate::svg_generator::SvgGenerator;
 use crate::value::Value;
 
+#[derive(Debug, Clone)]
+pub struct ControlPoint {
+    pub point: Point,
+    pub label: String,
+    pub is_control: bool,
+}
+
 pub struct Interpreter {
     variables: HashMap<String, Value>,
     drawn_paths: Vec<BezPath>,
@@ -40,12 +47,14 @@ impl Interpreter {
     }
 
     pub fn generate_svg(&self, debug: bool) -> String {
-        let point_labels = if debug {
-            self.collect_point_labels()
+        let (point_labels, control_points) = if debug {
+            let point_labels = self.collect_point_labels();
+            let control_points = self.collect_control_points();
+            (point_labels, control_points)
         } else {
-            Vec::new()
+            (Vec::new(), Vec::new())
         };
-        SvgGenerator::generate_svg(&self.drawn_paths, &point_labels)
+        SvgGenerator::generate_svg(&self.drawn_paths, &point_labels, &control_points)
     }
 
     fn collect_point_labels(&self) -> Vec<(Point, String)> {
@@ -59,6 +68,36 @@ impl Interpreter {
         }
 
         labels
+    }
+
+    fn collect_control_points(&self) -> Vec<ControlPoint> {
+        let mut control_points = Vec::new();
+        let mut curve_counter = 0;
+
+        for path in &self.drawn_paths {
+            for element in path.elements() {
+                match element {
+                    PathEl::CurveTo(cp1, cp2, end) => {
+                        // Add control points
+                        control_points.push(ControlPoint {
+                            point: *cp1,
+                            label: format!("c{}({:.0},{:.0})", curve_counter, cp1.x, cp1.y),
+                            is_control: true,
+                        });
+                        control_points.push(ControlPoint {
+                            point: *cp2,
+                            label: format!("c{}({:.0},{:.0})", curve_counter, cp2.x, cp2.y),
+                            is_control: true,
+                        });
+
+                        curve_counter += 1;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        control_points
     }
 
     fn handle_assignment(
