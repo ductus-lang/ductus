@@ -81,12 +81,12 @@ impl Interpreter {
                         // Add control points
                         control_points.push(ControlPoint {
                             point: *cp1,
-                            label: format!("c{}({:.0},{:.0})", curve_counter, cp1.x, cp1.y),
+                            label: format!("c{}a({:.0},{:.0})", curve_counter, cp1.x, cp1.y),
                             is_control: true,
                         });
                         control_points.push(ControlPoint {
                             point: *cp2,
-                            label: format!("c{}({:.0},{:.0})", curve_counter, cp2.x, cp2.y),
+                            label: format!("c{}b({:.0},{:.0})", curve_counter, cp2.x, cp2.y),
                             is_control: true,
                         });
 
@@ -177,7 +177,7 @@ impl Interpreter {
         source: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         const STROKE_WIDTH: f64 = 30.;
-        let tolerance = DEFAULT_ACCURACY;
+        let tolerance = 1e-1;
         let style = Stroke::new(STROKE_WIDTH)
             .with_caps(Cap::Round)
             .with_join(Join::Round);
