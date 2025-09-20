@@ -3,7 +3,7 @@
 use crate::ir::*;
 use crate::svg_generator::SvgGenerator;
 use crate::value::Value;
-use bezier_solver::BezierSolver;
+use hobby::{hobby, point::Point as HobbyPoint};
 use kurbo::{BezPath, Cap, Join, PathEl, Point, Stroke, stroke};
 use std::collections::HashMap;
 
@@ -79,14 +79,8 @@ impl Evaluator {
         &self,
         path_expr: &PathExpression,
     ) -> Result<BezPath, Box<dyn std::error::Error>> {
-        // NOW we have full context!
         let points = self.resolve_all_points(path_expr)?;
         let connectors = self.extract_connectors(path_expr);
-
-        // Global optimization opportunities:
-        // 1. Smooth curves considering all points
-        // 2. Optimize tension based on path geometry
-        // 3. Auto-detect intentions (e.g., closed loops)
 
         self.construct_optimized_path(points, connectors)
     }
@@ -144,89 +138,109 @@ impl Evaluator {
 
         bez_path.push(PathEl::MoveTo(points[0]));
 
-        for i in 1..points.len() {
-            let start = points[i - 1];
-            let end = points[i];
-            let connector = connectors.get(i - 1).and_then(|c| c.as_ref());
-
-            match connector {
-                Some(Connector::Line) => {
-                    bez_path.push(PathEl::LineTo(end));
-                }
-                Some(Connector::Curve {
-                    start_options,
-                    end_options,
-                }) => {
-                    // Now we can consider neighboring points for better curves!
-                    let curve_element = self.create_contextual_curve(
-                        start,
-                        end,
-                        start_options,
-                        end_options,
-                        &points,
-                        i, // Pass full context
-                    )?;
-                    bez_path.push(curve_element);
-                }
-                None => {
-                    // Default behavior - could be smart based on context
-                    bez_path.push(PathEl::LineTo(end));
-                }
-            }
+        if points.len() == 1 {
+            return Ok(bez_path);
         }
+
+        // Now we can pass all points to hobby at once since we treat lines as curves
+        self.add_hobby_curves_to_path(&mut bez_path, &points, &connectors)?;
 
         Ok(bez_path)
     }
 
-    fn create_contextual_curve(
+    fn add_hobby_curves_to_path(
         &self,
-        start: Point,
-        end: Point,
-        out_options: &CurveOptions,
-        in_options: &CurveOptions,
-        all_points: &[Point],
-        current_index: usize,
-    ) -> Result<PathEl, Box<dyn std::error::Error>> {
-        // NOW we can make intelligent decisions based on:
-        // - Previous point (if exists)
-        // - Next point (if exists)
-        // - Overall path shape
-        // - Curvature continuity
+        bez_path: &mut BezPath,
+        points: &[Point],
+        connectors: &[Option<Connector>],
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if points.len() < 2 {
+            return Ok(());
+        }
 
-        let _prev_point = if current_index > 1 {
-            Some(all_points[current_index - 2])
-        } else {
-            None
-        };
+        // Convert points to hobby coordinate system (flip Y)
+        let hobby_points: Vec<HobbyPoint> =
+            points.iter().map(|p| HobbyPoint::new(p.x, -p.y)).collect();
 
-        let _next_point = if current_index < all_points.len() - 1 {
-            Some(all_points[current_index + 1])
-        } else {
-            None
-        };
+        // Extract angle constraints and convert to hobby format
+        let mut entry_angles = HashMap::new();
+        let mut exit_angles = HashMap::new();
 
-        // For now, use the same logic as before but with the new structure
-        let out_angle = out_options.direction;
-        let in_angle = in_options.direction;
+        for (i, connector_opt) in connectors.iter().enumerate().skip(1) {
+            if let Some(connector) = connector_opt {
+                match connector {
+                    Connector::Line => {
+                        // Treat line as curve with 0-degree angles
+                        exit_angles.insert(i - 1, 0.0);
+                        entry_angles.insert(i, 0.0);
+                    }
+                    Connector::Curve {
+                        start_options,
+                        end_options,
+                    } => {
+                        // Exit angle from point i-1
+                        if let Some(dir) = start_options.direction {
+                            exit_angles.insert(i - 1, dir); // Flip angle for cartesian
+                        }
 
-        // Convert SVG angles to Cartesian angles for the BezierSolver
-        let theta0 = out_angle
-            .map(Self::svg_angle_to_cartesian_radians)
-            .unwrap_or(0.0);
-        let theta1 = in_angle
-            .map(Self::svg_angle_to_cartesian_radians)
-            .unwrap_or(0.0);
+                        // Entry angle to point i
+                        if let Some(dir) = end_options.direction {
+                            entry_angles.insert(i, dir); // Flip angle for cartesian
+                        }
+                    }
+                }
+            }
+        }
 
-        let solver = BezierSolver::new(100, 1e-6);
-        let (delta0, delta1) = solver.solve(theta0, theta1);
+        // Call hobby to generate curve segments
 
-        let distance = start.distance(end);
+        let segments = hobby(
+            &hobby_points,
+            None,  // No tension constraints for now
+            false, // Not cyclic
+            if entry_angles.is_empty() {
+                None
+            } else {
+                Some(&entry_angles)
+            },
+            if exit_angles.is_empty() {
+                None
+            } else {
+                Some(&exit_angles)
+            },
+        );
 
-        // Calculate control points accounting for SVG coordinate system
-        let cp1 = Self::calculate_control_point_svg(start, delta0 * distance, theta0, true);
-        let cp2 = Self::calculate_control_point_svg(end, delta1 * distance, theta1, false);
+        for (i, seg) in segments.iter().enumerate() {
+            println!(
+                "Segment {}: Start=({:.2}, {:.2}), C1=({:.2}, {:.2}), C2=({:.2}, {:.2}), End=({:.2}, {:.2})",
+                i, seg.0.x, seg.0.y, seg.1.x, seg.1.y, seg.2.x, seg.2.y, seg.3.x, seg.3.y
+            );
+        }
 
-        Ok(PathEl::CurveTo(cp1, cp2, end))
+        // Convert hobby segments back to SVG coordinates and add to path
+        for (i, segment) in segments.iter().enumerate() {
+            let _start = Point::new(segment.0.x, -segment.0.y); // Convert back to SVG
+            let cp1 = Point::new(segment.1.x, -segment.1.y);
+            let cp2 = Point::new(segment.2.x, -segment.2.y);
+            let end = Point::new(segment.3.x, -segment.3.y);
+
+            // Check if this was originally a line connector
+            let connector_index = i + 1;
+            let is_line = if let Some(Some(connector)) = connectors.get(connector_index) {
+                matches!(connector, Connector::Line)
+            } else {
+                false
+            };
+
+            if is_line {
+                // For line connectors, use LineTo instead of CurveTo
+                bez_path.push(PathEl::LineTo(end));
+            } else {
+                bez_path.push(PathEl::CurveTo(cp1, cp2, end));
+            }
+        }
+
+        Ok(())
     }
 
     fn resolve_point_ref(&self, point_ref: &PointRef) -> Result<Point, Box<dyn std::error::Error>> {
@@ -330,26 +344,5 @@ impl Evaluator {
         }
 
         control_points
-    }
-
-    /// Convert SVG angle (degrees) to Cartesian angle (radians)
-    /// SVG coordinates have Y increasing downward, while Cartesian has Y increasing upward
-    fn svg_angle_to_cartesian_radians(svg_angle_degrees: f64) -> f64 {
-        -svg_angle_degrees.to_radians()
-    }
-
-    /// Calculate control point position accounting for SVG coordinate system
-    /// In SVG, Y increases downward, so we need to negate the Y component
-    fn calculate_control_point_svg(
-        anchor: Point,
-        distance: f64,
-        angle_radians: f64,
-        outward: bool,
-    ) -> Point {
-        let sign = if outward { 1.0 } else { -1.0 };
-        Point::new(
-            anchor.x + sign * distance * angle_radians.cos(),
-            anchor.y - sign * distance * angle_radians.sin(), // Negate Y for SVG coordinates
-        )
     }
 }
