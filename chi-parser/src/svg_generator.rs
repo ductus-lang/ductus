@@ -1,5 +1,7 @@
-use crate::interpreter::ControlPoint;
+use evaluator::ControlPoint;
 use kurbo::{BezPath, DEFAULT_ACCURACY, PathEl, Point, Shape};
+
+use crate::evaluator;
 
 pub struct SvgGenerator;
 

@@ -2,7 +2,10 @@ use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
 
+mod ast_parser;
+mod evaluator;
 mod interpreter;
+mod ir;
 mod svg_generator;
 mod value;
 
@@ -52,7 +55,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Print the syntax tree for debugging
-    println!("AST: {}", tree.root_node().to_sexp());
+    // println!("AST: {}", tree.root_node().to_sexp());
+
+    // Parse to IR and display it for debugging
+    let ast_parser = crate::ast_parser::AstParser::new();
+    let program = ast_parser.parse(tree.root_node(), &source_code)?;
+    println!("IR: {}", program);
 
     // Interpret the AST and generate SVG
     let mut interpreter = Interpreter::new();
