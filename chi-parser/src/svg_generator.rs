@@ -112,7 +112,7 @@ impl SvgGenerator {
             stroke:#f5e0dc;
         }
         .debug-background {
-           fill: #313244; 
+           fill: #1e1e2e; 
         }
      ]]>
     </style>
