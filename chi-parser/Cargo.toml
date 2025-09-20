@@ -8,4 +8,4 @@ tree-sitter = "0.25.8"
 tree-sitter-roopi = { path = "../../tree-sitter-roopi" }
 clap = { version = "4.0", features = ["derive"] }
 kurbo = {version = "0.12.0", features = ["std","serde"] }
-bezier-solver = { path = "../bezier-solver" }
+hobby = { path = "../hobby" }
