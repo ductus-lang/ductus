@@ -100,6 +100,27 @@ impl Interpreter {
         control_points
     }
 
+    /// Convert SVG angle (degrees) to Cartesian angle (radians)
+    /// SVG coordinates have Y increasing downward, while Cartesian has Y increasing upward
+    fn svg_angle_to_cartesian_radians(svg_angle_degrees: f64) -> f64 {
+        -svg_angle_degrees.to_radians()
+    }
+
+    /// Calculate control point position accounting for SVG coordinate system
+    /// In SVG, Y increases downward, so we need to negate the Y component
+    fn calculate_control_point_svg(
+        anchor: Point,
+        distance: f64,
+        angle_radians: f64,
+        outward: bool,
+    ) -> Point {
+        let sign = if outward { 1.0 } else { -1.0 };
+        Point::new(
+            anchor.x + sign * distance * angle_radians.cos(),
+            anchor.y - sign * distance * angle_radians.sin(), // Negate Y for SVG coordinates
+        )
+    }
+
     fn handle_assignment(
         &mut self,
         node: Node,
@@ -368,8 +389,12 @@ impl Interpreter {
             if next_child.kind() == "identifier" {
                 let end_point = self.get_point_from_variable(next_child, source)?;
                 let start_point = self.get_current_point(bez_path);
+                println!(
+                    "{}{:?}..{:?}{}",
+                    start_point, out_angle, in_angle, end_point
+                );
                 let curve_element =
-                    self.create_curve_element(start_point, end_point, in_angle, out_angle)?;
+                    self.create_curve_element(start_point, end_point, out_angle, in_angle)?;
                 dbg!(curve_element);
                 bez_path.push(curve_element);
                 return Ok(next_index);
@@ -388,14 +413,25 @@ impl Interpreter {
 
         let mut curve_cursor = curve_connector_node.walk();
         for curve_child in curve_connector_node.children(&mut curve_cursor) {
-            if curve_child.kind() == "node_options" {
+            if curve_child.kind() == "inward_curve_options" {
                 let mut opt_cursor = curve_child.walk();
                 for option in curve_child.children(&mut opt_cursor) {
                     if option.kind() == "option" {
                         let (name, value) = self.parse_option(option, source)?;
                         match name.as_str() {
-                            "in" => in_angle = Some(value.parse::<f64>()?),
-                            "out" => out_angle = Some(value.parse::<f64>()?),
+                            "dir" => in_angle = Some(360. - value.parse::<f64>()?),
+                            _ => {} // ignore unknown options
+                        }
+                    }
+                }
+            }
+            if curve_child.kind() == "outward_curve_options" {
+                let mut opt_cursor = curve_child.walk();
+                for option in curve_child.children(&mut opt_cursor) {
+                    if option.kind() == "option" {
+                        let (name, value) = self.parse_option(option, source)?;
+                        match name.as_str() {
+                            "dir" => out_angle = Some(360. - value.parse::<f64>()?),
                             _ => {} // ignore unknown options
                         }
                     }
@@ -445,21 +481,22 @@ impl Interpreter {
         in_angle: Option<f64>,
         out_angle: Option<f64>,
     ) -> Result<PathEl, Box<dyn std::error::Error>> {
-        let theta0 = out_angle.unwrap_or(0.0).to_radians();
-        let theta1 = in_angle.unwrap_or(0.0).to_radians();
+        // Convert SVG angles to Cartesian angles for the BezierSolver
+        let theta0 = out_angle
+            .map(Self::svg_angle_to_cartesian_radians)
+            .unwrap_or(0.0);
+        let theta1 = in_angle
+            .map(Self::svg_angle_to_cartesian_radians)
+            .unwrap_or(0.0);
 
         let solver = BezierSolver::new(100, 1e-6);
         let (delta0, delta1) = solver.solve(theta0, theta1);
 
         let distance = start.distance(end);
-        let cp1 = Point::new(
-            start.x + delta0 * distance * theta0.cos(),
-            start.y + delta0 * distance * theta0.sin(),
-        );
-        let cp2 = Point::new(
-            end.x - delta1 * distance * theta1.cos(),
-            end.y - delta1 * distance * theta1.sin(),
-        );
+
+        // Calculate control points accounting for SVG coordinate system
+        let cp1 = Self::calculate_control_point_svg(start, delta0 * distance, theta0, true);
+        let cp2 = Self::calculate_control_point_svg(end, delta1 * distance, theta1, false);
 
         Ok(PathEl::CurveTo(cp1, cp2, end))
     }
