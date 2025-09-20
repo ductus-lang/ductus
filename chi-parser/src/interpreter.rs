@@ -1,5 +1,5 @@
 use bezier_solver::BezierSolver;
-use kurbo::{BezPath, Cap, DEFAULT_ACCURACY, Join, PathEl, Point, Stroke, stroke};
+use kurbo::{BezPath, Cap, Join, PathEl, Point, Stroke, stroke};
 use std::collections::HashMap;
 use tree_sitter::Node;
 
@@ -381,7 +381,7 @@ impl Interpreter {
         current_index: usize,
         source: &str,
     ) -> Result<usize, Box<dyn std::error::Error>> {
-        let (in_angle, out_angle) = self.extract_curve_options(curve_connector_node, source)?;
+        let (out_angle, in_angle) = self.extract_curve_options(curve_connector_node, source)?;
 
         let next_index = current_index + 1;
         if next_index < children.len() {
@@ -419,7 +419,7 @@ impl Interpreter {
                     if option.kind() == "option" {
                         let (name, value) = self.parse_option(option, source)?;
                         match name.as_str() {
-                            "dir" => in_angle = Some(360. - value.parse::<f64>()?),
+                            "dir" => in_angle = Some(value.parse::<f64>()?),
                             _ => {} // ignore unknown options
                         }
                     }
@@ -431,7 +431,7 @@ impl Interpreter {
                     if option.kind() == "option" {
                         let (name, value) = self.parse_option(option, source)?;
                         match name.as_str() {
-                            "dir" => out_angle = Some(360. - value.parse::<f64>()?),
+                            "dir" => out_angle = Some(value.parse::<f64>()?),
                             _ => {} // ignore unknown options
                         }
                     }
@@ -478,8 +478,8 @@ impl Interpreter {
         &self,
         start: Point,
         end: Point,
-        in_angle: Option<f64>,
         out_angle: Option<f64>,
+        in_angle: Option<f64>,
     ) -> Result<PathEl, Box<dyn std::error::Error>> {
         // Convert SVG angles to Cartesian angles for the BezierSolver
         let theta0 = out_angle
