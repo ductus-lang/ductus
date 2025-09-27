@@ -178,14 +178,14 @@ impl Evaluator {
                         start_options,
                         end_options,
                     } => {
-                        // Exit angle from point i-1
+                        // Exit angle from point i-1 (NO angle flip needed - hobby uses standard math convention)
                         if let Some(dir) = start_options.direction {
-                            exit_angles.insert(i - 1, dir); // Flip angle for cartesian
+                            exit_angles.insert(i - 1, dir);
                         }
 
-                        // Entry angle to point i
+                        // Entry angle to point i (NO angle flip needed - hobby uses standard math convention)
                         if let Some(dir) = end_options.direction {
-                            entry_angles.insert(i, dir); // Flip angle for cartesian
+                            entry_angles.insert(i, dir);
                         }
                     }
                 }
