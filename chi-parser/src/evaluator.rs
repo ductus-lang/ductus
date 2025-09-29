@@ -3,7 +3,7 @@
 use crate::ir::*;
 use crate::svg_generator::SvgGenerator;
 use crate::value::Value;
-use hobby::{hobby, point::Point as HobbyPoint};
+use curve_fitter::{CurveFitter, InputPoint, PointType};
 use kurbo::{BezPath, Cap, Join, PathEl, Point, Stroke, stroke};
 use std::collections::HashMap;
 
@@ -143,12 +143,12 @@ impl Evaluator {
         }
 
         // Now we can pass all points to hobby at once since we treat lines as curves
-        self.add_hobby_curves_to_path(&mut bez_path, &points, &connectors)?;
+        self.do_curve_fitting(&mut bez_path, &points, &connectors)?;
 
         Ok(bez_path)
     }
 
-    fn add_hobby_curves_to_path(
+    fn do_curve_fitting(
         &self,
         bez_path: &mut BezPath,
         points: &[Point],
@@ -158,88 +158,30 @@ impl Evaluator {
             return Ok(());
         }
 
-        // Convert points to hobby coordinate system (flip Y)
-        let hobby_points: Vec<HobbyPoint> =
-            points.iter().map(|p| HobbyPoint::new(p.x, -p.y)).collect();
+        let mut input_points: Vec<InputPoint> = points
+            .iter()
+            .map(|p| InputPoint {
+                x: p.x,
+                y: p.y,
+                point_type: PointType::Smooth,
+            })
+            .collect();
 
-        // Extract angle constraints and convert to hobby format
-        let mut entry_angles = HashMap::new();
-        let mut exit_angles = HashMap::new();
-
-        for (i, connector_opt) in connectors.iter().enumerate().skip(1) {
+        for (i, connector_opt) in connectors.iter().enumerate() {
             if let Some(connector) = connector_opt {
                 match connector {
                     Connector::Line => {
-                        // Treat line as curve with 0-degree angles
-                        exit_angles.insert(i - 1, 0.0);
-                        entry_angles.insert(i, 0.0);
+                        dbg!(i);
+                        input_points[i - 1].point_type = PointType::Corner;
                     }
-                    Connector::Curve {
-                        start_options,
-                        end_options,
-                    } => {
-                        // Exit angle from point i-1 (NO angle flip needed - hobby uses standard math convention)
-                        if let Some(dir) = start_options.direction {
-                            exit_angles.insert(i - 1, dir);
-                        }
-
-                        // Entry angle to point i (NO angle flip needed - hobby uses standard math convention)
-                        if let Some(dir) = end_options.direction {
-                            entry_angles.insert(i, dir);
-                        }
-                    }
+                    _ => {}
                 }
             }
         }
 
-        // Call hobby to generate curve segments
-
-        let segments = hobby(
-            &hobby_points,
-            None,  // No tension constraints for now
-            false, // Not cyclic
-            if entry_angles.is_empty() {
-                None
-            } else {
-                Some(&entry_angles)
-            },
-            if exit_angles.is_empty() {
-                None
-            } else {
-                Some(&exit_angles)
-            },
-        );
-
-        for (i, seg) in segments.iter().enumerate() {
-            println!(
-                "Segment {}: Start=({:.2}, {:.2}), C1=({:.2}, {:.2}), C2=({:.2}, {:.2}), End=({:.2}, {:.2})",
-                i, seg.0.x, seg.0.y, seg.1.x, seg.1.y, seg.2.x, seg.2.y, seg.3.x, seg.3.y
-            );
-        }
-
-        // Convert hobby segments back to SVG coordinates and add to path
-        for (i, segment) in segments.iter().enumerate() {
-            let _start = Point::new(segment.0.x, -segment.0.y); // Convert back to SVG
-            let cp1 = Point::new(segment.1.x, -segment.1.y);
-            let cp2 = Point::new(segment.2.x, -segment.2.y);
-            let end = Point::new(segment.3.x, -segment.3.y);
-
-            // Check if this was originally a line connector
-            let connector_index = i + 1;
-            let is_line = if let Some(Some(connector)) = connectors.get(connector_index) {
-                matches!(connector, Connector::Line)
-            } else {
-                false
-            };
-
-            if is_line {
-                // For line connectors, use LineTo instead of CurveTo
-                bez_path.push(PathEl::LineTo(end));
-            } else {
-                bez_path.push(PathEl::CurveTo(cp1, cp2, end));
-            }
-        }
-
+        let fitter = CurveFitter::new();
+        let segments = fitter.fit_curve(input_points, false);
+        bez_path.extend(segments.unwrap());
         Ok(())
     }
 
