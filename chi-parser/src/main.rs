@@ -12,8 +12,8 @@ mod value;
 use interpreter::Interpreter;
 
 #[derive(Parser)]
-#[command(name = "roopi-parser")]
-#[command(about = "A parser for .rp files using tree-sitter")]
+#[command(name = "chi-parser")]
+#[command(about = "A parser for .chi files using tree-sitter")]
 struct Args {
     /// Path to the .rp file to parse
     file: PathBuf,
@@ -42,8 +42,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a new parser
     let mut parser = tree_sitter::Parser::new();
     parser
-        .set_language(&tree_sitter_roopi::LANGUAGE.into())
-        .expect("Error loading roopi grammar");
+        .set_language(&tree_sitter_chi::LANGUAGE.into())
+        .expect("Error loading chi grammar");
 
     // Parse the file content
     let tree = match parser.parse(&source_code, None) {
