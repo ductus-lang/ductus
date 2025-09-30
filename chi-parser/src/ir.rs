@@ -44,9 +44,37 @@ impl Display for Statement {
 
 #[derive(Debug, Clone)]
 pub enum Expression {
-    Point { x: f64, y: f64 },
+    Point {
+        x: Box<Expression>,
+        y: Box<Expression>,
+    },
     Path(PathExpression),
     Variable(String),
+    Number(f64),
+    BinaryExpression {
+        left: Box<Expression>,
+        operator: Option<BinaryOperator>, // None means implied multiplication
+        right: Box<Expression>,
+    },
+    UnaryExpression {
+        operator: UnaryOperator,
+        operand: Box<Expression>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum BinaryOperator {
+    Add,      // +
+    Subtract, // -
+    Multiply, // *
+    Divide,   // /
+    Power,    // ^
+}
+
+#[derive(Debug, Clone)]
+pub enum UnaryOperator {
+    Plus,  // +
+    Minus, // -
 }
 
 impl Display for Expression {
@@ -55,6 +83,41 @@ impl Display for Expression {
             Expression::Point { x, y } => write!(f, "({}, {})", x, y),
             Expression::Path(path) => write!(f, "{}", path),
             Expression::Variable(name) => write!(f, "{}", name),
+            Expression::Number(n) => write!(f, "{}", n),
+            Expression::BinaryExpression {
+                left,
+                operator,
+                right,
+            } => {
+                match operator {
+                    Some(op) => write!(f, "({} {} {})", left, op, right),
+                    None => write!(f, "({} * {})", left, right), // implied multiplication
+                }
+            }
+            Expression::UnaryExpression { operator, operand } => {
+                write!(f, "({}{})", operator, operand)
+            }
+        }
+    }
+}
+
+impl Display for BinaryOperator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            BinaryOperator::Add => write!(f, "+"),
+            BinaryOperator::Subtract => write!(f, "-"),
+            BinaryOperator::Multiply => write!(f, "*"),
+            BinaryOperator::Divide => write!(f, "/"),
+            BinaryOperator::Power => write!(f, "^"),
+        }
+    }
+}
+
+impl Display for UnaryOperator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            UnaryOperator::Plus => write!(f, "+"),
+            UnaryOperator::Minus => write!(f, "-"),
         }
     }
 }

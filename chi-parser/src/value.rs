@@ -4,4 +4,5 @@ use kurbo::{BezPath, Point};
 pub enum Value {
     Point(Point),
     Path(BezPath),
+    Number(f64),
 }

@@ -62,7 +62,11 @@ impl Evaluator {
         expression: &Expression,
     ) -> Result<Value, Box<dyn std::error::Error>> {
         match expression {
-            Expression::Point { x, y } => Ok(Value::Point(Point::new(*x, *y))),
+            Expression::Point { x, y } => {
+                let x_val = self.evaluate_number_expression(x)?;
+                let y_val = self.evaluate_number_expression(y)?;
+                Ok(Value::Point(Point::new(x_val, y_val)))
+            }
             Expression::Path(path_expr) => {
                 let bez_path = self.evaluate_path_expression(path_expr)?;
                 Ok(Value::Path(bez_path))
@@ -72,6 +76,66 @@ impl Evaluator {
                 .get(name)
                 .cloned()
                 .ok_or_else(|| format!("Undefined variable: {}", name).into()),
+            Expression::Number(n) => Ok(Value::Number(*n)),
+            Expression::BinaryExpression {
+                left,
+                operator,
+                right,
+            } => self.evaluate_binary_expression(left, operator.as_ref(), right),
+            Expression::UnaryExpression { operator, operand } => {
+                self.evaluate_unary_expression(operator, operand)
+            }
+        }
+    }
+
+    fn evaluate_binary_expression(
+        &self,
+        left: &Expression,
+        operator: Option<&BinaryOperator>,
+        right: &Expression,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let left_val = self.evaluate_number_expression(left)?;
+        let right_val = self.evaluate_number_expression(right)?;
+
+        let result = match operator {
+            Some(BinaryOperator::Add) => left_val + right_val,
+            Some(BinaryOperator::Subtract) => left_val - right_val,
+            Some(BinaryOperator::Multiply) | None => left_val * right_val, // None = implied multiplication
+            Some(BinaryOperator::Divide) => {
+                if right_val == 0.0 {
+                    return Err("Division by zero".into());
+                }
+                left_val / right_val
+            }
+            Some(BinaryOperator::Power) => left_val.powf(right_val),
+        };
+
+        Ok(Value::Number(result))
+    }
+
+    fn evaluate_unary_expression(
+        &self,
+        operator: &UnaryOperator,
+        operand: &Expression,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let operand_val = self.evaluate_number_expression(operand)?;
+
+        let result = match operator {
+            UnaryOperator::Plus => operand_val,
+            UnaryOperator::Minus => -operand_val,
+        };
+
+        Ok(Value::Number(result))
+    }
+
+    fn evaluate_number_expression(
+        &self,
+        expression: &Expression,
+    ) -> Result<f64, Box<dyn std::error::Error>> {
+        match self.evaluate_expression(expression)? {
+            Value::Number(n) => Ok(n),
+            Value::Point(_) => Err("Expected number, got point".into()),
+            Value::Path(_) => Err("Expected number, got path".into()),
         }
     }
 

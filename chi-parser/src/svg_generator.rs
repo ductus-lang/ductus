@@ -59,7 +59,13 @@ impl SvgGenerator {
     <style>
        <![CDATA[
        .chi-path {
-            fill: #ffffff;
+            fill: none;
+            stroke: #a6e3a1;
+            stroke-width: 3;
+        }
+
+       .chi-fill-path {
+            fill: white;
             stroke: #a6e3a1;
             stroke-width: 3;
         }
@@ -153,8 +159,20 @@ impl SvgGenerator {
 
         // Add paths
         for path in drawn_paths {
+            // Check if path is closed by looking for ClosePath element
+            let is_closed = path
+                .elements()
+                .iter()
+                .any(|el| matches!(el, PathEl::ClosePath));
+            let class = if is_closed {
+                "chi-fill-path"
+            } else {
+                "chi-path"
+            };
+
             svg.push_str(&format!(
-                r#"  <path class="chi-path" d="{}"/>"#,
+                r#"  <path class="{}" d="{}"/>"#,
+                class,
                 path.to_path(DEFAULT_ACCURACY).to_svg()
             ));
             svg.push('\n');

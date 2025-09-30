@@ -102,13 +102,113 @@ impl AstParser {
                     Err("Empty expression".into())
                 }
             }
+            "binary_expression" => self.parse_binary_expression(node, source),
+            "unary_expression" => self.parse_unary_expression(node, source),
             "point" => self.parse_point(node, source),
             "path" => self.parse_path(node, source),
+            "number" => {
+                let value = node_text(node, source).parse::<f64>()?;
+                Ok(Expression::Number(value))
+            }
             "identifier" => {
                 let name = node_text(node, source);
                 Ok(Expression::Variable(name))
             }
+            "parenthesized_expression" => {
+                // Handle (expression) - parse the inner expression
+                let mut cursor = node.walk();
+                for child in node.children(&mut cursor) {
+                    if child.kind() == "expression" {
+                        return self.parse_expression(child, source);
+                    }
+                }
+                Err("Invalid parenthesized expression".into())
+            }
             _ => Err(format!("Unknown expression type: {}", node.kind()).into()),
+        }
+    }
+
+    fn parse_binary_expression(
+        &self,
+        node: Node,
+        source: &str,
+    ) -> Result<Expression, Box<dyn std::error::Error>> {
+        let mut cursor = node.walk();
+        let children: Vec<Node> = node.children(&mut cursor).collect();
+
+        if children.len() < 2 {
+            return Err("Invalid binary expression".into());
+        }
+
+        // Parse left operand
+        let left = Box::new(self.parse_expression(children[0], source)?);
+
+        // Check if there's an explicit operator
+        let (operator, right_index) = if children.len() == 3 {
+            // Format: left operator right
+            let op = self.parse_operator(children[1], source)?;
+            (Some(op), 2)
+        } else if children.len() == 2 {
+            // Format: left right (implied multiplication)
+            (None, 1)
+        } else {
+            return Err("Invalid binary expression format".into());
+        };
+
+        // Parse right operand
+        let right = Box::new(self.parse_expression(children[right_index], source)?);
+
+        Ok(Expression::BinaryExpression {
+            left,
+            operator,
+            right,
+        })
+    }
+
+    fn parse_unary_expression(
+        &self,
+        node: Node,
+        source: &str,
+    ) -> Result<Expression, Box<dyn std::error::Error>> {
+        let mut cursor = node.walk();
+        let children: Vec<Node> = node.children(&mut cursor).collect();
+
+        if children.len() != 2 {
+            return Err("Invalid unary expression".into());
+        }
+
+        let operator = self.parse_unary_operator(children[0], source)?;
+        let operand = Box::new(self.parse_expression(children[1], source)?);
+
+        Ok(Expression::UnaryExpression { operator, operand })
+    }
+
+    fn parse_operator(
+        &self,
+        node: Node,
+        source: &str,
+    ) -> Result<BinaryOperator, Box<dyn std::error::Error>> {
+        let op_text = node_text(node, source);
+        match op_text.as_str() {
+            "+" => Ok(BinaryOperator::Add),
+            "-" => Ok(BinaryOperator::Subtract),
+            "*" => Ok(BinaryOperator::Multiply),
+            "/" => Ok(BinaryOperator::Divide),
+            "^" => Ok(BinaryOperator::Power),
+            _ => Err(format!("Unknown binary operator: {}", op_text).into()),
+        }
+    }
+
+    fn parse_unary_operator(
+        &self,
+        node: Node,
+        source: &str,
+    ) -> Result<UnaryOperator, Box<dyn std::error::Error>> {
+        let op_text = node_text(node, source);
+        match op_text.as_str() {
+            "+" => Ok(UnaryOperator::Plus),
+            "-" => Ok(UnaryOperator::Minus),
+            _ => Err(format!("Unknown unary operator: {}", op_text).into()),
         }
     }
 
@@ -120,22 +220,33 @@ impl AstParser {
         let mut cursor = node.walk();
         let children: Vec<Node> = node.children(&mut cursor).collect();
 
-        let mut x = 0.0;
-        let mut y = 0.0;
+        let mut x_expr = Expression::Number(0.0);
+        let mut y_expr = Expression::Number(0.0);
 
         for child in children {
             match child.kind() {
                 "x" => {
-                    x = node_text(child, source).parse()?;
+                    // x coordinate can now be an expression
+                    let mut x_cursor = child.walk();
+                    if let Some(x_child) = child.children(&mut x_cursor).next() {
+                        x_expr = self.parse_expression(x_child, source)?;
+                    }
                 }
                 "y" => {
-                    y = node_text(child, source).parse()?;
+                    // y coordinate can now be an expression
+                    let mut y_cursor = child.walk();
+                    if let Some(y_child) = child.children(&mut y_cursor).next() {
+                        y_expr = self.parse_expression(y_child, source)?;
+                    }
                 }
                 _ => {}
             }
         }
 
-        Ok(Expression::Point { x, y })
+        Ok(Expression::Point {
+            x: Box::new(x_expr),
+            y: Box::new(y_expr),
+        })
     }
 
     fn parse_path(
