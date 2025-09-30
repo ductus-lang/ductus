@@ -242,84 +242,13 @@ impl AstParser {
                     return Ok(Connector::Line);
                 }
                 "curve_connector" => {
-                    let (start_options, end_options) =
-                        self.parse_curve_options(conn_child, source)?;
-                    return Ok(Connector::Curve {
-                        start_options,
-                        end_options,
-                    });
+                    return Ok(Connector::Curve);
                 }
                 _ => {}
             }
         }
 
         Ok(Connector::Line) // Default to line if no specific connector found
-    }
-
-    fn parse_curve_options(
-        &self,
-        curve_connector_node: Node,
-        source: &str,
-    ) -> Result<(CurveOptions, CurveOptions), Box<dyn std::error::Error>> {
-        let mut start_options = CurveOptions::default();
-        let mut end_options = CurveOptions::default();
-
-        let mut curve_cursor = curve_connector_node.walk();
-        for curve_child in curve_connector_node.children(&mut curve_cursor) {
-            match curve_child.kind() {
-                "curve_end_options" => {
-                    end_options = self.parse_curve_option_set(curve_child, source)?;
-                }
-                "curve_start_options" => {
-                    start_options = self.parse_curve_option_set(curve_child, source)?;
-                }
-                _ => {}
-            }
-        }
-
-        Ok((start_options, end_options))
-    }
-
-    fn parse_curve_option_set(
-        &self,
-        options_node: Node,
-        source: &str,
-    ) -> Result<CurveOptions, Box<dyn std::error::Error>> {
-        let mut options = CurveOptions::default();
-
-        let mut opt_cursor = options_node.walk();
-        for option in options_node.children(&mut opt_cursor) {
-            if option.kind() == "option" {
-                let (name, value) = self.parse_option(option, source)?;
-                match name.as_str() {
-                    "dir" => options.direction = Some(value.parse::<f64>()?),
-                    "tension" => options.tension = Some(value.parse::<f64>()?),
-                    _ => {} // ignore unknown options
-                }
-            }
-        }
-
-        Ok(options)
-    }
-
-    fn parse_option(
-        &self,
-        node: Node,
-        source: &str,
-    ) -> Result<(String, String), Box<dyn std::error::Error>> {
-        let mut cursor = node.walk();
-        let mut name = String::new();
-        let mut value = String::new();
-
-        for child in node.children(&mut cursor) {
-            match child.kind() {
-                "option_name" => name = node_text(child, source),
-                "option_value" => value = node_text(child, source),
-                _ => {}
-            }
-        }
-
-        Ok((name, value))
     }
 }
 

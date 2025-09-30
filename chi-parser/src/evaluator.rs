@@ -79,13 +79,16 @@ impl Evaluator {
         &self,
         path_expr: &PathExpression,
     ) -> Result<BezPath, Box<dyn std::error::Error>> {
-        let points = self.resolve_all_points(path_expr)?;
-        let connectors = self.extract_connectors(path_expr);
+        // Validate all points first
+        let points = self.validate_all_points(path_expr)?;
 
-        self.construct_optimized_path(points, connectors)
+        // Validate connectors
+        let connectors = self.validate_connectors(path_expr);
+
+        self.construct_optimized_path(path_expr, points, connectors)
     }
 
-    fn resolve_all_points(
+    fn validate_all_points(
         &self,
         path_expr: &PathExpression,
     ) -> Result<Vec<Point>, Box<dyn std::error::Error>> {
@@ -105,7 +108,7 @@ impl Evaluator {
         Ok(points)
     }
 
-    fn extract_connectors(&self, path_expr: &PathExpression) -> Vec<Option<Connector>> {
+    fn validate_connectors(&self, path_expr: &PathExpression) -> Vec<Option<Connector>> {
         let mut connectors = Vec::new();
 
         for segment in &path_expr.segments {
@@ -127,6 +130,7 @@ impl Evaluator {
 
     fn construct_optimized_path(
         &self,
+        path_expr: &PathExpression,
         points: Vec<Point>,
         connectors: Vec<Option<Connector>>,
     ) -> Result<BezPath, Box<dyn std::error::Error>> {
@@ -142,8 +146,10 @@ impl Evaluator {
             return Ok(bez_path);
         }
 
-        // Now we can pass all points to hobby at once since we treat lines as curves
-        self.do_curve_fitting(&mut bez_path, &points, &connectors)?;
+        // Use path_expr to determine if closed
+        let is_closed = path_expr.is_cyclic();
+
+        self.do_curve_fitting(&mut bez_path, &points, &connectors, is_closed)?;
 
         Ok(bez_path)
     }
@@ -153,6 +159,7 @@ impl Evaluator {
         bez_path: &mut BezPath,
         points: &[Point],
         connectors: &[Option<Connector>],
+        is_closed: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if points.len() < 2 {
             return Ok(());
@@ -167,12 +174,12 @@ impl Evaluator {
             })
             .collect();
 
-        for (i, connector_opt) in connectors.iter().enumerate() {
+        for (i, connector_opt) in connectors.iter().enumerate().skip(1) {
             if let Some(connector) = connector_opt {
                 match connector {
                     Connector::Line => {
-                        dbg!(i);
-                        input_points[i - 1].point_type = PointType::Corner;
+                        input_points[i - 1].point_type = PointType::CurveToLine;
+                        input_points[i].point_type = PointType::LineToCurve;
                     }
                     _ => {}
                 }
@@ -180,7 +187,7 @@ impl Evaluator {
         }
 
         let fitter = CurveFitter::new();
-        let segments = fitter.fit_curve(input_points, false);
+        let segments = fitter.fit_curve(input_points, is_closed);
         bez_path.extend(segments.unwrap());
         Ok(())
     }

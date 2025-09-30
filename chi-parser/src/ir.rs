@@ -64,6 +64,35 @@ pub struct PathExpression {
     pub segments: Vec<PathSegment>,
 }
 
+impl PathExpression {
+    /// Check if this path forms a cycle by comparing first and last points
+    pub fn is_cyclic(&self) -> bool {
+        if self.segments.len() < 3 {
+            return false; // Need at least 3 points to form a meaningful cycle
+        }
+
+        let first_point = match self.segments.first() {
+            Some(PathSegment::Point(point_ref)) => point_ref,
+            _ => return false,
+        };
+
+        let last_point = match self.segments.last() {
+            Some(PathSegment::Point(point_ref)) => point_ref,
+            Some(PathSegment::Connection { to, .. }) => to,
+            _ => return false,
+        };
+
+        // Check if first and last points are the same
+        match (first_point, last_point) {
+            (PointRef::Literal { x: x1, y: y1 }, PointRef::Literal { x: x2, y: y2 }) => {
+                (x1 - x2).abs() < 1e-6 && (y1 - y2).abs() < 1e-6
+            }
+            (PointRef::Variable(name1), PointRef::Variable(name2)) => name1 == name2,
+            _ => false, // Mixed literal/variable references can't be easily compared here
+        }
+    }
+}
+
 impl Display for PathExpression {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "")?;
@@ -112,48 +141,14 @@ impl Display for PointRef {
 #[derive(Debug, Clone)]
 pub enum Connector {
     Line,
-    Curve {
-        start_options: CurveOptions,
-        end_options: CurveOptions,
-    },
+    Curve,
 }
 
 impl Display for Connector {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Connector::Line => write!(f, "--"),
-            Connector::Curve {
-                start_options,
-                end_options,
-            } => {
-                write!(f, "{}..{}", start_options, end_options)
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct CurveOptions {
-    pub direction: Option<f64>, // angle in degrees
-    pub tension: Option<f64>,   // for future extensions
-}
-
-impl Display for CurveOptions {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let mut options = Vec::new();
-
-        if let Some(dir) = self.direction {
-            options.push(format!("dir:{}", dir));
-        }
-
-        if let Some(tension) = self.tension {
-            options.push(format!("tension:{}", tension));
-        }
-
-        if options.is_empty() {
-            write!(f, "")
-        } else {
-            write!(f, "[{}]", options.join(","))
+            Connector::Curve => write!(f, ".."),
         }
     }
 }
