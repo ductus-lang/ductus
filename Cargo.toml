@@ -2,8 +2,6 @@
 resolver = "3"
 members = [
   "chi-parser",
-  "curve_fitter",
-  "web-demo"
 ]
 
 [workspace.dependencies]
