@@ -1,0 +1,46 @@
+# An open bowl: 'c'. The skeleton is an open arc; the contour travels
+# out along the right edges, caps the terminal with a line, and comes
+# back along the left edges — one closed band.
+# Shows: a def returning a node, mediation for terminal weights.
+params {
+  weight   = 400 in 100..900;
+  contrast = 0.85 in 0.6..1.0;
+}
+metrics {
+  upm = 1000; x = 500; cap = 700; asc = 750; desc = -220;
+  over = 10 + weight / 200;
+}
+
+stem = 40 + 0.14 * weight;
+hair = contrast * stem;
+term = 0.45[hair, stem];            # terminal thickness
+
+# A skeleton node on an ellipse around c: position at parameter angle t
+# (degrees), travelling counterclockwise.
+def arcnode(c, rx, ry, t, wd) -> nd {
+  node nd = c + (rx * cos(t), ry * sin(t))
+    dir angle((-rx * sin(t), ry * cos(t)))
+    width wd;
+}
+
+glyph c : U+0063 {
+  advance = 2 stem + 320;
+  center = (advance / 2 + 12, x / 2);
+  ry = x / 2 + over - hair / 2;
+  rx = advance / 2 - 45 - stem / 2;
+
+  a = arcnode(center, rx, ry, 48, term);     # upper terminal
+  n = arcnode(center, rx, ry, 90, hair);
+  w = arcnode(center, rx, ry, 180, stem);
+  s = arcnode(center, rx, ry, 270, hair);
+  b = arcnode(center, rx, ry, 318, term);    # lower terminal
+
+  guide spine = a.pos .. n.pos .. w.pos .. s.pos .. b.pos;
+
+  # The band's tangent at each terminal is pinned to the skeleton's
+  # direction there, so the cut stays clean.
+  contour main =
+      a.right {a.dir} .. n.right .. w.right .. s.right .. {b.dir} b.right
+   -- b.left {b.dir + 180} .. s.left .. w.left .. n.left .. {a.dir + 180} a.left
+   -- cycle;
+}
