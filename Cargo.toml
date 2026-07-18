@@ -3,6 +3,7 @@ resolver = "3"
 members = [
   "chi-core",
   "chi-cli",
+  "chi-wasm",
 ]
 
 [workspace.dependencies]
