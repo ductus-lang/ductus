@@ -1,0 +1,12 @@
+[package]
+name = "chi-cli"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "chi"
+path = "src/main.rs"
+
+[dependencies]
+chi-core = { path = "../chi-core" }
+clap = { workspace = true }

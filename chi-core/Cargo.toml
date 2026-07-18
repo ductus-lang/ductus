@@ -1,0 +1,10 @@
+[package]
+name = "chi-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tree-sitter = { workspace = true }
+tree-sitter-chi = { path = "../../tree-sitter-chi" }
+kurbo = { workspace = true }
+curve_fitter = { path = "../../curve-fit/curve_fitter" }

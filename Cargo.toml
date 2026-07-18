@@ -1,11 +1,11 @@
 [workspace]
 resolver = "3"
 members = [
-  "chi-parser",
+  "chi-core",
+  "chi-cli",
 ]
 
 [workspace.dependencies]
 tree-sitter = "0.26.3"
 clap = { version = "4.0", features = ["derive"] }
-kurbo = {version = "0.13.0", features = ["std","serde"] }
-
+kurbo = { version = "0.13.0", features = ["std"] }
