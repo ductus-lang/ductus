@@ -1,0 +1,79 @@
+# Malayalam ത (tha): a double bowl with inward-curling tips and
+# rounded, soft-pen terminals.
+# Shows: counters as first-class measures (advance is derived from
+# them, so the width axis squeezes white, not strokes), a mirror def
+# for the letter's symmetry, and rounded caps built from ordinary
+# path points.
+params {
+  weight   = 400 in 100..900;
+  contrast = 0.85 in 0.4..1.0;
+  width    = 100 in 60..120;
+}
+metrics {
+  upm = 1000; x = 500; cap = 700; asc = 750; desc = -220;
+  over = 10 + weight / 200;
+}
+
+stem = 40 + 0.14 * weight;
+hair = contrast * stem;
+term = 0.75 * hair;                 # tips taper before the round cap
+
+# Mirror a node across the vertical line at `axis`. Direction is
+# negated (mirror plus travel reversal), so the mirrored node reads
+# correctly in a traversal that runs the other way. Symmetric widths
+# only.
+def mirror(n, axis) -> m {
+  node m = (2 * axis - n.pos.x, n.pos.y) dir -n.dir width n.width;
+}
+
+glyph tha : U+0D24 {
+  bowl = 1.6 * width;               # bowl counter width
+  gap  = 0.55 * width;              # counter between the central strokes
+
+  wx  = 45 + stem / 2;              # left outer stroke, centre
+  lcx = wx + stem + bowl;           # left central stroke, centre
+  rcx = lcx + stem + gap;           # right central stroke, centre
+  ex  = rcx + stem + bowl;          # right outer stroke, centre
+  advance = ex + stem / 2 + 45;
+  mid = 0.5[lcx, rcx];
+
+  ax = 0.5[wx, lcx] + 14;           # tip hovers just right of bowl centre
+
+  # Left half of the skeleton, travelling from the tip into the letter:
+  # curl up over the left shoulder, down and around the left bowl, up to
+  # the central peak.
+  node a  = (ax, 0.62 * x)                       dir 115   width term;
+  node ls = (0.42[wx, ax], x + over - hair / 2)  dir left  width hair;
+  node w  = (wx, 0.48 * x)                       dir down  width stem;
+  node lb = (0.5[wx, lcx], hair / 2 - over)      dir right width hair;
+  node lc = (lcx, 0.55 * x)                      dir up    width stem;
+  node peak = (mid, x + over - hair / 2)         dir right width hair;
+
+  # Right half by symmetry.
+  rc = mirror(lc, mid);
+  rb = mirror(lb, mid);
+  e  = mirror(w,  mid);
+  rs = mirror(ls, mid);
+  b  = mirror(a,  mid);
+
+  guide skeleton = a.pos .. ls.pos .. w.pos .. lb.pos .. lc.pos .. peak.pos
+                .. rc.pos .. rb.pos .. e.pos .. rs.pos .. b.pos;
+
+  # Rounded caps: one extra point past each tip, half a width out along
+  # the travel direction, with the semicircle's tangents pinned.
+  acap = a.pos - (a.width / 2) * unitvec(a.dir);
+  bcap = b.pos + (b.width / 2) * unitvec(b.dir);
+
+  contour main =
+      {a.dir} a.right {a.dir}
+   .. ls.right .. w.right .. lb.right .. lc.right .. peak.right .. rc.right
+   .. rb.right .. e.right .. rs.right
+   .. {b.dir} b.right {b.dir}
+   .. bcap {b.dir + 90}
+   .. {b.dir + 180} b.left {b.dir + 180}
+   .. rs.left .. e.left .. rb.left .. rc.left .. peak.left .. lc.left
+   .. lb.left .. w.left .. ls.left
+   .. {a.dir + 180} a.left {a.dir + 180}
+   .. acap {a.dir + 270}
+   .. cycle;
+}
