@@ -4,5 +4,7 @@
 //! tree-sitter-chi repository for the language definition.
 
 pub mod ast;
+pub mod eval;
 pub mod lower;
 pub mod parse;
+pub mod value;
