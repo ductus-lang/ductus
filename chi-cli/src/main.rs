@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -16,29 +17,89 @@ enum Command {
         /// Path to the .chi file
         file: PathBuf,
     },
+    /// Evaluate a source file and render it to SVG.
+    Build {
+        /// Path to the .chi file
+        file: PathBuf,
+        /// Render only this glyph
+        #[arg(long)]
+        glyph: Option<String>,
+        /// Override a param, e.g. --set weight=700 (repeatable)
+        #[arg(long = "set", value_name = "PARAM=VALUE")]
+        set: Vec<String>,
+        /// Draw guides, skeleton nodes, metrics lines and handles
+        #[arg(long)]
+        debug: bool,
+        /// Output SVG path
+        #[arg(short, long, default_value = "output.svg")]
+        output: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
-    let cli = Cli::parse();
-    match cli.command {
-        Command::Check { file } => {
-            let source = match std::fs::read_to_string(&file) {
-                Ok(source) => source,
-                Err(error) => {
-                    eprintln!("error reading {}: {}", file.display(), error);
-                    return ExitCode::FAILURE;
-                }
-            };
-            match chi_core::parse::parse(&source) {
-                Ok(_) => {
-                    println!("{}: OK", file.display());
-                    ExitCode::SUCCESS
-                }
-                Err(error) => {
-                    eprintln!("{}: {}", file.display(), error);
-                    ExitCode::FAILURE
-                }
-            }
+    match run(Cli::parse()) {
+        Ok(message) => {
+            println!("{message}");
+            ExitCode::SUCCESS
+        }
+        Err(message) => {
+            eprintln!("{message}");
+            ExitCode::FAILURE
         }
     }
+}
+
+fn run(cli: Cli) -> Result<String, String> {
+    match cli.command {
+        Command::Check { file } => {
+            let source = read(&file)?;
+            chi_core::parse::parse(&source)
+                .map_err(|error| format!("{}: {}", file.display(), error))?;
+            Ok(format!("{}: OK", file.display()))
+        }
+        Command::Build {
+            file,
+            glyph,
+            set,
+            debug,
+            output,
+        } => {
+            let source = read(&file)?;
+            let overrides = parse_overrides(&set)?;
+
+            let tree = chi_core::parse::parse(&source)
+                .map_err(|error| format!("{}: {}", file.display(), error))?;
+            let program = chi_core::lower::lower(&tree, &source)
+                .map_err(|error| format!("{}: {}", file.display(), error))?;
+            let document = chi_core::eval::evaluate(&program, &overrides)
+                .map_err(|error| format!("{}: {}", file.display(), error))?;
+
+            let options = chi_core::render::RenderOptions { glyph, debug };
+            let svg = chi_core::render::render(&document, &options)
+                .map_err(|error| format!("{}: {}", file.display(), error))?;
+
+            std::fs::write(&output, svg)
+                .map_err(|error| format!("error writing {}: {}", output.display(), error))?;
+            Ok(format!("{} -> {}", file.display(), output.display()))
+        }
+    }
+}
+
+fn read(file: &PathBuf) -> Result<String, String> {
+    std::fs::read_to_string(file)
+        .map_err(|error| format!("error reading {}: {}", file.display(), error))
+}
+
+fn parse_overrides(set: &[String]) -> Result<HashMap<String, f64>, String> {
+    let mut overrides = HashMap::new();
+    for entry in set {
+        let Some((name, value)) = entry.split_once('=') else {
+            return Err(format!("--set expects PARAM=VALUE, got '{entry}'"));
+        };
+        let value: f64 = value
+            .parse()
+            .map_err(|_| format!("--set {name}: '{value}' is not a number"))?;
+        overrides.insert(name.to_string(), value);
+    }
+    Ok(overrides)
 }
