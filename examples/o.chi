@@ -1,0 +1,43 @@
+# Skeleton-anchored outline: 'o' with a weight axis and contrast.
+# The bowl macro returns four nodes; the contours are written through
+# their derived edge points. Both contours keep exactly four points
+# across the whole design space.
+params {
+  weight   = 400 in 100..900;
+  contrast = 0.85 in 0.6..1.0;
+}
+metrics {
+  upm = 1000; x = 500; cap = 700; asc = 750; desc = -220;
+  over = 10 + weight / 200;
+}
+
+stem = 40 + 0.14 * weight;
+hair = contrast * stem;
+
+def bowl(c, rx, ry) -> (n, w, s, e) {
+  # counterclockwise travel: top -> left -> bottom -> right
+  node n = c + (0,  ry) dir left  width hair;
+  node w = c + (-rx, 0) dir down  width stem;
+  node s = c + (0, -ry) dir right width hair;
+  node e = c + (rx, 0)  dir up    width stem;
+}
+
+glyph o : U+006F {
+  advance = 2 stem + 380;
+  center = (advance / 2, x / 2);
+
+  # mid-stroke skeleton radii: the outline extremes land on the
+  # overshoot lines, so the skeleton sits half a stroke inside them.
+  ry = x / 2 + over - hair / 2;
+  rx = advance / 2 - 55 - stem / 2;
+
+  (n, w, s, e) = bowl(center, rx, ry);
+  guide spine = n.pos .. w.pos .. s.pos .. e.pos .. cycle;
+
+  # CCW skeleton: .right points = outer contour (CCW),
+  # .left points reversed = inner contour (CW)
+  contour outer = n.right .. w.right .. s.right .. e.right .. cycle;
+  contour inner = n.left  .. e.left  .. s.left  .. w.left  .. cycle;
+
+  anchor top = (advance / 2, x + over);
+}

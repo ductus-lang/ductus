@@ -1,0 +1,15 @@
+# Direct outline, no skeleton: a sans-serif 'l' as a plain rectangle.
+params { weight = 400 in 100..900; }
+metrics { upm = 1000; x = 500; cap = 700; asc = 750; desc = -220; }
+
+stem = 40 + 0.14 * weight;
+
+glyph l : U+006C {
+  advance = stem + 190;
+  lsb = (advance - stem) / 2;
+
+  # counterclockwise: bottom-left, bottom-right, top-right, top-left
+  contour main =
+      (lsb, 0) -- (lsb + stem, 0)
+   -- (lsb + stem, asc) -- (lsb, asc) -- cycle;
+}

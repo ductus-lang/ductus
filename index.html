@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>chi playground</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14' font-family='serif'>χ</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>chi <span>playground</span></h1>
+    <label>example
+      <select id="example">
+        <option value="o">o — skeleton bowl</option>
+        <option value="l">l — direct outline</option>
+        <option value="stem_slab">stem_slab — serifs &amp; brackets</option>
+        <option value="sketch">sketch — freehand</option>
+      </select>
+    </label>
+    <label>glyph
+      <select id="glyph"><option value="">all</option></select>
+    </label>
+    <label class="check"><input type="checkbox" id="debug" checked> debug</label>
+  </header>
+  <main>
+    <section id="editor-pane">
+      <div id="editor"></div>
+      <div id="status" hidden></div>
+    </section>
+    <section id="preview-pane">
+      <div id="params"></div>
+      <div id="preview"></div>
+    </section>
+  </main>
+  <script type="module" src="dist/main.js"></script>
+</body>
+</html>
