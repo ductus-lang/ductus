@@ -55,27 +55,45 @@ pub fn fit_path(path: &PathValue) -> Result<BezPath, RenderError> {
         path.joints.get(index).copied()
     };
 
+    let chord = |from: usize, to: usize| -> f64 {
+        let delta = path.points[to].pos - path.points[from].pos;
+        delta.y.atan2(delta.x).to_degrees()
+    };
+
+    // Per spec §5.1 a line/curve meeting is a corner: the line side's tangent
+    // is the chord (a line is a line), the curve side is free unless the
+    // source constrains it. Line-side tangents are computed here rather than
+    // left to the fitter, whose built-in conversion only fires when a point
+    // has no explicit angles at all.
     let input_points: Vec<InputPoint> = path
         .points
         .iter()
         .enumerate()
         .map(|(index, point)| {
-            let point_type = if point.corner {
-                PointType::Corner
-            } else {
-                match (joint_before(index), joint_after(index)) {
-                    (Some(Joint::Line), Some(Joint::Line)) => PointType::Corner,
-                    (Some(Joint::Line), Some(Joint::Curve)) => PointType::LineToCurve,
-                    (Some(Joint::Curve), Some(Joint::Line)) => PointType::CurveToLine,
-                    _ => PointType::Smooth,
+            let mut point_type = PointType::Smooth;
+            let mut incoming = point.enter;
+            let mut outgoing = point.leave;
+            match (joint_before(index), joint_after(index)) {
+                (Some(Joint::Line), Some(Joint::Line)) => point_type = PointType::Corner,
+                (Some(Joint::Line), _) => {
+                    point_type = PointType::Corner;
+                    incoming = Some(chord((index + count - 1) % count, index));
                 }
-            };
+                (_, Some(Joint::Line)) => {
+                    point_type = PointType::Corner;
+                    outgoing = Some(chord(index, (index + 1) % count));
+                }
+                _ => {}
+            }
+            if point.corner {
+                point_type = PointType::Corner;
+            }
             InputPoint {
                 x: point.pos.x,
                 y: point.pos.y,
                 point_type,
-                incoming_angle: point.enter,
-                outgoing_angle: point.leave,
+                incoming_angle: incoming,
+                outgoing_angle: outgoing,
             }
         })
         .collect();
@@ -487,6 +505,67 @@ mod tests {
         assert!((bounds.min_x() - 0.0).abs() < 1e-6);
         assert!((bounds.max_x() - 100.0).abs() < 1e-6);
         assert!((bounds.max_y() - 200.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn line_into_constrained_curve_stays_straight() {
+        // The slab-serif bracket shape: a vertical -- line meeting a curve
+        // whose start direction is constrained. The line must stay straight.
+        let path = PathValue {
+            points: vec![
+                smooth(0.0, 100.0),
+                PathPoint {
+                    pos: Point::new(0.0, 50.0),
+                    enter: None,
+                    leave: Some(270.0),
+                    corner: false,
+                },
+                PathPoint {
+                    pos: Point::new(-30.0, 0.0),
+                    enter: Some(180.0),
+                    leave: None,
+                    corner: false,
+                },
+            ],
+            joints: vec![Joint::Line, Joint::Curve],
+            closed: false,
+        };
+        let fitted = fit_path(&path).unwrap();
+        // First segment (0,100) -> (0,50): every control must sit on x = 0.
+        match fitted.elements()[1] {
+            PathEl::LineTo(end) => assert!((end.x).abs() < 1e-6),
+            PathEl::CurveTo(control1, control2, end) => {
+                assert!(control1.x.abs() < 1e-6, "control1 = {control1:?}");
+                assert!(control2.x.abs() < 1e-6, "control2 = {control2:?}");
+                assert!(end.x.abs() < 1e-6);
+            }
+            other => panic!("unexpected element {other:?}"),
+        }
+    }
+
+    #[test]
+    fn line_between_curves_stays_straight() {
+        let path = PathValue {
+            points: vec![
+                smooth(0.0, 0.0),
+                smooth(50.0, 50.0),
+                smooth(100.0, 50.0),
+                smooth(150.0, 0.0),
+            ],
+            joints: vec![Joint::Curve, Joint::Line, Joint::Curve],
+            closed: false,
+        };
+        let fitted = fit_path(&path).unwrap();
+        // Segment points[1] -> points[2] is horizontal at y = 50.
+        match fitted.elements()[2] {
+            PathEl::LineTo(end) => assert!((end.y - 50.0).abs() < 1e-6),
+            PathEl::CurveTo(control1, control2, end) => {
+                assert!((control1.y - 50.0).abs() < 1e-6, "control1 = {control1:?}");
+                assert!((control2.y - 50.0).abs() < 1e-6, "control2 = {control2:?}");
+                assert!((end.y - 50.0).abs() < 1e-6);
+            }
+            other => panic!("unexpected element {other:?}"),
+        }
     }
 
     #[test]
