@@ -3,4 +3,6 @@
 //! Chi is a DSL for parametric type design; see Spec.md in the
 //! tree-sitter-chi repository for the language definition.
 
+pub mod ast;
+pub mod lower;
 pub mod parse;
