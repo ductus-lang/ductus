@@ -1,9 +1,30 @@
 //! Evaluate the AST: single pass, lexically scoped, immutable bindings.
 
 use crate::ast::*;
+use crate::doc::{Document, Glyph, Param, SketchCommand};
 use crate::value::{NodeValue, PathPoint, PathValue, Value, unitvec};
 use kurbo::{Affine, Point, Vec2};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+const BUILTIN_FUNCTIONS: &[&str] = &[
+    "min",
+    "max",
+    "abs",
+    "sqrt",
+    "floor",
+    "ceil",
+    "round",
+    "sin",
+    "cos",
+    "tan",
+    "angle",
+    "unitvec",
+    "length",
+    "distance",
+    "intersection",
+    "draw",
+    "fill",
+];
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EvalError {
@@ -30,9 +51,77 @@ fn err(span: Span, message: impl Into<String>) -> EvalError {
     }
 }
 
+/// Evaluate a whole program into a renderable document.
+pub fn evaluate(
+    program: &Program,
+    overrides: &HashMap<String, f64>,
+) -> Result<Document, EvalError> {
+    let mut evaluator = Evaluator::new();
+    let mut document = Document::default();
+    let mut known_params = HashSet::new();
+
+    for item in &program.items {
+        match item {
+            Item::Params(params) => {
+                for param in params {
+                    known_params.insert(param.name.clone());
+                    let resolved = evaluator.eval_param(param, overrides)?;
+                    document.params.push(resolved);
+                }
+            }
+            Item::Metrics(entries) => {
+                for entry in entries {
+                    let value = evaluator.eval_rhs(&entry.value)?;
+                    let Value::Number(number) = value else {
+                        return Err(err(
+                            entry.span,
+                            format!("metrics must be numbers, got {}", value.type_name()),
+                        ));
+                    };
+                    evaluator.define(&entry.name, Value::Number(number), entry.span)?;
+                    document.metrics.values.insert(entry.name.clone(), number);
+                }
+            }
+            Item::Def(def) => evaluator.register_def(def)?,
+            Item::Glyph(glyph) => {
+                if document.glyphs.iter().any(|g| g.name == glyph.name) {
+                    return Err(err(
+                        glyph.span,
+                        format!("glyph '{}' is already defined", glyph.name),
+                    ));
+                }
+                let evaluated = evaluator.eval_glyph(glyph)?;
+                document.glyphs.push(evaluated);
+            }
+            Item::Import { span, .. } => {
+                return Err(err(*span, "'import' is not implemented yet (phase 2)"));
+            }
+            Item::Stmt(stmt) => evaluator.exec_statement(stmt)?,
+        }
+    }
+
+    for name in overrides.keys() {
+        if !known_params.contains(name) {
+            return Err(err(
+                Span { line: 1, column: 1 },
+                format!("--set {name}: no such param in this file"),
+            ));
+        }
+    }
+
+    document.sketch = evaluator.sketch;
+    Ok(document)
+}
+
 pub struct Evaluator {
     /// Innermost scope last. Scope 0 is the prelude.
     scopes: Vec<HashMap<String, Value>>,
+    defs: HashMap<String, DefDecl>,
+    /// Names of defs currently executing, to reject recursion.
+    call_stack: Vec<String>,
+    /// True while evaluating a glyph body: draw/fill are sketch-only.
+    in_glyph: bool,
+    sketch: Vec<SketchCommand>,
 }
 
 impl Evaluator {
@@ -44,7 +133,151 @@ impl Evaluator {
         prelude.insert("down".to_string(), Value::Number(270.0));
         Self {
             scopes: vec![prelude, HashMap::new()],
+            defs: HashMap::new(),
+            call_stack: Vec::new(),
+            in_glyph: false,
+            sketch: Vec::new(),
         }
+    }
+
+    fn eval_param(
+        &mut self,
+        param: &ParamDecl,
+        overrides: &HashMap<String, f64>,
+    ) -> Result<Param, EvalError> {
+        let default = self.expect_number(&param.default)?;
+        let min = self.expect_number(&param.min)?;
+        let max = self.expect_number(&param.max)?;
+        let value = overrides.get(&param.name).copied().unwrap_or(default);
+        if value < min || value > max {
+            return Err(err(
+                param.span,
+                format!("{} = {} is outside its range {}..{}", param.name, value, min, max),
+            ));
+        }
+        self.define(&param.name, Value::Number(value), param.span)?;
+        Ok(Param {
+            name: param.name.clone(),
+            value,
+            default,
+            min,
+            max,
+        })
+    }
+
+    fn register_def(&mut self, def: &DefDecl) -> Result<(), EvalError> {
+        if BUILTIN_FUNCTIONS.contains(&def.name.as_str()) {
+            return Err(err(
+                def.span,
+                format!("'{}' is a built-in function and cannot be redefined", def.name),
+            ));
+        }
+        if self.defs.contains_key(&def.name) {
+            return Err(err(def.span, format!("def '{}' is already defined", def.name)));
+        }
+        self.defs.insert(def.name.clone(), def.clone());
+        Ok(())
+    }
+
+    fn eval_glyph(&mut self, glyph: &GlyphDecl) -> Result<Glyph, EvalError> {
+        self.push_scope();
+        self.in_glyph = true;
+        let result = self.eval_glyph_body(glyph);
+        self.in_glyph = false;
+        self.pop_scope();
+        result
+    }
+
+    fn eval_glyph_body(&mut self, glyph: &GlyphDecl) -> Result<Glyph, EvalError> {
+        let mut contours = Vec::new();
+        let mut guides = Vec::new();
+        let mut anchors = Vec::new();
+
+        for statement in &glyph.body {
+            match statement {
+                GlyphStmt::Stmt(stmt) => self.exec_statement(stmt)?,
+                GlyphStmt::Contour(binding) => {
+                    let value = self.eval_rhs(&binding.value)?;
+                    let Value::Path(path) = value else {
+                        return Err(err(
+                            binding.span,
+                            format!("contour must be a path, got {}", value.type_name()),
+                        ));
+                    };
+                    if !path.closed {
+                        return Err(err(
+                            binding.span,
+                            format!(
+                                "contour '{}' is not closed; end it with '.. cycle' or '-- cycle'",
+                                binding.name
+                            ),
+                        ));
+                    }
+                    contours.push((binding.name.clone(), path));
+                }
+                GlyphStmt::Guide(binding) => {
+                    let value = self.eval_rhs(&binding.value)?;
+                    let Value::Path(path) = value else {
+                        return Err(err(
+                            binding.span,
+                            format!("guide must be a path, got {}", value.type_name()),
+                        ));
+                    };
+                    guides.push((binding.name.clone(), path));
+                }
+                GlyphStmt::Anchor { name, value, span } => {
+                    let point = match self.eval_expr(value)? {
+                        Value::Point(point) => point,
+                        other => {
+                            return Err(err(
+                                *span,
+                                format!("anchor must be a point, got {}", other.type_name()),
+                            ));
+                        }
+                    };
+                    anchors.push((name.clone(), point));
+                }
+            }
+        }
+
+        let advance = match self.scopes.last().and_then(|scope| scope.get("advance")) {
+            Some(Value::Number(advance)) => *advance,
+            Some(other) => {
+                return Err(err(
+                    glyph.span,
+                    format!("advance must be a number, got {}", other.type_name()),
+                ));
+            }
+            None => {
+                return Err(err(
+                    glyph.span,
+                    format!("glyph '{}' does not set advance", glyph.name),
+                ));
+            }
+        };
+
+        // Collect skeleton nodes bound in the glyph scope, for debug preview.
+        let mut nodes: Vec<(String, NodeValue)> = self
+            .scopes
+            .last()
+            .expect("glyph scope")
+            .iter()
+            .filter_map(|(name, value)| match value {
+                Value::Node(node) => Some((name.clone(), *node)),
+                _ => None,
+            })
+            .collect();
+        nodes.sort_by(|a, b| a.0.cmp(&b.0));
+
+        Ok(Glyph {
+            name: glyph.name.clone(),
+            unicode: glyph.unicode,
+            advance,
+            contours,
+            guides,
+            anchors,
+            nodes,
+        })
     }
 
     /// Look a name up through all scopes, innermost first.
@@ -106,10 +339,48 @@ impl Evaluator {
                 }
                 Ok(())
             }
-            Stmt::Call { span, function, .. } => Err(err(
-                *span,
-                format!("call to '{function}' is not valid here yet"),
-            )),
+            Stmt::Call {
+                function,
+                arguments,
+                span,
+            } => match function.as_str() {
+                "draw" | "fill" => {
+                    if self.in_glyph || !self.call_stack.is_empty() {
+                        return Err(err(
+                            *span,
+                            format!(
+                                "{function}() is for sketching at the top level; \
+                                 use 'contour' or 'guide' inside a glyph"
+                            ),
+                        ));
+                    }
+                    for argument in arguments {
+                        let value = self.eval_rhs(argument)?;
+                        let Value::Path(path) = value else {
+                            return Err(err(
+                                *span,
+                                format!(
+                                    "{function}() expects paths, got {}",
+                                    value.type_name()
+                                ),
+                            ));
+                        };
+                        if function == "fill" {
+                            if !path.closed {
+                                return Err(err(*span, "fill() needs a closed path"));
+                            }
+                            self.sketch.push(SketchCommand::Fill(path));
+                        } else {
+                            self.sketch.push(SketchCommand::Draw(path));
+                        }
+                    }
+                    Ok(())
+                }
+                other => Err(err(
+                    *span,
+                    format!("'{other}' is not a statement; only draw() and fill() are"),
+                )),
+            },
             Stmt::For { span, .. } => {
                 Err(err(*span, "'for' is not implemented yet (phase 2)"))
             }
@@ -482,6 +753,10 @@ impl Evaluator {
             .map(|argument| self.eval_rhs(argument))
             .collect::<Result<Vec<_>, _>>()?;
 
+        if self.defs.contains_key(function) {
+            return self.call_def(span, function, values);
+        }
+
         let expect_arity = |count: usize| -> Result<(), EvalError> {
             if values.len() == count {
                 Ok(())
@@ -589,6 +864,72 @@ impl Evaluator {
             }
             other => Err(err(span, format!("unknown function: {other}"))),
         }
+    }
+
+    /// Call a user `def`. The body runs in a fresh scope on top of the file
+    /// top level — lexical scoping, so a caller's glyph locals are invisible.
+    fn call_def(
+        &mut self,
+        span: Span,
+        function: &str,
+        values: Vec<Value>,
+    ) -> Result<Value, EvalError> {
+        let def = self.defs.get(function).cloned().expect("checked by caller");
+        if self.call_stack.contains(&def.name) {
+            return Err(err(
+                span,
+                format!("recursive call to '{}' is not supported", def.name),
+            ));
+        }
+        if values.len() != def.parameters.len() {
+            return Err(err(
+                span,
+                format!(
+                    "{}() expects {} argument(s), got {}",
+                    def.name,
+                    def.parameters.len(),
+                    values.len()
+                ),
+            ));
+        }
+
+        // Hide any scopes inner to the file top level (e.g. glyph locals).
+        let hidden = self.scopes.split_off(2);
+        self.push_scope();
+        for (parameter, value) in def.parameters.iter().zip(values) {
+            self.define(parameter, value, span)?;
+        }
+        self.call_stack.push(def.name.clone());
+
+        let mut run = || -> Result<Value, EvalError> {
+            for statement in &def.body {
+                self.exec_statement(statement)?;
+            }
+            let scope = self.scopes.last().expect("def scope");
+            let mut returns = Vec::with_capacity(def.returns.len());
+            for name in &def.returns {
+                match scope.get(name) {
+                    Some(value) => returns.push(value.clone()),
+                    None => {
+                        return Err(err(
+                            span,
+                            format!("{}() does not bind its declared return '{name}'", def.name),
+                        ));
+                    }
+                }
+            }
+            if returns.len() == 1 {
+                Ok(returns.pop().expect("one return"))
+            } else {
+                Ok(Value::Tuple(returns))
+            }
+        };
+        let result = run();
+
+        self.call_stack.pop();
+        self.pop_scope();
+        self.scopes.extend(hidden);
+        result
     }
 
     fn expect_number(&mut self, expr: &Expr) -> Result<f64, EvalError> {
