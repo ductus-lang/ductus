@@ -57,6 +57,23 @@ main {
 #editor .cm-editor.cm-focused { outline: none; }
 #editor .cm-scroller { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13px; }
 
+/* Syntax colors from tree-sitter-chi/queries/highlights.scm, keeping the
+   CodeMirror default light-theme palette the old StreamLanguage produced. */
+.chi-comment { color: #940; }
+.chi-number { color: #164; }
+.chi-string { color: #a11; }
+.chi-constant-builtin { color: #219; }
+.chi-keyword,
+.chi-keyword-conditional,
+.chi-keyword-storage { color: #708; }
+.chi-attribute { color: #085; }
+.chi-type { color: #085; }
+.chi-function,
+.chi-function-call,
+.chi-function-method { color: #00f; }
+.chi-variable-parameter { color: #30a; }
+.chi-property { color: #00c; }
+
 #status {
   padding: 0.4rem 1rem;
   font-family: ui-monospace, monospace;

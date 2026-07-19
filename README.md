@@ -10,8 +10,8 @@ compiled to WebAssembly.
 
 ## Running
 
-The repository is self-contained — `pkg/` (wasm) and `dist/` (bundled app)
-are committed:
+`pkg/` (wasm) and `dist/` (bundled app) are generated, not committed — build
+them once (see Development below), then serve statically:
 
 ```sh
 python3 -m http.server 8613     # or any static file server
@@ -26,6 +26,10 @@ bun run build           # bundle src/ -> dist/
 bun run sync-wasm       # rebuild ../chi/chi-wasm -> pkg/ (needs wasm-pack, clang)
 bun run sync-examples   # copy ../tree-sitter-chi/examples -> examples/
 ```
+
+Syntax colors come from `../tree-sitter-chi/queries/highlights.scm`, embedded
+into the wasm at build time. Editing that query requires `bun run sync-wasm`
+(then `bun run build`) for the change to reach the editor.
 
 Requires the sibling checkouts `../chi` and `../tree-sitter-chi`.
 

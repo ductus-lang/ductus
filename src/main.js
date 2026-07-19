@@ -1,8 +1,8 @@
 import { basicSetup } from "codemirror";
-import { EditorView } from "@codemirror/view";
+import { Decoration, EditorView } from "@codemirror/view";
+import { RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
 import { setDiagnostics } from "@codemirror/lint";
-import { chiLanguage } from "./chi-language.js";
-import init, { compile } from "../pkg/chi.js";
+import init, { analyze, compile } from "../pkg/chi.js";
 
 const STORAGE_KEY = "chi-playground-source";
 const DEFAULT_EXAMPLE = "o";
@@ -18,15 +18,42 @@ let overrides = {};
 let paramsSignature = "";
 let renderTimer = null;
 
+// Syntax colors live in a decoration field so they follow edits (deco.map)
+// between analyses and are replaced wholesale when fresh spans arrive.
+const setHighlights = StateEffect.define();
+
+const highlightField = StateField.define({
+  create() {
+    return Decoration.none;
+  },
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    for (const effect of tr.effects) {
+      if (effect.is(setHighlights)) deco = effect.value;
+    }
+    return deco;
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
+function buildDecorations(highlights) {
+  const builder = new RangeSetBuilder();
+  for (const { from, to, class: cls } of highlights) {
+    if (to > from) builder.add(from, to, Decoration.mark({ class: `chi-${cls}` }));
+  }
+  return builder.finish();
+}
+
 const view = new EditorView({
   parent: document.querySelector("#editor"),
   extensions: [
     basicSetup,
-    chiLanguage,
+    highlightField,
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
-        localStorage.setItem(STORAGE_KEY, view.state.doc.toString());
-        scheduleRender();
+        localStorage.setItem(STORAGE_KEY, update.state.doc.toString());
+        // Defer past the current update: dispatching mid-update is not allowed.
+        queueMicrotask(onDocChange);
       }
     }),
   ],
@@ -37,7 +64,41 @@ function scheduleRender() {
   renderTimer = setTimeout(render, 200);
 }
 
+// Cheap parse-only pass on every keystroke: repaint colors and, if the syntax
+// is broken, own the diagnostics; otherwise hand off to the debounced compile.
+function onDocChange() {
+  const errors = paintSyntax();
+  if (errors.length === 0) scheduleRender();
+}
+
+// Run analyze(); repaint highlights and syntax diagnostics. Returns the syntax
+// errors so callers can decide whether to proceed to a full compile.
+function paintSyntax() {
+  const source = view.state.doc.toString();
+  const { highlights, errors } = JSON.parse(analyze(source));
+  const diagnostics = errors.map((error) => ({
+    from: error.from,
+    to: error.to > error.from ? error.to : Math.min(error.from + 1, view.state.doc.length),
+    severity: "error",
+    message: error.message,
+  }));
+  view.dispatch(setDiagnostics(view.state, diagnostics), {
+    effects: setHighlights.of(buildDecorations(highlights)),
+  });
+
+  if (errors.length > 0) {
+    status.hidden = false;
+    const extra = errors.length > 1 ? ` (+${errors.length - 1} more)` : "";
+    const first = errors[0];
+    status.textContent = `line ${first.line}:${first.column} — ${first.message}${extra}`;
+  }
+  return errors;
+}
+
 function render() {
+  // Syntax errors own the diagnostics; a broken parse never reaches compile.
+  if (paintSyntax().length > 0) return;
+
   const source = view.state.doc.toString();
   const result = JSON.parse(
     compile(source, JSON.stringify(overrides), glyphSelect.value, debugCheckbox.checked),
