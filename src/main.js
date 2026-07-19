@@ -1,6 +1,6 @@
 import { basicSetup } from "codemirror";
 import { Decoration, EditorView } from "@codemirror/view";
-import { RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
+import { EditorState, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
 import { setDiagnostics } from "@codemirror/lint";
 import init, { analyze, compile } from "../pkg/chi.js";
 
@@ -48,6 +48,9 @@ const view = new EditorView({
   parent: document.querySelector("#editor"),
   extensions: [
     basicSetup,
+    // chi uses `#` line comments. Without a Language there is no languageData,
+    // so toggleComment (Ctrl+/) has no comment token to work with; supply it.
+    EditorState.languageData.of(() => [{ commentTokens: { line: "#" } }]),
     highlightField,
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
