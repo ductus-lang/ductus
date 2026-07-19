@@ -121,6 +121,8 @@ dependencies = [
  "console_error_panic_hook",
  "serde",
  "serde_json",
+ "tree-sitter",
+ "tree-sitter-chi",
  "wasm-bindgen",
 ]
 
