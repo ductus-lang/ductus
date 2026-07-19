@@ -103,6 +103,65 @@ pub fn fit_path(path: &PathValue) -> Result<BezPath, RenderError> {
 
 // ---- SVG -------------------------------------------------------------------
 
+/// The major grid period, in font units. Glyph origins are snapped to a
+/// multiple of this so every origin lands on a major grid line, and the
+/// three-level debug grid tiles at 10 / 50 / 100.
+const GRID_MAJOR: f64 = 100.0;
+
+/// Catppuccin Mocha colours for the debug view. Grouped so a future light
+/// theme is one struct away; no theme plumbing is built yet.
+struct DebugPalette {
+    background: &'static str,
+    glyph: &'static str,
+    metrics: &'static str,
+    baseline: &'static str,
+    guide: &'static str,
+    node: &'static str,
+    edge: &'static str,
+    anchor: &'static str,
+    handle: &'static str,
+    on_curve: &'static str,
+}
+
+const MOCHA: DebugPalette = DebugPalette {
+    background: "#1e1e2e",
+    glyph: "#f5e0dc",
+    metrics: "#45475a",
+    baseline: "#585b70",
+    guide: "#9399b2",
+    node: "#f38ba8",
+    edge: "#89b4fa",
+    anchor: "#cba6f7",
+    handle: "#6c7086",
+    on_curve: "#cdd6f4",
+};
+
+/// The three-level graph-paper grid. `patternUnits="userSpaceOnUse"` anchors
+/// the tiles at user-space (0,0); since the renderer bakes the y-flip into
+/// coordinates, that origin is the baseline and glyph origin, so a major line
+/// lands exactly on y=0 and on every glyph's x=0 for free.
+const GRID_DEFS: &str = r##"  <defs>
+    <pattern id="chi-grid-s" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#313244" stroke-width="0.8" stroke-opacity="0.6"/>
+    </pattern>
+    <pattern id="chi-grid-m" width="50" height="50" patternUnits="userSpaceOnUse">
+      <rect width="50" height="50" fill="url(#chi-grid-s)"/>
+      <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#45475a" stroke-width="1.4" stroke-opacity="0.7"/>
+    </pattern>
+    <pattern id="chi-grid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="url(#chi-grid-m)"/>
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#585b70" stroke-width="2.2" stroke-opacity="0.8"/>
+    </pattern>
+  </defs>
+"##;
+
+/// Advance the sheet cursor past a glyph, snapping the next origin up to the
+/// next multiple of `GRID_MAJOR` so glyph origins stay on the grid.
+fn next_offset(x_offset: f64, advance: f64, margin: f64) -> f64 {
+    let raw = x_offset + advance + margin;
+    (raw / GRID_MAJOR).ceil() * GRID_MAJOR
+}
+
 /// Vertical extent of the drawing, font units, y-up.
 struct Extent {
     ascent: f64,
@@ -140,7 +199,7 @@ pub fn render(document: &Document, options: &RenderOptions) -> Result<String, Re
     let mut x_offset = 0.0;
     for glyph in &glyphs {
         body.push_str(&render_glyph(glyph, document, x_offset, &extent, options)?);
-        x_offset += glyph.advance + margin;
+        x_offset = next_offset(x_offset, glyph.advance, margin);
     }
 
     for (command, fitted) in &fitted_sketch {
@@ -148,13 +207,17 @@ pub fn render(document: &Document, options: &RenderOptions) -> Result<String, Re
         flipped.apply_affine(flip_at(0.0));
         match command {
             SketchCommand::Fill(_) => body.push_str(&format!(
-                "  <path d=\"{}\" fill=\"black\" fill-rule=\"nonzero\"/>\n",
-                flipped.to_svg()
+                "  <path d=\"{}\" {}/>\n",
+                flipped.to_svg(),
+                fill_attrs(options.debug)
             )),
-            SketchCommand::Draw(_) => body.push_str(&format!(
-                "  <path d=\"{}\" fill=\"none\" stroke=\"black\" stroke-width=\"2\"/>\n",
-                flipped.to_svg()
-            )),
+            SketchCommand::Draw(_) => {
+                let stroke = if options.debug { MOCHA.glyph } else { "black" };
+                body.push_str(&format!(
+                    "  <path d=\"{}\" fill=\"none\" stroke=\"{stroke}\" stroke-width=\"2\"/>\n",
+                    flipped.to_svg()
+                ));
+            }
         }
     }
 
@@ -172,13 +235,28 @@ pub fn render(document: &Document, options: &RenderOptions) -> Result<String, Re
     let width = total_width + 2.0 * margin;
     let height = extent.ascent - extent.descent + 2.0 * margin;
 
+    // The grid and background need the final sheet dimensions, so they are
+    // composed here, after `body`, even though they paint underneath it.
+    let prelude = if options.debug {
+        format!(
+            "{GRID_DEFS}  <rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"{bg}\"/>\n\
+             \x20 <rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"url(#chi-grid)\"/>\n",
+            x = fmt(min_x),
+            y = fmt(min_y),
+            w = fmt(width),
+            h = fmt(height),
+            bg = MOCHA.background,
+        )
+    } else {
+        String::new()
+    };
+
     Ok(format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{} {} {} {}\">\n{}</svg>\n",
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{} {} {} {}\">\n{prelude}{body}</svg>\n",
         fmt(min_x),
         fmt(min_y),
         fmt(width),
         fmt(height),
-        body
     ))
 }
 
@@ -214,6 +292,20 @@ fn compute_extent(
     })
 }
 
+/// Fill attributes for a filled outline. In debug the ink is translucent
+/// with a matching stroke, so the skeleton, guides and grid stay visible
+/// through the letter.
+fn fill_attrs(debug: bool) -> String {
+    if debug {
+        format!(
+            "fill=\"{glyph}\" fill-opacity=\"0.25\" stroke=\"{glyph}\" stroke-width=\"2\" fill-rule=\"nonzero\"",
+            glyph = MOCHA.glyph
+        )
+    } else {
+        String::from("fill=\"black\" fill-rule=\"nonzero\"")
+    }
+}
+
 /// Map font coordinates (y-up, baseline 0) to SVG (y-down), shifted to
 /// `x_offset`.
 fn flip_at(x_offset: f64) -> Affine {
@@ -243,8 +335,9 @@ fn render_glyph(
     let mut flipped_outline = outline.clone();
     flipped_outline.apply_affine(flip);
     body.push_str(&format!(
-        "    <path d=\"{}\" fill=\"black\" fill-rule=\"nonzero\"/>\n",
-        flipped_outline.to_svg()
+        "    <path d=\"{}\" {}/>\n",
+        flipped_outline.to_svg(),
+        fill_attrs(options.debug)
     ));
 
     if options.debug {
@@ -282,7 +375,11 @@ fn debug_layer(
         }
     }
     for (name, y) in lines {
-        let color = if name == "baseline" { "#999" } else { "#ccc" };
+        let color = if name == "baseline" {
+            MOCHA.baseline
+        } else {
+            MOCHA.metrics
+        };
         body.push_str(&format!(
             "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{color}\" stroke-width=\"1\"/>\n",
             fmt(x0),
@@ -299,8 +396,9 @@ fn debug_layer(
             .map_err(|error| render_err(format!("guide '{name}': {}", error.message)))?;
         fitted.apply_affine(flip);
         body.push_str(&format!(
-            "      <path d=\"{}\" fill=\"none\" stroke=\"#888\" stroke-width=\"1\" stroke-dasharray=\"6 4\"/>\n",
-            fitted.to_svg()
+            "      <path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"1\" stroke-dasharray=\"6 4\"/>\n",
+            fitted.to_svg(),
+            MOCHA.guide
         ));
     }
 
@@ -311,28 +409,32 @@ fn debug_layer(
         let left = to_svg(node.left());
         let right = to_svg(node.right());
         body.push_str(&format!(
-            "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#d33\" stroke-width=\"1\"/>\n",
+            "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"1\"/>\n",
             fmt(pos.x),
             fmt(pos.y),
             fmt(tip.x),
-            fmt(tip.y)
+            fmt(tip.y),
+            MOCHA.node
         ));
         body.push_str(&format!(
-            "      <circle cx=\"{}\" cy=\"{}\" r=\"3.5\" fill=\"#d33\"/>\n",
+            "      <circle cx=\"{}\" cy=\"{}\" r=\"3.5\" fill=\"{}\"/>\n",
             fmt(pos.x),
-            fmt(pos.y)
+            fmt(pos.y),
+            MOCHA.node
         ));
         for edge in [left, right] {
             body.push_str(&format!(
-                "      <circle cx=\"{}\" cy=\"{}\" r=\"2.5\" fill=\"#36c\"/>\n",
+                "      <circle cx=\"{}\" cy=\"{}\" r=\"2.5\" fill=\"{}\"/>\n",
                 fmt(edge.x),
-                fmt(edge.y)
+                fmt(edge.y),
+                MOCHA.edge
             ));
         }
         body.push_str(&format!(
-            "      <text x=\"{}\" y=\"{}\" fill=\"#d33\">{}</text>\n",
+            "      <text x=\"{}\" y=\"{}\" fill=\"{}\">{}</text>\n",
             fmt(pos.x + 6.0),
             fmt(pos.y - 6.0),
+            MOCHA.node,
             escape(name)
         ));
     }
@@ -341,14 +443,16 @@ fn debug_layer(
     for (name, anchor) in &glyph.anchors {
         let pos = to_svg(*anchor);
         body.push_str(&format!(
-            "      <path d=\"M{} {}l8 8m-8 0l8 -8\" stroke=\"#909\" stroke-width=\"1.5\" fill=\"none\"/>\n",
+            "      <path d=\"M{} {}l8 8m-8 0l8 -8\" stroke=\"{}\" stroke-width=\"1.5\" fill=\"none\"/>\n",
             fmt(pos.x - 4.0),
-            fmt(pos.y - 4.0)
+            fmt(pos.y - 4.0),
+            MOCHA.anchor
         ));
         body.push_str(&format!(
-            "      <text x=\"{}\" y=\"{}\" fill=\"#909\">{}</text>\n",
+            "      <text x=\"{}\" y=\"{}\" fill=\"{}\">{}</text>\n",
             fmt(pos.x + 8.0),
             fmt(pos.y + 4.0),
+            MOCHA.anchor,
             escape(name)
         ));
     }
@@ -371,9 +475,10 @@ fn handles(path: &BezPath) -> String {
     let mut current = Point::ZERO;
     let on_curve = |point: Point, body: &mut String| {
         body.push_str(&format!(
-            "      <rect x=\"{}\" y=\"{}\" width=\"5\" height=\"5\" fill=\"#222\"/>\n",
+            "      <rect x=\"{}\" y=\"{}\" width=\"5\" height=\"5\" fill=\"{}\"/>\n",
             fmt(point.x - 2.5),
-            fmt(point.y - 2.5)
+            fmt(point.y - 2.5),
+            MOCHA.on_curve
         ));
     };
     for element in path.elements() {
@@ -385,16 +490,18 @@ fn handles(path: &BezPath) -> String {
             PathEl::CurveTo(control1, control2, end) => {
                 for (anchor, control) in [(current, control1), (*end, control2)] {
                     body.push_str(&format!(
-                        "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#bbb\" stroke-width=\"1\"/>\n",
+                        "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"1\"/>\n",
                         fmt(anchor.x),
                         fmt(anchor.y),
                         fmt(control.x),
-                        fmt(control.y)
+                        fmt(control.y),
+                        MOCHA.handle
                     ));
                     body.push_str(&format!(
-                        "      <circle cx=\"{}\" cy=\"{}\" r=\"2.5\" fill=\"white\" stroke=\"#888\"/>\n",
+                        "      <circle cx=\"{}\" cy=\"{}\" r=\"2.5\" fill=\"white\" stroke=\"{}\"/>\n",
                         fmt(control.x),
-                        fmt(control.y)
+                        fmt(control.y),
+                        MOCHA.handle
                     ));
                 }
                 on_curve(*end, &mut body);
@@ -576,5 +683,67 @@ mod tests {
             closed: false,
         };
         assert!(fit_path(&path).is_err());
+    }
+
+    fn triangle_glyph(name: &str, advance: f64) -> Glyph {
+        Glyph {
+            name: name.to_string(),
+            unicode: None,
+            advance,
+            contours: vec![(
+                "body".to_string(),
+                PathValue {
+                    points: vec![smooth(100.0, 0.0), smooth(300.0, 0.0), smooth(200.0, 400.0)],
+                    joints: vec![Joint::Line; 3],
+                    closed: true,
+                },
+            )],
+            guides: vec![],
+            anchors: vec![],
+            nodes: vec![],
+        }
+    }
+
+    #[test]
+    fn next_offset_snaps_origins_to_the_grid() {
+        // Raw cursor after a 450-advance glyph with 100 margin is 550; it
+        // snaps up to 600, a multiple of the major period.
+        let second = next_offset(0.0, 450.0, 100.0);
+        assert_eq!(second, 600.0);
+        assert_eq!(second % GRID_MAJOR, 0.0);
+        // A glyph that already lands on the grid is left where it is.
+        assert_eq!(next_offset(600.0, 300.0, 100.0), 1000.0);
+    }
+
+    #[test]
+    fn debug_svg_carries_the_grid_and_dark_canvas() {
+        let doc = Document {
+            glyphs: vec![triangle_glyph("a", 400.0)],
+            ..Default::default()
+        };
+        let svg = render(
+            &doc,
+            &RenderOptions {
+                debug: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(svg.contains("id=\"chi-grid\""));
+        assert!(svg.contains("fill=\"url(#chi-grid)\""));
+        assert!(svg.contains(&format!("fill=\"{}\"", MOCHA.background)));
+        assert!(!svg.contains("fill=\"black\""));
+    }
+
+    #[test]
+    fn non_debug_svg_stays_plain() {
+        let doc = Document {
+            glyphs: vec![triangle_glyph("a", 400.0)],
+            ..Default::default()
+        };
+        let svg = render(&doc, &RenderOptions::default()).unwrap();
+        assert!(!svg.contains("<defs"));
+        assert!(!svg.contains("chi-grid"));
+        assert!(svg.contains("fill=\"black\""));
     }
 }
