@@ -187,8 +187,6 @@ fn glyph_locals_do_not_leak() {
 fn phase2_constructs_are_gated() {
     let error = build_err("import \"other.chi\";\n");
     assert!(error.message.contains("phase 2"), "{}", error.message);
-    let error = build_err("for i in 0..3 { x = i; }\n");
-    assert!(error.message.contains("phase 2"), "{}", error.message);
 }
 
 #[test]

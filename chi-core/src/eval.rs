@@ -382,8 +382,58 @@ impl Evaluator {
                     format!("'{other}' is not a statement; only draw() and fill() are"),
                 )),
             },
-            Stmt::For { span, .. } => {
-                Err(err(*span, "'for' is not implemented yet (phase 2)"))
+            Stmt::For {
+                name,
+                iterable,
+                body,
+                span,
+            } => {
+                let values: Vec<Value> = match iterable {
+                    Iterable::Range { min, max } => {
+                        let min = self.expect_number(min)?;
+                        let max = self.expect_number(max)?;
+                        if !min.is_finite() || !max.is_finite() {
+                            return Err(err(*span, "for range bounds must be finite"));
+                        }
+                        // Inclusive both ends, like the params `in min..max`
+                        // range. min > max iterates zero times.
+                        let count = if max >= min { (max - min) as usize + 1 } else { 0 };
+                        (0..count)
+                            .map(|k| Value::Number(min + k as f64))
+                            .collect()
+                    }
+                    Iterable::List(items) => items
+                        .iter()
+                        .map(|item| self.eval_expr(item))
+                        .collect::<Result<Vec<_>, _>>()?,
+                    Iterable::Expr(expr) => {
+                        let value = self.eval_expr(expr)?;
+                        let Value::List(values) = value else {
+                            return Err(err(
+                                expr.span,
+                                format!("for expects a list, got {}", value.type_name()),
+                            ));
+                        };
+                        values
+                    }
+                };
+                for value in values {
+                    // A fresh scope per iteration: bindings are immutable,
+                    // so the loop variable and body locals must not carry
+                    // over between iterations.
+                    self.push_scope();
+                    let mut run = || -> Result<(), EvalError> {
+                        self.define(name, value.clone(), *span)?;
+                        for statement in body {
+                            self.exec_statement(statement)?;
+                        }
+                        Ok(())
+                    };
+                    let result = run();
+                    self.pop_scope();
+                    result?;
+                }
+                Ok(())
             }
         }
     }
@@ -1330,6 +1380,56 @@ mod tests {
         assert_point(point(&evaluator, "r"), 8.0, 0.0);
         let expected = 5.0 / f64::sqrt(2.0);
         assert_point(point(&evaluator, "kl"), expected, expected);
+    }
+
+    #[test]
+    fn for_over_inclusive_range() {
+        let evaluator = eval_ok("for i in 0..3 { draw((i, 0) -- (i, 10)); }\n");
+        assert_eq!(evaluator.sketch.len(), 4); // 0, 1, 2, 3
+
+        // Fractional start: steps of 1 while <= max.
+        let evaluator = eval_ok("for i in 0.5..2 { draw((i, 0) -- (i, 10)); }\n");
+        assert_eq!(evaluator.sketch.len(), 2); // 0.5, 1.5
+    }
+
+    #[test]
+    fn for_with_empty_range_skips_the_body() {
+        // min > max: zero iterations; the body is never evaluated, so its
+        // undefined variable is not an error.
+        let evaluator = eval_ok("for i in 3..1 { x = missing; }\n");
+        assert_eq!(evaluator.sketch.len(), 0);
+    }
+
+    #[test]
+    fn for_body_scope_is_fresh_per_iteration() {
+        // x rebinds each iteration without an immutability error, and
+        // neither x nor i leaks out of the loop.
+        let evaluator = eval_ok("for i in 1..3 { x = 2 i; }\ny = 1;\n");
+        assert!(evaluator.lookup("x").is_none());
+        assert!(evaluator.lookup("i").is_none());
+    }
+
+    #[test]
+    fn for_over_list_literal_and_list_binding() {
+        let evaluator = eval_ok(
+            "pts = [(0, 0), (10, 10)];\n\
+             for p in pts { draw(p -- p shifted (5, 0)); }\n\
+             for k in [1, 2, 3] { draw((0, k) -- (1, k)); }\n",
+        );
+        assert_eq!(evaluator.sketch.len(), 5);
+    }
+
+    #[test]
+    fn nested_for() {
+        let evaluator =
+            eval_ok("for i in 0..1 { for j in 0..1 { draw((i, j) -- (i + 1, j + 1)); } }\n");
+        assert_eq!(evaluator.sketch.len(), 4);
+    }
+
+    #[test]
+    fn for_over_a_number_is_an_error() {
+        let error = eval_err("for i in 5 { x = 1; }\n");
+        assert!(error.message.contains("list"), "{}", error.message);
     }
 
     #[test]
