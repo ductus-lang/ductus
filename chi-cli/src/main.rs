@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 #[derive(Parser)]
@@ -71,7 +71,10 @@ fn run(cli: Cli) -> Result<String, String> {
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
             let program = chi_core::lower::lower(&tree, &source)
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
-            let document = chi_core::eval::evaluate(&program, &overrides, &chi_core::eval::NoImporter)
+            let importer = FsImporter {
+                root: file.parent().unwrap_or(Path::new(".")).to_path_buf(),
+            };
+            let document = chi_core::eval::evaluate(&program, &overrides, &importer)
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
 
             let options = chi_core::render::RenderOptions { glyph, debug };
@@ -82,6 +85,33 @@ fn run(cli: Cli) -> Result<String, String> {
                 .map_err(|error| format!("error writing {}: {}", output.display(), error))?;
             Ok(format!("{} -> {}", file.display(), output.display()))
         }
+    }
+}
+
+/// Resolves imports on the filesystem, relative to the importing file
+/// (or to the root source file's directory for top-level imports). The
+/// canonical id is the canonicalized path, so the same file reached via
+/// different relative routes is still imported once.
+struct FsImporter {
+    root: PathBuf,
+}
+
+impl chi_core::eval::Importer for FsImporter {
+    fn load(&self, path: &str, from: Option<&str>) -> Result<(String, String), String> {
+        let base = match from {
+            Some(from) => PathBuf::from(from)
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or_default(),
+            None => self.root.clone(),
+        };
+        let joined = base.join(path);
+        let canonical = joined
+            .canonicalize()
+            .map_err(|error| format!("error reading {}: {error}", joined.display()))?;
+        let source = std::fs::read_to_string(&canonical)
+            .map_err(|error| format!("error reading {}: {error}", canonical.display()))?;
+        Ok((canonical.to_string_lossy().into_owned(), source))
     }
 }
 
