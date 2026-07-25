@@ -5,6 +5,7 @@
     "": {
       "name": "chi-playground",
       "dependencies": {
+        "@catppuccin/codemirror": "^1.0.3",
         "@codemirror/language": "^6.10.0",
         "@codemirror/lint": "^6.8.0",
         "@codemirror/view": "^6.28.0",
@@ -13,6 +14,10 @@
     },
   },
   "packages": {
+    "@catppuccin/codemirror": ["@catppuccin/codemirror@1.0.3", "", { "dependencies": { "@catppuccin/palette": "^1.7.1", "@codemirror/language": "^6.12.1", "@codemirror/state": "^6.5.4", "@codemirror/view": "^6.39.15", "@lezer/highlight": "^1.2.3" } }, "sha512-P1ZCj4DZVLqr/TNz28m3aaF2Elrikpb8OOnzN0Vyf95Un4pTWTkCSvhbskbnJbnNJ87Rfvt3fXoaUj4o55X30Q=="],
+
+    "@catppuccin/palette": ["@catppuccin/palette@1.8.0", "", {}, "sha512-qXhwKiLzQomUygUJYB36YAFgs+dET5bIocfkiaFIatQF5Pwc7L112TlF9P8J5Oqs3x3XTjYSucG0ncHXSCuk7Q=="],
+
     "@codemirror/autocomplete": ["@codemirror/autocomplete@6.20.3", "", { "dependencies": { "@codemirror/language": "^6.0.0", "@codemirror/state": "^6.0.0", "@codemirror/view": "^6.17.0", "@lezer/common": "^1.0.0" } }, "sha512-tlosUqb+3BbxCxZdu4tKeRghPFC+QM7q4X5YhKV2eCmPG+1r2F3f4AaSz5sCrFqUtX4Jh20VFTKecl16MgiV9g=="],
 
     "@codemirror/commands": ["@codemirror/commands@6.10.4", "", { "dependencies": { "@codemirror/language": "^6.0.0", "@codemirror/state": "^6.7.0", "@codemirror/view": "^6.27.0", "@lezer/common": "^1.1.0" } }, "sha512-Ryk9y9T0FFVF0cUGhAknveAyUOl/A1qReTFi+qPKtOh2Z9F4AUBz3XOrYD4ZEgZirdugVzHvd/2/Wcwy5OliTg=="],

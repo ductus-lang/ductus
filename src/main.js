@@ -1,7 +1,8 @@
 import { basicSetup } from "codemirror";
 import { Decoration, EditorView } from "@codemirror/view";
-import { EditorState, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
+import { Compartment, EditorState, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
 import { setDiagnostics } from "@codemirror/lint";
+import { catppuccinLatte, catppuccinMocha } from "@catppuccin/codemirror";
 import init, { analyze, compile } from "../pkg/chi.js";
 
 const STORAGE_KEY = "chi-playground-source";
@@ -44,10 +45,17 @@ function buildDecorations(highlights) {
   return builder.finish();
 }
 
+// Editor theme follows the OS: page colors flip via the CSS media query, but
+// a CodeMirror extension is fixed at construction, so it lives in a
+// Compartment and is reconfigured when the preference changes.
+const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+const editorTheme = new Compartment();
+
 const view = new EditorView({
   parent: document.querySelector("#editor"),
   extensions: [
     basicSetup,
+    editorTheme.of(darkScheme.matches ? catppuccinMocha : catppuccinLatte),
     // chi uses `#` line comments. Without a Language there is no languageData,
     // so toggleComment (Ctrl+/) has no comment token to work with; supply it.
     EditorState.languageData.of(() => [{ commentTokens: { line: "#" } }]),
@@ -60,6 +68,12 @@ const view = new EditorView({
       }
     }),
   ],
+});
+
+darkScheme.addEventListener("change", (event) => {
+  view.dispatch({
+    effects: editorTheme.reconfigure(event.matches ? catppuccinMocha : catppuccinLatte),
+  });
 });
 
 function scheduleRender() {

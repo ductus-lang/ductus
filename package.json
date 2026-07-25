@@ -9,6 +9,7 @@
     "sync-examples": "cp ../tree-sitter-chi/examples/*.chi examples/"
   },
   "dependencies": {
+    "@catppuccin/codemirror": "^1.0.3",
     "@codemirror/language": "^6.10.0",
     "@codemirror/lint": "^6.8.0",
     "@codemirror/view": "^6.28.0",

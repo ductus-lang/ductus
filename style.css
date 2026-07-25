@@ -1,13 +1,56 @@
 * { box-sizing: border-box; }
 
+/* Catppuccin Latte (light) / Mocha (dark), following the OS preference.
+   The editor itself is themed in main.js with the matching CodeMirror
+   themes; the glyph preview inherits `color` via currentColor fills. */
+:root {
+  color-scheme: light;
+  --bg: #e6e9ef;          /* mantle */
+  --panel: #eff1f5;       /* base — matches the editor background */
+  --border: #bcc0cc;      /* surface1 */
+  --text: #4c4f69;
+  --text-muted: #6c6f85;  /* subtext0 */
+  --text-faint: #8c8fa1;  /* overlay1 */
+  --red: #d20f39;
+  --green: #40a02b;
+  --yellow: #df8e1d;
+  --blue: #1e66f5;
+  --mauve: #8839ef;
+  --peach: #fe640b;
+  --maroon: #e64553;
+  --lavender: #7287fd;
+  --overlay2: #7c7f93;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #181825;        /* mantle */
+    --panel: #1e1e2e;     /* base */
+    --border: #45475a;    /* surface1 */
+    --text: #cdd6f4;
+    --text-muted: #a6adc8;
+    --text-faint: #7f849c;
+    --red: #f38ba8;
+    --green: #a6e3a1;
+    --yellow: #f9e2af;
+    --blue: #89b4fa;
+    --mauve: #cba6f7;
+    --peach: #fab387;
+    --maroon: #eba0ac;
+    --lavender: #b4befe;
+    --overlay2: #9399b2;
+  }
+}
+
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #fafafa;
-  color: #222;
+  background: var(--bg);
+  color: var(--text);
 }
 
 header {
@@ -15,8 +58,8 @@ header {
   align-items: center;
   gap: 1.5rem;
   padding: 0.5rem 1rem;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
 }
 
 header h1 {
@@ -25,11 +68,11 @@ header h1 {
   font-weight: 700;
 }
 
-header h1 span { font-weight: 300; color: #888; }
+header h1 span { font-weight: 300; color: var(--text-faint); }
 
 header label {
   font-size: 0.85rem;
-  color: #555;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -48,8 +91,8 @@ main {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-right: 1px solid #ddd;
-  background: #fff;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
 }
 
 #editor { flex: 1; min-height: 0; overflow: auto; }
@@ -57,30 +100,30 @@ main {
 #editor .cm-editor.cm-focused { outline: none; }
 #editor .cm-scroller { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13px; }
 
-/* Syntax colors from tree-sitter-chi/queries/highlights.scm, keeping the
-   CodeMirror default light-theme palette the old StreamLanguage produced. */
-.chi-comment { color: #940; }
-.chi-number { color: #164; }
-.chi-string { color: #a11; }
-.chi-constant-builtin { color: #219; }
+/* Syntax colors from tree-sitter-chi/queries/highlights.scm, mapped onto
+   the Catppuccin palette so they track the editor theme. */
+.chi-comment { color: var(--overlay2); }
+.chi-number { color: var(--peach); }
+.chi-string { color: var(--green); }
+.chi-constant-builtin { color: var(--peach); }
 .chi-keyword,
 .chi-keyword-conditional,
-.chi-keyword-storage { color: #708; }
-.chi-attribute { color: #085; }
-.chi-type { color: #085; }
+.chi-keyword-storage { color: var(--mauve); }
+.chi-attribute { color: var(--yellow); }
+.chi-type { color: var(--yellow); }
 .chi-function,
 .chi-function-call,
-.chi-function-method { color: #00f; }
-.chi-variable-parameter { color: #30a; }
-.chi-property { color: #00c; }
+.chi-function-method { color: var(--blue); }
+.chi-variable-parameter { color: var(--maroon); }
+.chi-property { color: var(--lavender); }
 
 #status {
   padding: 0.4rem 1rem;
   font-family: ui-monospace, monospace;
   font-size: 0.8rem;
-  background: #fdecea;
-  color: #b3261e;
-  border-top: 1px solid #f5c6c2;
+  background: color-mix(in srgb, var(--red) 12%, var(--panel));
+  color: var(--red);
+  border-top: 1px solid color-mix(in srgb, var(--red) 30%, var(--panel));
   white-space: pre-wrap;
 }
 
@@ -95,8 +138,8 @@ main {
   flex-wrap: wrap;
   gap: 0.75rem 2rem;
   padding: 0.6rem 1rem;
-  border-bottom: 1px solid #ddd;
-  background: #fff;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
   min-height: 1rem;
 }
 
@@ -105,7 +148,7 @@ main {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
-  color: #444;
+  color: var(--text-muted);
 }
 
 #params .param input[type="range"] { width: 160px; }
@@ -116,7 +159,7 @@ main {
 }
 #params .reset {
   font-size: 0.8rem;
-  color: #06c;
+  color: var(--blue);
   cursor: pointer;
   background: none;
   border: none;
