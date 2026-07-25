@@ -294,6 +294,9 @@ impl Evaluator {
                             ),
                         ));
                     }
+                    // The name is also an ordinary binding, so later code
+                    // can reference and query the path.
+                    self.define(&binding.name, Value::Path(path.clone()), binding.span)?;
                     contours.push((binding.name.clone(), path));
                 }
                 GlyphStmt::Guide(binding) => {
@@ -304,6 +307,7 @@ impl Evaluator {
                             format!("guide must be a path, got {}", value.type_name()),
                         ));
                     };
+                    self.define(&binding.name, Value::Path(path.clone()), binding.span)?;
                     guides.push((binding.name.clone(), path));
                 }
                 GlyphStmt::Anchor { name, value, span } => {

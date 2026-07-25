@@ -271,6 +271,20 @@ fn import_without_an_importer_is_an_error() {
 }
 
 #[test]
+fn guide_and_contour_names_are_bindings() {
+    // A guide can be referenced (and queried) by later code in the glyph.
+    let document = build(
+        "glyph g {\n\
+           advance = 100;\n\
+           guide skel = (0, 0) -- (100, 50);\n\
+           tip = point(skel, 1);\n\
+           anchor end = tip;\n\
+         }\n",
+    );
+    assert_eq!(document.glyphs[0].anchors[0].1, kurbo::Point::new(100.0, 50.0));
+}
+
+#[test]
 fn metrics_are_usable_in_following_code() {
     let document = build("metrics { x = 500; }\nglyph g { advance = x * 2; }\n");
     assert_eq!(document.glyphs[0].advance, 1000.0);
