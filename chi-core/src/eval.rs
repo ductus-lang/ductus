@@ -2,7 +2,7 @@
 
 use crate::ast::*;
 use crate::doc::{Document, Glyph, Param, SketchCommand};
-use crate::value::{NodeValue, PathPoint, PathValue, Value, unitvec};
+use crate::value::{NodeValue, PathPoint, PathValue, PenValue, Value, unitvec};
 use kurbo::{Affine, Point, Vec2};
 use std::collections::{HashMap, HashSet};
 
@@ -82,9 +82,7 @@ pub fn evaluate(
                     document.metrics.values.insert(entry.name.clone(), number);
                 }
             }
-            Item::Pen(pen) => {
-                return Err(err(pen.span, "'pen' is not implemented yet"));
-            }
+            Item::Pen(pen) => evaluator.exec_pen(pen)?,
             Item::Def(def) => evaluator.register_def(def)?,
             Item::Glyph(glyph) => {
                 if document.glyphs.iter().any(|g| g.name == glyph.name) {
@@ -390,12 +388,69 @@ impl Evaluator {
         }
     }
 
+    /// Evaluate a `pen` block into a first-class pen binding.
+    pub fn exec_pen(&mut self, pen: &PenDecl) -> Result<(), EvalError> {
+        let width = self.expect_number(&pen.width)?;
+        if width <= 0.0 {
+            return Err(err(
+                pen.span,
+                format!("pen '{}' needs width > 0, got {width}", pen.name),
+            ));
+        }
+        let height = match &pen.height {
+            Some(expr) => self.expect_number(expr)?,
+            None => 0.0,
+        };
+        if height < 0.0 {
+            return Err(err(
+                pen.span,
+                format!("pen '{}' needs height >= 0, got {height}", pen.name),
+            ));
+        }
+        let angle = match &pen.angle {
+            Some(expr) => self.expect_number(expr)?,
+            None => 0.0,
+        };
+        let value = PenValue {
+            a: width / 2.0,
+            b: height / 2.0,
+            angle,
+        };
+        self.define(&pen.name, Value::Pen(value), pen.span)
+    }
+
     fn eval_node(&mut self, node: &NodeDecl) -> Result<NodeValue, EvalError> {
         let pos = self.expect_point(&node.position)?;
         let dir = self.expect_number(&node.dir)?;
-        let Some(width_expr) = &node.width else {
-            return Err(err(node.span, "'pen' is not implemented yet"));
-        };
+
+        if let Some(pen_expr) = &node.pen {
+            let value = self.eval_expr(pen_expr)?;
+            let Value::Pen(pen) = value else {
+                return Err(err(
+                    pen_expr.span,
+                    format!("expected a pen, got {}", value.type_name()),
+                ));
+            };
+            // Edge points are the pen's support points along the left
+            // normal of travel. A razor (b = 0) is degenerate there and
+            // keeps the legacy fixed-axis rule instead.
+            let (offset, nib) = if pen.b > 0.0 {
+                let edge = pen.support(dir + 90.0);
+                (edge.length(), edge.y.atan2(edge.x).to_degrees())
+            } else {
+                (pen.a, pen.angle)
+            };
+            return Ok(NodeValue {
+                pos,
+                dir,
+                left_offset: offset,
+                right_offset: offset,
+                nib,
+                pen: Some(pen),
+            });
+        }
+
+        let width_expr = node.width.as_ref().expect("lowering guarantees width or pen");
         let (left_offset, right_offset) = match self.eval_expr(width_expr)? {
             Value::Number(total) => (total / 2.0, total / 2.0),
             Value::Point(offsets) => (offsets.x, offsets.y),
@@ -419,6 +474,7 @@ impl Evaluator {
             left_offset,
             right_offset,
             nib,
+            pen: None,
         })
     }
 
@@ -654,9 +710,24 @@ impl Evaluator {
                 "width" => Ok(Value::Number(node.width())),
                 "left" => Ok(Value::Point(node.left())),
                 "right" => Ok(Value::Point(node.right())),
+                "tip" | "tail" => {
+                    let point = if property == "tip" { node.tip() } else { node.tail() };
+                    point.map(Value::Point).ok_or_else(|| {
+                        err(
+                            span,
+                            format!(
+                                ".{property} needs a pen with height > 0; \
+                                 a razor has no defined front point"
+                            ),
+                        )
+                    })
+                }
                 _ => Err(err(
                     span,
-                    format!("nodes have .pos, .dir, .width, .left and .right, not .{property}"),
+                    format!(
+                        "nodes have .pos, .dir, .width, .left, .right, .tip and .tail, \
+                         not .{property}"
+                    ),
                 )),
             },
             other => Err(err(
@@ -723,6 +794,11 @@ impl Evaluator {
                 left_offset: node.left_offset * width_scale,
                 right_offset: node.right_offset * width_scale,
                 nib: transform_angle(&affine, node.nib),
+                pen: node.pen.map(|pen| PenValue {
+                    a: pen.a * width_scale,
+                    b: pen.b * width_scale,
+                    angle: transform_angle(&affine, pen.angle),
+                }),
             })),
             Value::Path(path) => Ok(Value::Path(PathValue {
                 points: path
@@ -1072,6 +1148,8 @@ mod tests {
         for item in &program.items {
             match item {
                 Item::Stmt(stmt) => evaluator.exec_statement(stmt).expect("evaluates"),
+                Item::Pen(pen) => evaluator.exec_pen(pen).expect("evaluates"),
+                Item::Def(def) => evaluator.register_def(def).expect("registers"),
                 other => panic!("test source uses unsupported item {other:?}"),
             }
         }
@@ -1083,13 +1161,13 @@ mod tests {
         let program = lower(&tree, source).expect("lowers");
         let mut evaluator = Evaluator::new();
         for item in &program.items {
-            match item {
-                Item::Stmt(stmt) => {
-                    if let Err(error) = evaluator.exec_statement(stmt) {
-                        return error;
-                    }
-                }
+            let result = match item {
+                Item::Stmt(stmt) => evaluator.exec_statement(stmt),
+                Item::Pen(pen) => evaluator.exec_pen(pen),
                 other => panic!("test source uses unsupported item {other:?}"),
+            };
+            if let Err(error) = result {
+                return error;
             }
         }
         panic!("expected an error");
@@ -1252,6 +1330,107 @@ mod tests {
         assert_point(point(&evaluator, "r"), 8.0, 0.0);
         let expected = 5.0 / f64::sqrt(2.0);
         assert_point(point(&evaluator, "kl"), expected, expected);
+    }
+
+    #[test]
+    fn circle_pen_gives_constant_width() {
+        let evaluator = eval_ok(
+            "pen round { width = 10; height = 10; }\n\
+             node n = (100, 50) dir 45 pen round;\n\
+             w = n.width;\nl = n.left;\nr = n.right;\n",
+        );
+        assert_close(number(&evaluator, "w"), 10.0);
+        let k = 5.0 * f64::sqrt(0.5);
+        assert_point(point(&evaluator, "l"), 100.0 - k, 50.0 + k);
+        assert_point(point(&evaluator, "r"), 100.0 + k, 50.0 - k);
+    }
+
+    #[test]
+    fn ellipse_pen_on_axis_edge_points() {
+        let evaluator = eval_ok(
+            "pen e { width = 10; height = 4; }\n\
+             node n = (0, 0) dir right pen e;\n\
+             node m = (0, 0) dir up pen e;\n\
+             nw = n.width;\nnl = n.left;\n\
+             mw = m.width;\nml = m.left;\n",
+        );
+        // Travelling along the major axis: thickness bottoms out at height.
+        assert_close(number(&evaluator, "nw"), 4.0);
+        assert_point(point(&evaluator, "nl"), 0.0, 2.0);
+        // Travelling across it: full width; the left bank is to the west.
+        assert_close(number(&evaluator, "mw"), 10.0);
+        assert_point(point(&evaluator, "ml"), -5.0, 0.0);
+    }
+
+    #[test]
+    fn ellipse_pen_oblique_direction_matches_closed_form() {
+        let evaluator = eval_ok(
+            "pen e { width = 10; height = 4; }\n\
+             node n = (0, 0) dir 45 pen e;\n\
+             w = n.width;\nl = n.left;\n",
+        );
+        // psi = 135 degrees: support = R(0)·(a²cosψ, b²sinψ)/h.
+        let (a, b) = (5.0_f64, 2.0_f64);
+        let h = ((a * a + b * b) / 2.0).sqrt();
+        let ex = -a * a / (h * f64::sqrt(2.0));
+        let ey = b * b / (h * f64::sqrt(2.0));
+        assert_point(point(&evaluator, "l"), ex, ey);
+        assert_close(number(&evaluator, "w"), 2.0 * (ex * ex + ey * ey).sqrt());
+    }
+
+    #[test]
+    fn razor_pen_matches_width_and_nib() {
+        let evaluator = eval_ok(
+            "pen razor { width = 10; angle = 30; }\n\
+             node p = (0, 0) dir up pen razor;\n\
+             node q = (0, 0) dir up width 10 nib 30;\n\
+             dl = p.left - q.left;\ndr = p.right - q.right;\n",
+        );
+        assert_point(point(&evaluator, "dl"), 0.0, 0.0);
+        assert_point(point(&evaluator, "dr"), 0.0, 0.0);
+    }
+
+    #[test]
+    fn pen_tip_and_tail() {
+        let evaluator = eval_ok(
+            "pen e { width = 10; height = 4; }\n\
+             node n = (100, 50) dir right pen e;\n\
+             t = n.tip;\nb = n.tail;\nrt = (n rotated 90).tip;\n",
+        );
+        assert_point(point(&evaluator, "t"), 105.0, 50.0);
+        assert_point(point(&evaluator, "b"), 95.0, 50.0);
+        // Rotating the node rotates the pen with it.
+        assert_point(point(&evaluator, "rt"), -50.0, 105.0);
+    }
+
+    #[test]
+    fn tip_errors_without_a_round_pen() {
+        let error = eval_err("node n = (0, 0) dir up width 10;\nt = n.tip;\n");
+        assert!(error.message.contains("pen"), "{}", error.message);
+        let error =
+            eval_err("pen r { width = 10; }\nnode n = (0, 0) dir up pen r;\nt = n.tip;\n");
+        assert!(error.message.contains("razor"), "{}", error.message);
+    }
+
+    #[test]
+    fn pen_validation_errors() {
+        let error = eval_err("pen p { width = 0; }\n");
+        assert!(error.message.contains("width > 0"), "{}", error.message);
+        let error = eval_err("pen p { width = 10; height = -1; }\n");
+        assert!(error.message.contains("height >= 0"), "{}", error.message);
+        let error = eval_err("node n = (0, 0) dir up pen 5;\n");
+        assert!(error.message.contains("expected a pen"), "{}", error.message);
+    }
+
+    #[test]
+    fn pen_flows_through_a_def() {
+        let evaluator = eval_ok(
+            "pen e { width = 10; height = 10; }\n\
+             def dot(c, p) -> n { node n = c dir right pen p; }\n\
+             n = dot((0, 0), e);\n\
+             w = n.width;\n",
+        );
+        assert_close(number(&evaluator, "w"), 10.0);
     }
 
     #[test]
