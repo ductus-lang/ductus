@@ -42,38 +42,39 @@ glyph tha : U+0D24 {
   # Left half of the skeleton, travelling from the tip into the letter:
   # curl up over the left shoulder, down and around the left bowl, up to
   # the central peak.
-  node a  = (ax, 0.62 * x)                       dir 115   width term;
-  node ls = (0.42[wx, ax], x + over - hair / 2)  dir left  width hair;
-  node w  = (wx, 0.48 * x)                       dir down  width stem;
-  node lb = (0.5[wx, lcx], hair / 2 - over)      dir right width hair;
-  node lc = (lcx, 0.55 * x)                      dir up    width stem;
-  node peak = (mid, x + over - hair / 2)         dir right width hair;
+  node a  = (ax, 0)                       dir 150   width term;
+  node b  = (wx, 0.48 * x)                       dir up   width term;
+  node c = (0.5[wx, lcx], x+ hair / 2 - over)      dir right width hair;
+  node d = (mid + 2gap, b.pos.y ) dir down width hair;
+  node e = (mid, over)  dir left  width hair;
+
+#  node lc = (lcx, 0.55 * x)                      dir up    width stem;
+ # node peak = (mid, x + over - hair / 2)         dir right width hair;
 
   # Right half by symmetry.
-  rc = mirror(lc, mid);
-  rb = mirror(lb, mid);
-  e  = mirror(w,  mid);
-  rs = mirror(ls, mid);
-  b  = mirror(a,  mid);
+  f = mirror(d, mid);
+  g = mirror(c, mid);
+  h  = mirror(b,  mid);
+  i = mirror(a, mid);
 
-  guide skeleton = a.pos .. ls.pos .. w.pos .. lb.pos .. lc.pos .. peak.pos
-                .. rc.pos .. rb.pos .. e.pos .. rs.pos .. b.pos;
+
+  guide skeleton = a.pos .. b.pos..c.pos..d.pos..e.pos..f.pos..g.pos..h.pos..i.pos;
 
   # Rounded caps: one extra point past each tip, half a width out along
   # the travel direction, with the semicircle's tangents pinned.
   acap = a.pos - (a.width / 2) * unitvec(a.dir);
-  bcap = b.pos + (b.width / 2) * unitvec(b.dir);
+  icap = i.pos + (i.width / 2) * unitvec(i.dir);
 
   contour main =
-      {a.dir} a.right {a.dir}
-   .. ls.right .. w.right .. lb.right .. lc.right .. peak.right .. rc.right
-   .. rb.right .. e.right .. rs.right
-   .. {b.dir} b.right {b.dir}
-   .. bcap {b.dir + 90}
-   .. {b.dir + 180} b.left {b.dir + 180}
-   .. rs.left .. e.left .. rb.left .. rc.left .. peak.left .. lc.left
-   .. lb.left .. w.left .. ls.left
-   .. {a.dir + 180} a.left {a.dir + 180}
-   .. acap {a.dir + 270}
-   .. cycle;
+       {a.dir} a.right {a.dir}
+    .. b.right .. c.right .. d.right .. e.right .. f.right .. g.right
+    .. h.right
+    .. {i.dir} i.right {i.dir}
+    .. icap {i.dir + 90}
+    .. {i.dir + 180} i.left {i.dir + 180}
+    .. h.left .. g.left .. f.left .. e.left .. d.left .. c.left
+    .. b.left
+    ..  a.left {a.dir + 180}
+    .. acap {a.dir + 270}
+    .. cycle;
 }
