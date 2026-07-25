@@ -88,18 +88,6 @@ pub fn fit_path(path: &PathValue) -> Result<BezPath, RenderError> {
             if point.corner {
                 point_type = PointType::Corner;
             }
-            // A smooth point has a single tangent, so a one-sided direction
-            // constraint pins both sides. Without this the fitter only
-            // breaks solver runs at corners and *incoming* constraints: a
-            // leave-only smooth point would ride through as a free interior
-            // point and its constraint would be silently dropped.
-            if matches!(point_type, PointType::Smooth) {
-                match (incoming, outgoing) {
-                    (Some(angle), None) => outgoing = Some(angle),
-                    (None, Some(angle)) => incoming = Some(angle),
-                    _ => {}
-                }
-            }
             InputPoint {
                 x: point.pos.x,
                 y: point.pos.y,
@@ -608,9 +596,9 @@ mod tests {
     #[test]
     fn one_sided_constraint_pins_both_sides_of_a_smooth_point() {
         // A leave-only constraint on an interior smooth point must also
-        // shape the incoming segment: the fitter's solver runs only break
-        // at incoming constraints, so without mirroring, `{theta}` after a
-        // point would be silently dropped (the va_pen terminal bug).
+        // shape the incoming segment (a smooth point has one tangent).
+        // curve_fitter pins both sides; this guards that contract from
+        // chi's side (the va_pen terminal bug).
         let path = PathValue {
             points: vec![
                 smooth(0.0, 0.0),
