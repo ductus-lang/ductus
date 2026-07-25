@@ -71,7 +71,7 @@ fn run(cli: Cli) -> Result<String, String> {
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
             let program = chi_core::lower::lower(&tree, &source)
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
-            let document = chi_core::eval::evaluate(&program, &overrides)
+            let document = chi_core::eval::evaluate(&program, &overrides, &chi_core::eval::NoImporter)
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
 
             let options = chi_core::render::RenderOptions { glyph, debug };

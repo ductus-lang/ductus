@@ -1,7 +1,7 @@
 //! End-to-end rendering tests: source -> document -> SVG.
 
 use chi_core::doc::Document;
-use chi_core::eval::evaluate;
+use chi_core::eval::{NoImporter, evaluate};
 use chi_core::lower::lower;
 use chi_core::parse::parse;
 use chi_core::render::{RenderOptions, render};
@@ -10,7 +10,7 @@ use std::collections::HashMap;
 fn build(source: &str) -> Document {
     let tree = parse(source).expect("parses");
     let program = lower(&tree, source).expect("lowers");
-    evaluate(&program, &HashMap::new()).expect("evaluates")
+    evaluate(&program, &HashMap::new(), &NoImporter).expect("evaluates")
 }
 
 const O_SOURCE: &str = r#"

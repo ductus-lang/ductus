@@ -54,58 +54,44 @@ fn err(span: Span, message: impl Into<String>) -> EvalError {
     }
 }
 
+/// Loads imported source files. chi-core has no filesystem access (it
+/// targets WebAssembly), so the host provides resolution and reading.
+pub trait Importer {
+    /// Resolve `path` relative to the importing file (`from` is the
+    /// canonical id of the importing file, None for the root) and return
+    /// (canonical id, source text). The id drives cycle detection and
+    /// include-once, so it must be stable for the same file.
+    fn load(&self, path: &str, from: Option<&str>) -> Result<(String, String), String>;
+}
+
+/// For hosts without file access: every import is an error.
+pub struct NoImporter;
+
+impl Importer for NoImporter {
+    fn load(&self, _path: &str, _from: Option<&str>) -> Result<(String, String), String> {
+        Err("imports are not supported in this environment".to_string())
+    }
+}
+
 /// Evaluate a whole program into a renderable document.
 pub fn evaluate(
     program: &Program,
     overrides: &HashMap<String, f64>,
+    importer: &dyn Importer,
 ) -> Result<Document, EvalError> {
-    let mut evaluator = Evaluator::new();
-    let mut document = Document::default();
-    let mut known_params = HashSet::new();
-
-    for item in &program.items {
-        match item {
-            Item::Params(params) => {
-                for param in params {
-                    known_params.insert(param.name.clone());
-                    let resolved = evaluator.eval_param(param, overrides)?;
-                    document.params.push(resolved);
-                }
-            }
-            Item::Metrics(entries) => {
-                for entry in entries {
-                    let value = evaluator.eval_rhs(&entry.value)?;
-                    let Value::Number(number) = value else {
-                        return Err(err(
-                            entry.span,
-                            format!("metrics must be numbers, got {}", value.type_name()),
-                        ));
-                    };
-                    evaluator.define(&entry.name, Value::Number(number), entry.span)?;
-                    document.metrics.values.insert(entry.name.clone(), number);
-                }
-            }
-            Item::Pen(pen) => evaluator.exec_pen(pen)?,
-            Item::Def(def) => evaluator.register_def(def)?,
-            Item::Glyph(glyph) => {
-                if document.glyphs.iter().any(|g| g.name == glyph.name) {
-                    return Err(err(
-                        glyph.span,
-                        format!("glyph '{}' is already defined", glyph.name),
-                    ));
-                }
-                let evaluated = evaluator.eval_glyph(glyph)?;
-                document.glyphs.push(evaluated);
-            }
-            Item::Import { span, .. } => {
-                return Err(err(*span, "'import' is not implemented yet (phase 2)"));
-            }
-            Item::Stmt(stmt) => evaluator.exec_statement(stmt)?,
-        }
-    }
+    let mut session = Session {
+        evaluator: Evaluator::new(),
+        document: Document::default(),
+        known_params: HashSet::new(),
+        overrides,
+        importer,
+        import_stack: Vec::new(),
+        imported: HashSet::new(),
+    };
+    session.eval_items(&program.items)?;
 
     for name in overrides.keys() {
-        if !known_params.contains(name) {
+        if !session.known_params.contains(name) {
             return Err(err(
                 Span { line: 1, column: 1 },
                 format!("--set {name}: no such param in this file"),
@@ -113,8 +99,99 @@ pub fn evaluate(
         }
     }
 
-    document.sketch = evaluator.sketch;
+    let mut document = session.document;
+    document.sketch = session.evaluator.sketch;
     Ok(document)
+}
+
+/// One evaluation run: the evaluator plus the document and import state
+/// accumulated across the root program and everything it imports.
+struct Session<'a> {
+    evaluator: Evaluator,
+    document: Document,
+    known_params: HashSet<String>,
+    overrides: &'a HashMap<String, f64>,
+    importer: &'a dyn Importer,
+    /// Canonical ids of files currently being imported, outermost first.
+    import_stack: Vec<String>,
+    /// Canonical ids already evaluated: imports are include-once.
+    imported: HashSet<String>,
+}
+
+impl Session<'_> {
+    fn eval_items(&mut self, items: &[Item]) -> Result<(), EvalError> {
+        for item in items {
+            match item {
+                Item::Params(params) => {
+                    for param in params {
+                        self.known_params.insert(param.name.clone());
+                        let resolved = self.evaluator.eval_param(param, self.overrides)?;
+                        self.document.params.push(resolved);
+                    }
+                }
+                Item::Metrics(entries) => {
+                    for entry in entries {
+                        let value = self.evaluator.eval_rhs(&entry.value)?;
+                        let Value::Number(number) = value else {
+                            return Err(err(
+                                entry.span,
+                                format!("metrics must be numbers, got {}", value.type_name()),
+                            ));
+                        };
+                        self.evaluator
+                            .define(&entry.name, Value::Number(number), entry.span)?;
+                        self.document
+                            .metrics
+                            .values
+                            .insert(entry.name.clone(), number);
+                    }
+                }
+                Item::Pen(pen) => self.evaluator.exec_pen(pen)?,
+                Item::Def(def) => self.evaluator.register_def(def)?,
+                Item::Glyph(glyph) => {
+                    if self.document.glyphs.iter().any(|g| g.name == glyph.name) {
+                        return Err(err(
+                            glyph.span,
+                            format!("glyph '{}' is already defined", glyph.name),
+                        ));
+                    }
+                    let evaluated = self.evaluator.eval_glyph(glyph)?;
+                    self.document.glyphs.push(evaluated);
+                }
+                Item::Import { path, span } => self.import(path, *span)?,
+                Item::Stmt(stmt) => self.evaluator.exec_statement(stmt)?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Evaluate an imported file's items into the current scope at the
+    /// import's position. Include-once by canonical id; cycles error.
+    fn import(&mut self, path: &str, span: Span) -> Result<(), EvalError> {
+        let from = self.import_stack.last().map(String::as_str);
+        let (id, source) = self
+            .importer
+            .load(path, from)
+            .map_err(|message| err(span, message))?;
+        if self.imported.contains(&id) {
+            return Ok(());
+        }
+        if self.import_stack.contains(&id) {
+            return Err(err(
+                span,
+                format!("import cycle: {} -> {id}", self.import_stack.join(" -> ")),
+            ));
+        }
+        let prefix = |message: String| err(span, format!("{path}: {message}"));
+        let tree = crate::parse::parse(&source).map_err(|error| prefix(error.to_string()))?;
+        let program =
+            crate::lower::lower(&tree, &source).map_err(|error| prefix(error.to_string()))?;
+        self.import_stack.push(id.clone());
+        let result = self.eval_items(&program.items);
+        self.import_stack.pop();
+        self.imported.insert(id);
+        result.map_err(|error| prefix(error.to_string()))
+    }
 }
 
 pub struct Evaluator {

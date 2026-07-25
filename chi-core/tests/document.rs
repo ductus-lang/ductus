@@ -1,7 +1,7 @@
 //! Document-level integration tests: parse -> lower -> evaluate.
 
 use chi_core::doc::Document;
-use chi_core::eval::{EvalError, evaluate};
+use chi_core::eval::{EvalError, Importer, NoImporter, evaluate};
 use chi_core::lower::lower;
 use chi_core::parse::parse;
 use std::collections::HashMap;
@@ -13,7 +13,7 @@ fn build(source: &str) -> Document {
 fn build_with(source: &str, overrides: &HashMap<String, f64>) -> Result<Document, EvalError> {
     let tree = parse(source).expect("source should parse");
     let program = lower(&tree, source).expect("source should lower");
-    evaluate(&program, overrides)
+    evaluate(&program, overrides, &NoImporter)
 }
 
 fn build_err(source: &str) -> EvalError {
@@ -183,10 +183,91 @@ fn glyph_locals_do_not_leak() {
     assert_eq!(document.glyphs.len(), 2);
 }
 
+// ---- import ----------------------------------------------------------------
+
+/// In-memory importer: path -> source, canonical id = the path itself.
+struct MapImporter(HashMap<&'static str, &'static str>);
+
+impl Importer for MapImporter {
+    fn load(&self, path: &str, _from: Option<&str>) -> Result<(String, String), String> {
+        self.0
+            .get(path)
+            .map(|source| (path.to_string(), source.to_string()))
+            .ok_or_else(|| format!("no such file: {path}"))
+    }
+}
+
+fn build_with_files(
+    source: &str,
+    files: &[(&'static str, &'static str)],
+) -> Result<Document, EvalError> {
+    let importer = MapImporter(files.iter().copied().collect());
+    let tree = parse(source).expect("source should parse");
+    let program = lower(&tree, source).expect("source should lower");
+    evaluate(&program, &HashMap::new(), &importer)
+}
+
 #[test]
-fn phase2_constructs_are_gated() {
+fn import_shares_measures_params_and_defs() {
+    let document = build_with_files(
+        "import \"measures.chi\";\nglyph g { advance = stem + pad(10); }\n",
+        &[(
+            "measures.chi",
+            "params { weight = 400 in 100..900; }\nstem = weight / 4;\ndef pad(k) -> r { r = 2 k; }\n",
+        )],
+    )
+    .expect("evaluates");
+    assert_eq!(document.glyphs[0].advance, 120.0);
+    // Imported params register on the document (playground sliders).
+    assert_eq!(document.params.len(), 1);
+    assert_eq!(document.params[0].name, "weight");
+}
+
+#[test]
+fn import_is_include_once() {
+    // Diamond: both imports pull in measures.chi; the second is a no-op
+    // rather than an immutable-rebinding error.
+    let document = build_with_files(
+        "import \"a.chi\";\nimport \"b.chi\";\nglyph g { advance = stem + a_pad + b_pad; }\n",
+        &[
+            ("a.chi", "import \"measures.chi\";\na_pad = stem;\n"),
+            ("b.chi", "import \"measures.chi\";\nb_pad = 2 stem;\n"),
+            ("measures.chi", "stem = 100;\n"),
+        ],
+    )
+    .expect("evaluates");
+    assert_eq!(document.glyphs[0].advance, 400.0);
+}
+
+#[test]
+fn import_cycle_is_an_error() {
+    let error = build_with_files(
+        "import \"a.chi\";\n",
+        &[
+            ("a.chi", "import \"b.chi\";\n"),
+            ("b.chi", "import \"a.chi\";\n"),
+        ],
+    )
+    .expect_err("cycle should fail");
+    assert!(error.message.contains("cycle"), "{}", error.message);
+    assert!(error.message.contains("a.chi"), "{}", error.message);
+}
+
+#[test]
+fn error_in_imported_file_carries_the_file_name() {
+    let error = build_with_files(
+        "import \"broken.chi\";\n",
+        &[("broken.chi", "x = missing;\n")],
+    )
+    .expect_err("should fail");
+    assert!(error.message.contains("broken.chi"), "{}", error.message);
+    assert!(error.message.contains("missing"), "{}", error.message);
+}
+
+#[test]
+fn import_without_an_importer_is_an_error() {
     let error = build_err("import \"other.chi\";\n");
-    assert!(error.message.contains("phase 2"), "{}", error.message);
+    assert!(error.message.contains("not supported"), "{}", error.message);
 }
 
 #[test]

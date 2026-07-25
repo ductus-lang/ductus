@@ -81,7 +81,9 @@ fn compile_inner(
         message: error.message,
     })?;
 
-    let document = chi_core::eval::evaluate(&program, &overrides).map_err(|error| ErrorInfo {
+    // The playground has no filesystem; imports report a clear error.
+    let document = chi_core::eval::evaluate(&program, &overrides, &chi_core::eval::NoImporter)
+        .map_err(|error| ErrorInfo {
         line: error.span.line,
         column: error.span.column,
         message: error.message,
