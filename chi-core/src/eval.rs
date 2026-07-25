@@ -82,6 +82,9 @@ pub fn evaluate(
                     document.metrics.values.insert(entry.name.clone(), number);
                 }
             }
+            Item::Pen(pen) => {
+                return Err(err(pen.span, "'pen' is not implemented yet"));
+            }
             Item::Def(def) => evaluator.register_def(def)?,
             Item::Glyph(glyph) => {
                 if document.glyphs.iter().any(|g| g.name == glyph.name) {
@@ -390,12 +393,15 @@ impl Evaluator {
     fn eval_node(&mut self, node: &NodeDecl) -> Result<NodeValue, EvalError> {
         let pos = self.expect_point(&node.position)?;
         let dir = self.expect_number(&node.dir)?;
-        let (left_offset, right_offset) = match self.eval_expr(&node.width)? {
+        let Some(width_expr) = &node.width else {
+            return Err(err(node.span, "'pen' is not implemented yet"));
+        };
+        let (left_offset, right_offset) = match self.eval_expr(width_expr)? {
             Value::Number(total) => (total / 2.0, total / 2.0),
             Value::Point(offsets) => (offsets.x, offsets.y),
             other => {
                 return Err(err(
-                    node.width.span,
+                    width_expr.span,
                     format!(
                         "width expects a number or an (left, right) pair, got {}",
                         other.type_name()

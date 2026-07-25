@@ -16,10 +16,24 @@ pub struct Program {
 pub enum Item {
     Params(Vec<ParamDecl>),
     Metrics(Vec<Binding>),
+    Pen(PenDecl),
     Def(DefDecl),
     Glyph(GlyphDecl),
     Import { path: String, span: Span },
     Stmt(Stmt),
+}
+
+/// `pen name { width = ...; height = ...; angle = ...; }` — a named ellipse.
+#[derive(Debug, Clone)]
+pub struct PenDecl {
+    pub name: String,
+    /// Full major axis.
+    pub width: Expr,
+    /// Full minor axis; defaults to 0 (a razor).
+    pub height: Option<Expr>,
+    /// Major-axis orientation, degrees; defaults to 0.
+    pub angle: Option<Expr>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -87,13 +101,16 @@ pub enum Stmt {
     },
 }
 
+/// Lowering guarantees exactly one of `width` or `pen` is present, and that
+/// `nib` only appears together with `width`.
 #[derive(Debug, Clone)]
 pub struct NodeDecl {
     pub name: String,
     pub position: Expr,
     pub dir: Expr,
-    pub width: Expr,
+    pub width: Option<Expr>,
     pub nib: Option<Expr>,
+    pub pen: Option<Expr>,
     pub span: Span,
 }
 

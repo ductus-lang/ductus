@@ -88,6 +88,7 @@ impl<'a> Lowerer<'a> {
                 }
                 Ok(Item::Metrics(entries))
             }
+            "pen_block" => Ok(Item::Pen(self.pen_block(node)?)),
             "def_declaration" => Ok(Item::Def(self.def_declaration(node)?)),
             "glyph_block" => Ok(Item::Glyph(self.glyph_block(node)?)),
             "import_statement" => {
@@ -116,6 +117,46 @@ impl<'a> Lowerer<'a> {
         Ok(Binding {
             name: self.text(self.field(node, "name")?).to_string(),
             value: self.rhs(self.field(node, "value")?)?,
+            span: span(node),
+        })
+    }
+
+    /// The grammar accepts any assignments inside a `pen` block; the field
+    /// names are validated here.
+    fn pen_block(&self, node: Node) -> Result<PenDecl, LowerError> {
+        let name = self.text(self.field(node, "name")?).to_string();
+        let mut width = None;
+        let mut height = None;
+        let mut angle = None;
+        for child in self.children(node) {
+            if Some(child) == node.child_by_field_name("name") {
+                continue;
+            }
+            let key_node = self.field(child, "name")?;
+            let key = self.text(key_node);
+            let slot = match key {
+                "width" => &mut width,
+                "height" => &mut height,
+                "angle" => &mut angle,
+                other => {
+                    return Err(self.error(
+                        key_node,
+                        format!("unknown pen field '{other}'; pens have width, height and angle"),
+                    ));
+                }
+            };
+            if slot.is_some() {
+                return Err(self.error(key_node, format!("pen field '{key}' is set twice")));
+            }
+            *slot = Some(self.expression(self.field(child, "value")?)?);
+        }
+        let width =
+            width.ok_or_else(|| self.error(node, format!("pen '{name}' does not set width")))?;
+        Ok(PenDecl {
+            name,
+            width,
+            height,
+            angle,
             span: span(node),
         })
     }
@@ -220,16 +261,34 @@ impl<'a> Lowerer<'a> {
                         None => Err(self.error(clause, "empty clause")),
                     }
                 };
-                let nib = match node.child_by_field_name("nib") {
-                    Some(clause) => Some(clause_expr(clause)?),
-                    None => None,
+                let optional_clause = |name: &str| -> Result<Option<Expr>, LowerError> {
+                    match node.child_by_field_name(name) {
+                        Some(clause) => Ok(Some(clause_expr(clause)?)),
+                        None => Ok(None),
+                    }
                 };
+                let width = optional_clause("width")?;
+                let nib = optional_clause("nib")?;
+                let pen = optional_clause("pen")?;
+                if pen.is_some() && width.is_some() {
+                    return Err(self.error(node, "a node takes either 'width' or 'pen', not both"));
+                }
+                if pen.is_some() && nib.is_some() {
+                    return Err(self.error(
+                        node,
+                        "'nib' cannot be combined with 'pen'; set the pen's angle instead",
+                    ));
+                }
+                if pen.is_none() && width.is_none() {
+                    return Err(self.error(node, "a node needs a 'width' or a 'pen'"));
+                }
                 Ok(Stmt::Node(NodeDecl {
                     name: self.text(self.field(node, "name")?).to_string(),
                     position: self.expression(self.field(node, "position")?)?,
                     dir: clause_expr(self.field(node, "dir")?)?,
-                    width: clause_expr(self.field(node, "width")?)?,
+                    width,
                     nib,
+                    pen,
                     span: span(node),
                 }))
             }
@@ -569,6 +628,53 @@ mod tests {
         assert!(matches!(node.position.kind, ExprKind::Point { .. }));
         assert!(matches!(node.dir.kind, ExprKind::Ident(_)));
         assert!(node.nib.is_some());
+    }
+
+    #[test]
+    fn lowers_pen_block_and_node_with_pen() {
+        let program = lower_source(
+            "pen italic { width = 120; height = 12; angle = 30; }\n\
+             node m = (0, 0) dir 45 pen italic;\n",
+        );
+        let Item::Pen(pen) = &program.items[0] else {
+            panic!("expected pen, got {:?}", program.items[0])
+        };
+        assert_eq!(pen.name, "italic");
+        assert!(pen.height.is_some());
+        assert!(pen.angle.is_some());
+        let Item::Stmt(Stmt::Node(node)) = &program.items[1] else {
+            panic!()
+        };
+        assert!(node.width.is_none());
+        assert!(node.pen.is_some());
+    }
+
+    #[test]
+    fn pen_block_rejects_unknown_and_duplicate_fields() {
+        let lower_err = |source: &str| {
+            let tree = parse(source).expect("source should parse");
+            lower(&tree, source).expect_err("source should not lower")
+        };
+        let error = lower_err("pen p { width = 10; slant = 3; }\n");
+        assert!(error.message.contains("unknown pen field"), "{error}");
+        let error = lower_err("pen p { width = 10; width = 20; }\n");
+        assert!(error.message.contains("set twice"), "{error}");
+        let error = lower_err("pen p { height = 10; }\n");
+        assert!(error.message.contains("does not set width"), "{error}");
+    }
+
+    #[test]
+    fn node_requires_exactly_one_of_width_or_pen() {
+        let lower_err = |source: &str| {
+            let tree = parse(source).expect("source should parse");
+            lower(&tree, source).expect_err("source should not lower")
+        };
+        let error = lower_err("node m = (0, 0) dir 45 width 10 pen italic;\n");
+        assert!(error.message.contains("not both"), "{error}");
+        let error = lower_err("node m = (0, 0) dir 45 nib 30 pen italic;\n");
+        assert!(error.message.contains("angle instead"), "{error}");
+        let error = lower_err("node m = (0, 0) dir 45;\n");
+        assert!(error.message.contains("'width' or a 'pen'"), "{error}");
     }
 
     #[test]
