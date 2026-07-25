@@ -328,7 +328,7 @@ pub fn render(document: &Document, options: &RenderOptions) -> Result<String, Re
                 fill_attrs(options.debug)
             )),
             SketchCommand::Draw(_) => {
-                let stroke = if options.debug { MOCHA.glyph } else { "black" };
+                let stroke = if options.debug { MOCHA.glyph } else { "currentColor" };
                 body.push_str(&format!(
                     "  <path d=\"{}\" fill=\"none\" stroke=\"{stroke}\" stroke-width=\"2\"/>\n",
                     flipped.to_svg()
@@ -418,7 +418,7 @@ fn fill_attrs(debug: bool) -> String {
             glyph = MOCHA.glyph
         )
     } else {
-        String::from("fill=\"black\" fill-rule=\"nonzero\"")
+        String::from("fill=\"currentColor\" fill-rule=\"nonzero\"")
     }
 }
 
@@ -881,7 +881,7 @@ mod tests {
         assert!(svg.contains("id=\"chi-grid\""));
         assert!(svg.contains("fill=\"url(#chi-grid)\""));
         assert!(svg.contains(&format!("fill=\"{}\"", MOCHA.background)));
-        assert!(!svg.contains("fill=\"black\""));
+        assert!(!svg.contains("fill=\"currentColor\""));
     }
 
     #[test]
@@ -893,6 +893,6 @@ mod tests {
         let svg = render(&doc, &RenderOptions::default()).unwrap();
         assert!(!svg.contains("<defs"));
         assert!(!svg.contains("chi-grid"));
-        assert!(svg.contains("fill=\"black\""));
+        assert!(svg.contains("fill=\"currentColor\""));
     }
 }

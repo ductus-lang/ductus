@@ -86,8 +86,8 @@ fn selecting_a_missing_glyph_is_an_error() {
 fn renders_a_sketch() {
     let document = build("draw((0, 0) {45} .. (300, 400) .. {down} (500, 300));\nfill((0,0) -- (100,0) -- (50,80) -- cycle);\n");
     let svg = render(&document, &RenderOptions::default()).unwrap();
-    assert!(svg.contains("stroke=\"black\""), "draw() strokes the spine");
-    assert!(svg.contains("fill=\"black\""), "fill() fills");
+    assert!(svg.contains("stroke=\"currentColor\""), "draw() strokes the spine");
+    assert!(svg.contains("fill=\"currentColor\""), "fill() fills");
 }
 
 #[test]
