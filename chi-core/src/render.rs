@@ -4,7 +4,9 @@ use crate::ast::Joint;
 use crate::doc::{Document, Glyph, SketchCommand};
 use crate::value::{PathValue, unitvec};
 use curve_fitter::{InputPoint, PointType, fit_curve};
-use kurbo::{Affine, BezPath, PathEl, Point, Rect, Shape};
+use kurbo::{
+    Affine, BezPath, CubicBez, ParamCurve, ParamCurveDeriv, PathEl, Point, Rect, Shape, Vec2,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderError {
@@ -99,6 +101,120 @@ pub fn fit_path(path: &PathValue) -> Result<BezPath, RenderError> {
         .collect();
 
     fit_curve(input_points, path.closed).map_err(render_err)
+}
+
+// ---- Path queries ----------------------------------------------------------
+//
+// Queries observe the fitted curve — the same geometry that renders. The
+// fit is deterministic, so eval-time and render-time agree. Time `t` is
+// MetaPost-style segment time: 0..=n segments, integer values land on the
+// on-curve points.
+
+/// The fitted cubic segments of a path, one per joint, in path order.
+fn fitted_segments(path: &PathValue) -> Result<Vec<CubicBez>, RenderError> {
+    let expected = path.points.len().saturating_sub(1) + usize::from(path.closed);
+    let fitted = fit_path(path)?;
+    // A closed BezPath ends with a zero-length ClosePath segment (the
+    // geometric closing joint is already a curve); take only the real ones.
+    let segments: Vec<CubicBez> = fitted
+        .segments()
+        .take(expected)
+        .map(|segment| segment.to_cubic())
+        .collect();
+    if segments.len() != expected {
+        return Err(render_err("fitted path has fewer segments than points"));
+    }
+    Ok(segments)
+}
+
+/// Split segment time into (segment index, local 0..1 parameter).
+fn segment_time(t: f64, count: usize) -> Result<(usize, f64), RenderError> {
+    if !(0.0..=count as f64).contains(&t) {
+        return Err(render_err(format!(
+            "path time {t} is outside 0..{count}"
+        )));
+    }
+    let index = (t.floor() as usize).min(count - 1);
+    Ok((index, t - index as f64))
+}
+
+fn tangent(cubic: &CubicBez, t: f64) -> Vec2 {
+    let deriv = cubic.deriv();
+    let d = deriv.eval(t).to_vec2();
+    if d.length_squared() > 1e-12 {
+        return d;
+    }
+    // Degenerate derivative (zero-length handle at an endpoint): sample
+    // just inside the segment.
+    let nudged = if t < 0.5 { t + 1e-4 } else { t - 1e-4 };
+    deriv.eval(nudged).to_vec2()
+}
+
+/// Position on the path at segment time `t`.
+pub fn point_at(path: &PathValue, t: f64) -> Result<Point, RenderError> {
+    let segments = fitted_segments(path)?;
+    let (index, local) = segment_time(t, segments.len())?;
+    Ok(segments[index].eval(local))
+}
+
+/// Tangent angle of the path at segment time `t`, degrees.
+pub fn direction_at(path: &PathValue, t: f64) -> Result<f64, RenderError> {
+    let segments = fitted_segments(path)?;
+    let (index, local) = segment_time(t, segments.len())?;
+    let d = tangent(&segments[index], local);
+    Ok(d.y.atan2(d.x).to_degrees())
+}
+
+/// First position along the path where the tangent points in `degrees`
+/// (matching orientation, not just parallel).
+pub fn direction_point(path: &PathValue, degrees: f64) -> Result<Point, RenderError> {
+    let dir = unitvec(degrees);
+    for cubic in &fitted_segments(path)? {
+        // The derivative is quadratic in t: c2·t² + c1·t + c0. The tangent
+        // is parallel to `dir` where cross(deriv, dir) = 0.
+        let deriv = cubic.deriv();
+        let c0 = deriv.p0.to_vec2();
+        let c1 = 2.0 * (deriv.p1 - deriv.p0);
+        let c2 = c0 - 2.0 * deriv.p1.to_vec2() + deriv.p2.to_vec2();
+        for t in quadratic_roots_in_unit(c2.cross(dir), c1.cross(dir), c0.cross(dir)) {
+            if tangent(cubic, t).dot(dir) > 0.0 {
+                return Ok(cubic.eval(t));
+            }
+        }
+    }
+    Err(render_err(format!(
+        "the path has no point with direction {degrees}"
+    )))
+}
+
+/// Real roots of a·t² + b·t + c in [0, 1], ascending. An identically-zero
+/// polynomial (a straight segment parallel to the query) reports t = 0.
+fn quadratic_roots_in_unit(a: f64, b: f64, c: f64) -> Vec<f64> {
+    const EPS: f64 = 1e-9;
+    let scale = a.abs().max(b.abs()).max(c.abs());
+    let mut roots = if scale < EPS {
+        vec![0.0]
+    } else if a.abs() < EPS * scale {
+        if b.abs() < EPS * scale {
+            Vec::new() // constant nonzero: never parallel
+        } else {
+            vec![-c / b]
+        }
+    } else {
+        let discriminant = b * b - 4.0 * a * c;
+        if discriminant < 0.0 {
+            Vec::new()
+        } else {
+            let sqrt = discriminant.sqrt();
+            vec![(-b - sqrt) / (2.0 * a), (-b + sqrt) / (2.0 * a)]
+        }
+    };
+    roots.retain(|t| (-EPS..=1.0 + EPS).contains(t));
+    for t in &mut roots {
+        *t = t.clamp(0.0, 1.0);
+    }
+    roots.sort_by(f64::total_cmp);
+    roots
 }
 
 // ---- SVG -------------------------------------------------------------------

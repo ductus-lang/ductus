@@ -22,6 +22,9 @@ const BUILTIN_FUNCTIONS: &[&str] = &[
     "length",
     "distance",
     "intersection",
+    "point",
+    "direction",
+    "directionpoint",
     "draw",
     "fill",
 ];
@@ -925,6 +928,19 @@ impl Evaluator {
                 )),
             }
         };
+        let path_at = |index: usize| -> Result<&PathValue, EvalError> {
+            match &values[index] {
+                Value::Path(path) => Ok(path),
+                other => Err(err(
+                    span,
+                    format!(
+                        "{function}() expects a path for argument {}, got {}",
+                        index + 1,
+                        other.type_name()
+                    ),
+                )),
+            }
+        };
 
         match function {
             "min" => {
@@ -993,6 +1009,26 @@ impl Evaluator {
                 intersection(a, b)
                     .map(Value::Point)
                     .ok_or_else(|| err(span, "paths do not intersect"))
+            }
+            // Path queries observe the fitted curve — the geometry that
+            // renders; see render.rs.
+            "point" => {
+                expect_arity(2)?;
+                crate::render::point_at(path_at(0)?, number_at(1)?)
+                    .map(Value::Point)
+                    .map_err(|error| err(span, error.message))
+            }
+            "direction" => {
+                expect_arity(2)?;
+                crate::render::direction_at(path_at(0)?, number_at(1)?)
+                    .map(Value::Number)
+                    .map_err(|error| err(span, error.message))
+            }
+            "directionpoint" => {
+                expect_arity(2)?;
+                crate::render::direction_point(path_at(0)?, number_at(1)?)
+                    .map(Value::Point)
+                    .map_err(|error| err(span, error.message))
             }
             other => Err(err(span, format!("unknown function: {other}"))),
         }
@@ -1430,6 +1466,52 @@ mod tests {
     fn for_over_a_number_is_an_error() {
         let error = eval_err("for i in 5 { x = 1; }\n");
         assert!(error.message.contains("list"), "{}", error.message);
+    }
+
+    #[test]
+    fn path_queries_on_line_segments() {
+        let evaluator = eval_ok(
+            "p = (0, 0) -- (100, 0) -- (100, 50);\n\
+             a = point(p, 0);\nb = point(p, 1);\nc = point(p, 1.5);\nd = point(p, 2);\n\
+             t = direction(p, 1.5);\n\
+             q = directionpoint(p, 90);\n",
+        );
+        assert_point(point(&evaluator, "a"), 0.0, 0.0);
+        assert_point(point(&evaluator, "b"), 100.0, 0.0);
+        assert_point(point(&evaluator, "c"), 100.0, 25.0);
+        assert_point(point(&evaluator, "d"), 100.0, 50.0);
+        assert_close(number(&evaluator, "t"), 90.0);
+        // First point travelling straight up is the vertical segment's start.
+        assert_point(point(&evaluator, "q"), 100.0, 0.0);
+    }
+
+    #[test]
+    fn directionpoint_on_a_curve_finds_the_tangent_point() {
+        // Quarter turn from travelling up to travelling right. The input is
+        // symmetric, so the fitted curve is symmetric about the chord's
+        // perpendicular bisector (x + y = 1000), and the 45-degree tangent
+        // lies exactly on it.
+        let evaluator = eval_ok(
+            "skel = (0, 500) {up} .. {right} (500, 1000);\n\
+             w = directionpoint(skel, 45);\n",
+        );
+        let w = point(&evaluator, "w");
+        assert!((w.x + w.y - 1000.0).abs() < 1e-3, "{w:?}");
+        assert!(w.x > 0.0 && w.x < 500.0, "{w:?}");
+    }
+
+    #[test]
+    fn path_query_errors() {
+        let error = eval_err("p = (0, 0) -- (100, 0);\nq = point(p, 1.5);\n");
+        assert!(error.message.contains("outside"), "{}", error.message);
+        let error = eval_err("p = (0, 0) -- (100, 0);\nq = directionpoint(p, 90);\n");
+        assert!(
+            error.message.contains("no point with direction"),
+            "{}",
+            error.message
+        );
+        let error = eval_err("q = point((1, 2), 0.5);\n");
+        assert!(error.message.contains("expects a path"), "{}", error.message);
     }
 
     #[test]
