@@ -88,6 +88,18 @@ pub fn fit_path(path: &PathValue) -> Result<BezPath, RenderError> {
             if point.corner {
                 point_type = PointType::Corner;
             }
+            // A smooth point has a single tangent, so a one-sided direction
+            // constraint pins both sides. Without this the fitter only
+            // breaks solver runs at corners and *incoming* constraints: a
+            // leave-only smooth point would ride through as a free interior
+            // point and its constraint would be silently dropped.
+            if matches!(point_type, PointType::Smooth) {
+                match (incoming, outgoing) {
+                    (Some(angle), None) => outgoing = Some(angle),
+                    (None, Some(angle)) => incoming = Some(angle),
+                    _ => {}
+                }
+            }
             InputPoint {
                 x: point.pos.x,
                 y: point.pos.y,
@@ -591,6 +603,39 @@ mod tests {
         };
         assert!(control1.x.abs() < 1e-6, "control1 = {control1:?}");
         assert!(control1.y > 0.0);
+    }
+
+    #[test]
+    fn one_sided_constraint_pins_both_sides_of_a_smooth_point() {
+        // A leave-only constraint on an interior smooth point must also
+        // shape the incoming segment: the fitter's solver runs only break
+        // at incoming constraints, so without mirroring, `{theta}` after a
+        // point would be silently dropped (the va_pen terminal bug).
+        let path = PathValue {
+            points: vec![
+                smooth(0.0, 0.0),
+                PathPoint {
+                    pos: Point::new(100.0, 0.0),
+                    enter: None,
+                    leave: Some(270.0),
+                    corner: false,
+                },
+                smooth(200.0, -100.0),
+            ],
+            joints: vec![Joint::Curve, Joint::Curve],
+            closed: false,
+        };
+        let fitted = fit_path(&path).unwrap();
+        // Incoming handle at (100, 0): control2 of the first segment must
+        // lie on the point's tangent line, i.e. directly above it.
+        let PathEl::CurveTo(_, control2, _) = fitted.elements()[1] else {
+            panic!("expected CurveTo, got {:?}", fitted.elements()[1])
+        };
+        assert!(
+            (control2.x - 100.0).abs() < 1e-6,
+            "incoming tangent not pinned: control2 = {control2:?}"
+        );
+        assert!(control2.y > 0.0, "control2 = {control2:?}");
     }
 
     #[test]
