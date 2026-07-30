@@ -13,7 +13,8 @@
 #   angle                       a tangent derived from a chord (squircle)
 #   t[a, b]                     mediation places the oval's waist
 #   yscaled / shifted           one unit path reused by two glyphs
-#   directionpoint, point       probing the geometry that renders
+#   directionpoint, point,
+#   intersection                probing the geometry that renders
 #
 # Where it meets the walls of v0.1
 #   * No arcs — and for a circle it does not matter. The fitter lands on
@@ -39,9 +40,6 @@
 #     4; by exponent 10 the corner has outrun them and the error is 1 %.
 #     Eight samples are twice to three times as far off — the fitter is
 #     not the bottleneck, the point count is.
-#   * intersection() cuts the chords between on-curve points, not the
-#     fitted curve, so it is exact only where the path is straight. The
-#     corner probes below use directionpoint(), which reads the curve.
 #   * No pi and no inverse trig beyond angle(): angles are degrees
 #     everywhere, so neither has come up yet.
 
@@ -103,6 +101,11 @@ glyph circle {
   # coincide. They read the fitted geometry, not the source points.
   anchor corner = directionpoint(main, 135);
   anchor mid    = point(main, 0.5);
+
+  # How far the shape reaches along the box diagonal — what the guide is
+  # there to compare. 0.73 of the half-diagonal at these defaults, against
+  # 0.84 for the rounded square and 0.86 for the squircle.
+  anchor reach = intersection(main, box);
 }
 
 glyph ellipse {
@@ -145,6 +148,7 @@ glyph roundsquare {
 
   guide box = corner_guide(center);
   anchor corner = directionpoint(main, 135);
+  anchor reach  = intersection(main, box);
 }
 
 glyph squircle {
@@ -191,6 +195,7 @@ glyph squircle {
 
   guide box = corner_guide(center);
   anchor corner = directionpoint(main, 135);
+  anchor reach  = intersection(main, box);
 }
 
 glyph oval {
