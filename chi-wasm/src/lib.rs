@@ -14,6 +14,9 @@ enum Response {
         svg: String,
         params: Vec<ParamInfo>,
         glyphs: Vec<String>,
+        /// Metrics, top-level bindings, and each glyph's own numbers, for
+        /// the inspector.
+        measures: Measures,
     },
     Err {
         ok: bool,
@@ -28,6 +31,16 @@ struct ParamInfo {
     default: f64,
     min: f64,
     max: f64,
+}
+
+/// Named numbers, as (name, value) pairs in the order they should be shown.
+/// Glyphs are a list, not a map, so the panel keeps document order rather
+/// than whatever a hash gives it.
+#[derive(Serialize)]
+struct Measures {
+    metrics: Vec<(String, f64)>,
+    bindings: Vec<(String, f64)>,
+    glyphs: Vec<(String, Vec<(String, f64)>)>,
 }
 
 #[derive(Serialize)]
@@ -118,6 +131,30 @@ fn compile_inner(
             .iter()
             .map(|glyph| glyph.name.clone())
             .collect(),
+        measures: Measures {
+            // The document's metrics are a map; sort so the panel is stable
+            // between edits. Bindings already arrive in source order.
+            metrics: {
+                let mut metrics: Vec<(String, f64)> = document
+                    .metrics
+                    .values
+                    .iter()
+                    .map(|(name, value)| (name.clone(), *value))
+                    .collect();
+                metrics.sort_by(|a, b| a.0.cmp(&b.0));
+                metrics
+            },
+            bindings: document.bindings.clone(),
+            glyphs: document
+                .glyphs
+                .iter()
+                .map(|glyph| {
+                    let mut numbers = vec![("advance".to_string(), glyph.advance)];
+                    numbers.extend(glyph.bindings.iter().cloned());
+                    (glyph.name.clone(), numbers)
+                })
+                .collect(),
+        },
     })
 }
 

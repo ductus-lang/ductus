@@ -8,6 +8,12 @@ use std::collections::HashMap;
 pub struct Document {
     pub params: Vec<Param>,
     pub metrics: Metrics,
+    /// Top-level numeric bindings, in source order. Derived measures are how
+    /// a designer reasons about a design, which is why the Spec leaves them
+    /// to tooling to display; they are also the only way to read a value
+    /// back out of a source file, which makes them the language's own
+    /// measuring instrument.
+    pub bindings: Vec<(String, f64)>,
     pub glyphs: Vec<Glyph>,
     pub sketch: Vec<SketchCommand>,
 }
@@ -45,6 +51,10 @@ pub struct Glyph {
     pub contours: Vec<(String, PathValue)>,
     pub guides: Vec<(String, PathValue)>,
     pub anchors: Vec<(String, Point)>,
+    /// Numeric bindings from the glyph body, by name, less `advance`. A
+    /// probe over a contour — `distance(point(main, 0.5), center)` — has to
+    /// live here, since it names geometry local to the glyph.
+    pub bindings: Vec<(String, f64)>,
     /// Skeleton nodes bound in the glyph body, for debug rendering.
     pub nodes: Vec<(String, NodeValue)>,
 }

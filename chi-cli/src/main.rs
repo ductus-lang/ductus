@@ -1,3 +1,4 @@
+use chi_core::doc::Document;
 use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -34,6 +35,18 @@ enum Command {
         #[arg(short, long, default_value = "output.svg")]
         output: PathBuf,
     },
+    /// Evaluate a source file and print its numbers: params, metrics,
+    /// derived bindings, and each glyph's advance, bindings and geometry.
+    Inspect {
+        /// Path to the .chi file
+        file: PathBuf,
+        /// Override a param, e.g. --set weight=700 (repeatable)
+        #[arg(long = "set", value_name = "PARAM=VALUE")]
+        set: Vec<String>,
+        /// Inspect only this glyph
+        #[arg(long)]
+        glyph: Option<String>,
+    },
 }
 
 fn main() -> ExitCode {
@@ -57,6 +70,10 @@ fn run(cli: Cli) -> Result<String, String> {
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
             Ok(format!("{}: OK", file.display()))
         }
+        Command::Inspect { file, set, glyph } => {
+            let document = evaluate(&file, &set)?;
+            report(&document, glyph.as_deref())
+        }
         Command::Build {
             file,
             glyph,
@@ -64,18 +81,7 @@ fn run(cli: Cli) -> Result<String, String> {
             debug,
             output,
         } => {
-            let source = read(&file)?;
-            let overrides = parse_overrides(&set)?;
-
-            let tree = chi_core::parse::parse(&source)
-                .map_err(|error| format!("{}: {}", file.display(), error))?;
-            let program = chi_core::lower::lower(&tree, &source)
-                .map_err(|error| format!("{}: {}", file.display(), error))?;
-            let importer = FsImporter {
-                root: file.parent().unwrap_or(Path::new(".")).to_path_buf(),
-            };
-            let document = chi_core::eval::evaluate(&program, &overrides, &importer)
-                .map_err(|error| format!("{}: {}", file.display(), error))?;
+            let document = evaluate(&file, &set)?;
 
             let options = chi_core::render::RenderOptions { glyph, debug };
             let svg = chi_core::render::render(&document, &options)
@@ -86,6 +92,107 @@ fn run(cli: Cli) -> Result<String, String> {
             Ok(format!("{} -> {}", file.display(), output.display()))
         }
     }
+}
+
+/// Parse, lower and evaluate a file, resolving imports from its directory.
+fn evaluate(file: &Path, set: &[String]) -> Result<Document, String> {
+    let source = read(file)?;
+    let overrides = parse_overrides(set)?;
+    let named = |error: String| format!("{}: {error}", file.display());
+
+    let tree = chi_core::parse::parse(&source).map_err(|error| named(error.to_string()))?;
+    let program =
+        chi_core::lower::lower(&tree, &source).map_err(|error| named(error.to_string()))?;
+    let importer = FsImporter {
+        root: file.parent().unwrap_or(Path::new(".")).to_path_buf(),
+    };
+    chi_core::eval::evaluate(&program, &overrides, &importer)
+        .map_err(|error| named(error.to_string()))
+}
+
+/// Every number in an evaluated document, as plain text. This is the CLI
+/// half of what the playground's inspector shows; between them they are the
+/// only way to read a derived value back out of a source file.
+fn report(document: &Document, only: Option<&str>) -> Result<String, String> {
+    let mut out = String::new();
+    let row = |out: &mut String, name: &str, value: String| {
+        out.push_str(&format!("  {name:<16}{value:>12}\n"));
+    };
+
+    if !document.params.is_empty() {
+        out.push_str("params\n");
+        for param in &document.params {
+            let range = format!("  in {}..{}", number(param.min), number(param.max));
+            out.push_str(&format!(
+                "  {:<16}{:>12}{range}\n",
+                param.name,
+                number(param.value)
+            ));
+        }
+    }
+
+    // Metrics live in a map, so they come out by name.
+    let mut metrics: Vec<(&String, &f64)> = document.metrics.values.iter().collect();
+    metrics.sort_by(|a, b| a.0.cmp(b.0));
+    if !metrics.is_empty() {
+        out.push_str("metrics\n");
+        for (name, value) in metrics {
+            row(&mut out, name, number(*value));
+        }
+    }
+
+    if !document.bindings.is_empty() {
+        out.push_str("bindings\n");
+        for (name, value) in &document.bindings {
+            row(&mut out, name, number(*value));
+        }
+    }
+
+    let mut found = false;
+    for glyph in &document.glyphs {
+        if only.is_some_and(|wanted| wanted != glyph.name) {
+            continue;
+        }
+        found = true;
+        out.push_str(&format!("\nglyph {}\n", glyph.name));
+        row(&mut out, "advance", number(glyph.advance));
+        for (name, value) in &glyph.bindings {
+            row(&mut out, name, number(*value));
+        }
+        // Point counts, because a contour keeping the same count across the
+        // design space is what interpolation compatibility asks of it.
+        for (name, path) in &glyph.contours {
+            row(&mut out, &format!("contour {name}"), points(path.points.len()));
+        }
+        for (name, path) in &glyph.guides {
+            row(&mut out, &format!("guide {name}"), points(path.points.len()));
+        }
+        for (name, at) in &glyph.anchors {
+            row(
+                &mut out,
+                &format!("anchor {name}"),
+                format!("({}, {})", number(at.x), number(at.y)),
+            );
+        }
+    }
+    if let Some(wanted) = only
+        && !found
+    {
+        return Err(format!("no glyph named '{wanted}' in this file"));
+    }
+    Ok(out)
+}
+
+/// Compact enough to scan a column of them: four decimals at most, and no
+/// trailing zeros, so an advance reads `680` and a probe `0.0678`.
+fn number(value: f64) -> String {
+    let text = format!("{value:.4}");
+    let trimmed = text.trim_end_matches('0').trim_end_matches('.');
+    trimmed.to_string()
+}
+
+fn points(count: usize) -> String {
+    format!("{count} point{}", if count == 1 { "" } else { "s" })
 }
 
 /// Resolves imports on the filesystem, relative to the importing file
@@ -115,7 +222,7 @@ impl chi_core::eval::Importer for FsImporter {
     }
 }
 
-fn read(file: &PathBuf) -> Result<String, String> {
+fn read(file: &Path) -> Result<String, String> {
     std::fs::read_to_string(file)
         .map_err(|error| format!("error reading {}: {}", file.display(), error))
 }

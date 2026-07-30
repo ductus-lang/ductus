@@ -170,10 +170,31 @@ impl Session<'_> {
                     self.document.glyphs.push(evaluated);
                 }
                 Item::Import { path, span } => self.import(path, *span)?,
-                Item::Stmt(stmt) => self.evaluator.exec_statement(stmt)?,
+                Item::Stmt(stmt) => {
+                    self.evaluator.exec_statement(stmt)?;
+                    self.record_bindings(stmt);
+                }
             }
         }
         Ok(())
+    }
+
+    /// Note the numeric bindings a top-level statement just made, in source
+    /// order. Params and metrics arrive through their own `Item` arms and
+    /// keep their own fields, so they are absent here by construction.
+    fn record_bindings(&mut self, stmt: &Stmt) {
+        let names: Vec<&str> = match stmt {
+            Stmt::Assign(binding) => vec![binding.name.as_str()],
+            Stmt::Destructure { names, .. } => names.iter().map(String::as_str).collect(),
+            // A node is not a number; a `for` body's bindings live and die
+            // in its own scope; a call binds nothing.
+            Stmt::Node(_) | Stmt::Call { .. } | Stmt::For { .. } => return,
+        };
+        for name in names {
+            if let Some(Value::Number(number)) = self.evaluator.lookup(name) {
+                self.document.bindings.push((name.to_string(), *number));
+            }
+        }
     }
 
     /// Evaluate an imported file's items into the current scope at the
@@ -374,6 +395,21 @@ impl Evaluator {
             .collect();
         nodes.sort_by(|a, b| a.0.cmp(&b.0));
 
+        // And the numeric ones, for the inspector. `advance` has its own
+        // field; the scope is a map, so these come out by name rather than
+        // in source order.
+        let mut bindings: Vec<(String, f64)> = self
+            .scopes
+            .last()
+            .expect("glyph scope")
+            .iter()
+            .filter_map(|(name, value)| match value {
+                Value::Number(number) if name != "advance" => Some((name.clone(), *number)),
+                _ => None,
+            })
+            .collect();
+        bindings.sort_by(|a, b| a.0.cmp(&b.0));
+
         Ok(Glyph {
             name: glyph.name.clone(),
             unicode: glyph.unicode,
@@ -382,6 +418,7 @@ impl Evaluator {
             guides,
             anchors,
             nodes,
+            bindings,
         })
     }
 
@@ -1531,6 +1568,66 @@ mod tests {
     fn clamp_with_reversed_bounds_is_an_error() {
         let error = eval_err("x = clamp(1, 0.5, 0.04);\n");
         assert!(error.message.contains("upper bound"), "{}", error.message);
+    }
+
+    /// Evaluate a whole program, the way the CLI and the playground do.
+    fn document(source: &str) -> Document {
+        let tree = parse(source).expect("parses");
+        let program = lower(&tree, source).expect("lowers");
+        evaluate(&program, &HashMap::new(), &NoImporter).expect("evaluates")
+    }
+
+    #[test]
+    fn top_level_numeric_bindings_are_collected_in_source_order() {
+        let document = document(concat!(
+            "params { weight = 400 in 100..900; }\n",
+            "metrics { upm = 1000; x = 500; }\n",
+            "stem = 40 + 0.14 * weight;\n",
+            "origin = (0, 0);\n",           // a point, not a number
+            "hair = 0.85 * stem;\n",
+        ));
+        // Params and metrics keep their own fields and are not repeated here.
+        assert_eq!(
+            document.bindings,
+            vec![("stem".to_string(), 96.0), ("hair".to_string(), 81.6)]
+        );
+    }
+
+    #[test]
+    fn glyph_bindings_carry_a_probe_over_a_contour() {
+        let document = document(concat!(
+            "metrics { upm = 1000; }\n",
+            "glyph o {\n",
+            "  advance = 600;\n",
+            "  center = (300, 300);\n",
+            "  r = 250;\n",
+            "  contour main = circle(center, r);\n",
+            // kappa is chosen so the arc passes exactly through 45°, so a
+            // probe at the segment midpoint reads zero; the 0.027 % lives
+            // between, peaking near t = 0.21. Measuring either needed an
+            // SVG parser before these bindings existed.
+            "  waist = distance(point(main, 0.5), center) - r;\n",
+            "  bulge = distance(point(main, 0.2), center) - r;\n",
+            "}\n",
+        ));
+        let glyph = &document.glyphs[0];
+        let read = |name: &str| {
+            glyph
+                .bindings
+                .iter()
+                .find(|(bound, _)| bound == name)
+                .unwrap_or_else(|| panic!("{name} is not listed"))
+                .1
+        };
+        assert!(read("waist").abs() < 1e-9, "waist was {}", read("waist"));
+        assert!(
+            (read("bulge") - 0.0678).abs() < 0.001,
+            "bulge was {}, expected ~0.068",
+            read("bulge")
+        );
+        // `advance` has its own field, and `center` is a point.
+        let names: Vec<&str> = glyph.bindings.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, vec!["bulge", "r", "waist"]);
     }
 
     #[test]

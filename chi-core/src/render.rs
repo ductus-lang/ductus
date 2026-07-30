@@ -251,7 +251,8 @@ pub fn intersection(a: &PathValue, b: &PathValue) -> Result<Option<Point>, Rende
 ///
 /// A `--` joint fits to a cubic whose handles sit on the chord, so a
 /// straight segment is exactly a line and kurbo's analytic solvers apply.
-/// That covers the metafont `whatever` idioms of §4.6, which are all
+/// That covers the metafont `whatever` idioms the Spec lists under its
+/// built-in functions, which are all
 /// line/line and line/curve. A genuinely curved pair subdivides `a` until
 /// its pieces pass the same straightness test.
 fn segment_intersections(a: &CubicBez, b: &CubicBez) -> Vec<(f64, Point)> {
@@ -958,6 +959,7 @@ mod tests {
             guides: vec![],
             anchors: vec![],
             nodes: vec![],
+            bindings: vec![],
         }
     }
 

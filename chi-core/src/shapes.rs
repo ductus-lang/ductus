@@ -1,15 +1,17 @@
 //! Shape constructors: closed paths of on-curve points and their exact
 //! tangents.
 //!
-//! The handles stay the fitter's business (§1), so these return ordinary
-//! path values: they transform, they can be queried, and the designer can
-//! always write the same outline by hand instead.
+//! The handles stay the fitter's business — the Spec is emphatic that they
+//! are never written by hand — so these return ordinary path values: they
+//! transform, they can be queried, and the designer can always write the
+//! same outline out instead.
 //!
 //! Two rules they share. They run counterclockwise, so the result is
-//! directly usable as an outer contour and a counter is `... reversed`
-//! (§6). And the point count is fixed by the caller, never derived from a
-//! coordinate, so a shape keeps its topology across the whole design
-//! space (§9.3).
+//! directly usable as an outer contour and a counter is `... reversed`,
+//! following the Spec's winding convention. And the point count is fixed by
+//! the caller, never derived from a coordinate, so a shape keeps its
+//! topology across the whole design space, as interpolation compatibility
+//! requires.
 
 use crate::ast::Joint;
 use crate::value::{PathPoint, PathValue};
@@ -92,7 +94,7 @@ pub fn roundrect(corner: Point, opposite: Point, radius: f64) -> PathValue {
 
     // Every point has a line on one side and an arc on the other, so only
     // the arc side takes a tangent: fit_path reads the line side off the
-    // chord and makes the point a line/curve corner (§5.1).
+    // chord and makes the point a line/curve corner.
     let at = |x: f64, y: f64, enter: Option<f64>, leave: Option<f64>| PathPoint {
         pos: Point::new(x, y),
         enter,
@@ -211,7 +213,8 @@ mod tests {
     #[test]
     fn roundrect_with_no_radius_keeps_its_eight_points() {
         // A corner radius of zero is a rectangle with four zero-length
-        // segments, not a four-point path: §9.3 forbids dropping points.
+        // segments, not a four-point path: interpolation compatibility
+        // forbids dropping points.
         let shape = roundrect(Point::ORIGIN, Point::new(100.0, 80.0), 0.0);
         assert_eq!(shape.points.len(), 8);
         assert_point(shape.points[1].pos, 100.0, 0.0);
