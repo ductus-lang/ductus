@@ -9,7 +9,9 @@ use std::collections::{HashMap, HashSet};
 const BUILTIN_FUNCTIONS: &[&str] = &[
     "min",
     "max",
+    "clamp",
     "abs",
+    "sign",
     "sqrt",
     "floor",
     "ceil",
@@ -1032,9 +1034,27 @@ impl Evaluator {
                 expect_arity(2)?;
                 Ok(Value::Number(number_at(0)?.max(number_at(1)?)))
             }
+            "clamp" => {
+                expect_arity(3)?;
+                let (value, low, high) = (number_at(0)?, number_at(1)?, number_at(2)?);
+                if low > high {
+                    return Err(err(
+                        span,
+                        format!("clamp() lower bound {low} is above upper bound {high}"),
+                    ));
+                }
+                // Not f64::clamp, which panics on reversed or NaN bounds.
+                Ok(Value::Number(value.max(low).min(high)))
+            }
             "abs" => {
                 expect_arity(1)?;
                 Ok(Value::Number(number_at(0)?.abs()))
+            }
+            "sign" => {
+                expect_arity(1)?;
+                // Not f64::signum, which returns ±1 for ±0.0.
+                let value = number_at(0)?;
+                Ok(Value::Number(if value == 0.0 { 0.0 } else { value.signum() }))
             }
             "sqrt" => {
                 expect_arity(1)?;
@@ -1445,6 +1465,31 @@ mod tests {
         assert_close(number(&evaluator, "d"), 5.0);
         assert_close(number(&evaluator, "e"), 5.0);
         assert_point(point(&evaluator, "u"), -1.0, 0.0);
+    }
+
+    #[test]
+    fn sign_is_zero_at_zero() {
+        let evaluator = eval_ok("a = sign(3);\nb = sign(-0.5);\nc = sign(0);\nd = sign(-0);\n");
+        assert_close(number(&evaluator, "a"), 1.0);
+        assert_close(number(&evaluator, "b"), -1.0);
+        assert_close(number(&evaluator, "c"), 0.0);
+        assert_close(number(&evaluator, "d"), 0.0);
+    }
+
+    #[test]
+    fn clamp_holds_at_both_bounds() {
+        let evaluator = eval_ok(
+            "a = clamp(0.28, 0.04, 0.5);\nb = clamp(1, 0.04, 0.5);\nc = clamp(-2, 0.04, 0.5);\n",
+        );
+        assert_close(number(&evaluator, "a"), 0.28);
+        assert_close(number(&evaluator, "b"), 0.5);
+        assert_close(number(&evaluator, "c"), 0.04);
+    }
+
+    #[test]
+    fn clamp_with_reversed_bounds_is_an_error() {
+        let error = eval_err("x = clamp(1, 0.5, 0.04);\n");
+        assert!(error.message.contains("upper bound"), "{}", error.message);
     }
 
     #[test]
