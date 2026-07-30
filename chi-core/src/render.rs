@@ -5,7 +5,8 @@ use crate::doc::{Document, Glyph, SketchCommand};
 use crate::value::{PathValue, unitvec};
 use curve_fitter::{InputPoint, PointType, fit_curve};
 use kurbo::{
-    Affine, BezPath, CubicBez, ParamCurve, ParamCurveDeriv, PathEl, Point, Rect, Shape, Vec2,
+    Affine, BezPath, CubicBez, Line, ParamCurve, ParamCurveDeriv, PathEl, PathSeg, Point, Rect,
+    Shape, Vec2,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -215,6 +216,113 @@ fn quadratic_roots_in_unit(a: f64, b: f64, c: f64) -> Vec<f64> {
     }
     roots.sort_by(f64::total_cmp);
     roots
+}
+
+/// A fitted segment counts as straight, and a subdivided piece of one as
+/// flat, when neither handle strays further than this from its chord. Font
+/// units, so this is a ten-thousandth of a unit at upm 1000.
+const FLATNESS: f64 = 1e-4;
+
+/// Depth cap for the curve/curve subdivision.
+const MAX_SUBDIVISION: u32 = 24;
+
+/// First intersection of two paths. "First" is the least position along
+/// `a`: its segments in path order, then the least parameter within a
+/// segment. `Ok(None)` means they do not meet.
+pub fn intersection(a: &PathValue, b: &PathValue) -> Result<Option<Point>, RenderError> {
+    let b_segments = fitted_segments(b)?;
+    for a_segment in fitted_segments(a)? {
+        let mut first: Option<(f64, Point)> = None;
+        for b_segment in &b_segments {
+            for (t, point) in segment_intersections(&a_segment, b_segment) {
+                if first.is_none_or(|(best, _)| t < best) {
+                    first = Some((t, point));
+                }
+            }
+        }
+        if let Some((_, point)) = first {
+            return Ok(Some(point));
+        }
+    }
+    Ok(None)
+}
+
+/// Intersections of two fitted segments, as (parameter on `a`, point).
+///
+/// A `--` joint fits to a cubic whose handles sit on the chord, so a
+/// straight segment is exactly a line and kurbo's analytic solvers apply.
+/// That covers the metafont `whatever` idioms of §4.6, which are all
+/// line/line and line/curve. A genuinely curved pair subdivides `a` until
+/// its pieces pass the same straightness test.
+fn segment_intersections(a: &CubicBez, b: &CubicBez) -> Vec<(f64, Point)> {
+    match (as_line(a), as_line(b)) {
+        (Some(line_a), Some(line_b)) => PathSeg::Line(line_b)
+            .intersect_line(line_a)
+            .iter()
+            .map(|hit| (hit.line_t, line_a.eval(hit.line_t)))
+            .collect(),
+        (Some(line_a), None) => PathSeg::Cubic(*b)
+            .intersect_line(line_a)
+            .iter()
+            .map(|hit| (hit.line_t, b.eval(hit.segment_t)))
+            .collect(),
+        (None, Some(line_b)) => PathSeg::Cubic(*a)
+            .intersect_line(line_b)
+            .iter()
+            .map(|hit| (hit.segment_t, a.eval(hit.segment_t)))
+            .collect(),
+        (None, None) => {
+            let mut hits = Vec::new();
+            curve_intersections(a, 0.0, 1.0, b, 0, &mut hits);
+            hits
+        }
+    }
+}
+
+/// Subdivide `a` until each piece is flat, then solve the piece's chord
+/// against `b` analytically. Bounding boxes prune the recursion to the
+/// neighbourhood of a crossing, so in practice this is a handful of tests.
+fn curve_intersections(
+    a: &CubicBez,
+    t0: f64,
+    t1: f64,
+    b: &CubicBez,
+    depth: u32,
+    hits: &mut Vec<(f64, Point)>,
+) {
+    if !a.bounding_box().overlaps(b.bounding_box()) {
+        return;
+    }
+    if depth >= MAX_SUBDIVISION || chord_deviation(a) <= FLATNESS {
+        let chord = Line::new(a.p0, a.p3);
+        for hit in PathSeg::Cubic(*b).intersect_line(chord).iter() {
+            hits.push((t0 + hit.line_t * (t1 - t0), b.eval(hit.segment_t)));
+        }
+        return;
+    }
+    let mid = 0.5 * (t0 + t1);
+    curve_intersections(&a.subsegment(0.0..0.5), t0, mid, b, depth + 1, hits);
+    curve_intersections(&a.subsegment(0.5..1.0), mid, t1, b, depth + 1, hits);
+}
+
+/// The chord of a segment that is straight to within `FLATNESS`.
+fn as_line(segment: &CubicBez) -> Option<Line> {
+    (chord_deviation(segment) <= FLATNESS).then(|| Line::new(segment.p0, segment.p3))
+}
+
+/// How far a segment's handles stray from its chord.
+fn chord_deviation(segment: &CubicBez) -> f64 {
+    let chord = segment.p3 - segment.p0;
+    let length = chord.length();
+    if length < 1e-12 {
+        // Coincident endpoints — a zero-length segment, as a corner radius
+        // of zero produces. The handles are the only extent it has.
+        return (segment.p1 - segment.p0)
+            .length()
+            .max((segment.p2 - segment.p0).length());
+    }
+    let across = |handle: Point| (chord.cross(handle - segment.p0) / length).abs();
+    across(segment.p1).max(across(segment.p2))
 }
 
 // ---- SVG -------------------------------------------------------------------

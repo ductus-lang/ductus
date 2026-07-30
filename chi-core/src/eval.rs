@@ -1101,18 +1101,19 @@ impl Evaluator {
                 expect_arity(2)?;
                 Ok(Value::Number(point_at(0)?.distance(point_at(1)?)))
             }
+            // Path queries observe the fitted curve — the geometry that
+            // renders; see render.rs.
             "intersection" => {
                 expect_arity(2)?;
                 let (a, b) = (&values[0], &values[1]);
                 let (Value::Path(a), Value::Path(b)) = (a, b) else {
                     return Err(err(span, "intersection() expects two paths"));
                 };
-                intersection(a, b)
+                crate::render::intersection(a, b)
+                    .map_err(|error| err(span, error.message))?
                     .map(Value::Point)
                     .ok_or_else(|| err(span, "paths do not intersect"))
             }
-            // Path queries observe the fitted curve — the geometry that
-            // renders; see render.rs.
             "point" => {
                 expect_arity(2)?;
                 crate::render::point_at(path_at(0)?, number_at(1)?)
@@ -1283,45 +1284,6 @@ fn reverse_path(path: PathValue) -> PathValue {
 
 /// First intersection of two paths, treating their segments as straight
 /// chords. Covers the common construction: intersection(a -- b, c -- d).
-fn intersection(a: &PathValue, b: &PathValue) -> Option<Point> {
-    for (a0, a1) in chords(a) {
-        for (b0, b1) in chords(b) {
-            if let Some(point) = segment_intersection(a0, a1, b0, b1) {
-                return Some(point);
-            }
-        }
-    }
-    None
-}
-
-fn chords(path: &PathValue) -> Vec<(Point, Point)> {
-    let mut chords = Vec::new();
-    let count = path.points.len();
-    for index in 0..count.saturating_sub(1) {
-        chords.push((path.points[index].pos, path.points[index + 1].pos));
-    }
-    if path.closed && count > 1 {
-        chords.push((path.points[count - 1].pos, path.points[0].pos));
-    }
-    chords
-}
-
-fn segment_intersection(p1: Point, p2: Point, p3: Point, p4: Point) -> Option<Point> {
-    let d1 = p2 - p1;
-    let d2 = p4 - p3;
-    let denominator = d1.cross(d2);
-    if denominator.abs() < 1e-12 {
-        return None; // parallel
-    }
-    let t = (p3 - p1).cross(d2) / denominator;
-    let u = (p3 - p1).cross(d1) / denominator;
-    if (0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u) {
-        Some(p1 + t * d1)
-    } else {
-        None
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1791,6 +1753,56 @@ mod tests {
             "p = intersection((0, 0) -- (10, 10), (0, 10) -- (10, 0));\n",
         );
         assert_point(point(&evaluator, "p"), 5.0, 5.0);
+    }
+
+    /// Radius of a point about the origin.
+    fn radius(point: Point) -> f64 {
+        point.to_vec2().length()
+    }
+
+    #[test]
+    fn intersection_follows_the_fitted_curve_not_the_chord() {
+        // A four-point circle of radius 100 about the origin, cut by the
+        // diagonal. The answer sits on the curve at 45°: radius 100, give
+        // or take the fitter's 0.027 %. The chord between the on-curve
+        // points would have answered (50, 50) — radius 70.7.
+        let evaluator = eval_ok(concat!(
+            "c = (100, 0) {up} .. (0, 100) {left}",
+            " .. (-100, 0) {down} .. (0, -100) {right} .. cycle;\n",
+            "d = (0, 0) -- (200, 200);\n",
+            "p = intersection(c, d);\n",
+        ));
+        let p = point(&evaluator, "p");
+        assert!((radius(p) - 100.0).abs() < 0.05, "radius {}", radius(p));
+        assert!((p.x - p.y).abs() < 1e-6, "off the diagonal: {p:?}");
+    }
+
+    #[test]
+    fn intersection_of_two_curves() {
+        // Two unit-radius circles a radius apart meet at x = 50,
+        // y = ±86.6. Neither segment is straight, so this is the
+        // subdivision path.
+        let evaluator = eval_ok(concat!(
+            "a = (100, 0) {up} .. (0, 100) {left}",
+            " .. (-100, 0) {down} .. (0, -100) {right} .. cycle;\n",
+            "b = (200, 0) {up} .. (100, 100) {left}",
+            " .. (0, 0) {down} .. (100, -100) {right} .. cycle;\n",
+            "p = intersection(a, b);\n",
+        ));
+        let p = point(&evaluator, "p");
+        assert!((radius(p) - 100.0).abs() < 0.05, "not on a: {p:?}");
+        assert!(
+            (radius(p - Vec2::new(100.0, 0.0)) - 100.0).abs() < 0.05,
+            "not on b: {p:?}"
+        );
+        assert!((p.x - 50.0).abs() < 0.05, "{p:?}");
+        assert!((p.y - 86.6025403784).abs() < 0.05, "{p:?}");
+    }
+
+    #[test]
+    fn paths_that_do_not_meet_are_an_error() {
+        let error = eval_err("p = intersection((0, 0) -- (1, 0), (0, 5) -- (1, 5));\n");
+        assert!(error.message.contains("do not intersect"), "{}", error.message);
     }
 
     #[test]
