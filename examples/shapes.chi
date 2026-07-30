@@ -2,7 +2,7 @@
 #
 # Five glyphs cut from the same box. Four are a line each, now that the
 # shape constructors exist. The fifth is written out point by point,
-# because the language keeps that option (§1.4) and because the egg has no
+# because the designer owns the outline and because the egg has no
 # constructor to hide behind.
 #
 # What this file exercises
@@ -27,9 +27,9 @@
 #   * Sampling sets a squircle's fidelity, not fitting. Sixteen samples
 #     hold exponent 4 to 0.15 % of the side; by exponent 10 the corner has
 #     outrun them, at 0.69 %, and thirty-two bring that back to 0.16 %.
-#   * The sample count cannot follow the exponent, though. §9.3 fixes a
-#     contour's point count across the design space, so it is a constant
-#     here and the slider has to live with one choice.
+#   * The sample count cannot follow the exponent, though: interpolation
+#     compatibility fixes a contour's point count across the design space,
+#     so it is a constant here and the slider has to live with one choice.
 #   * Same rule at the other end: a corner radius of zero is a rectangle
 #     with four zero-length segments, not a four-point path. That holds the
 #     topology, but a zero-length segment has no tangent, so the path
@@ -68,14 +68,24 @@ def corner_guide(c) -> g {
 glyph circle {
   advance = size + 2 sb;
   center  = (advance / 2, size / 2);
+  r       = size / 2 + over;
 
-  contour main = circle(center, size / 2 + over);
+  contour main = circle(center, r);
 
   guide box = corner_guide(center);
 
-  # Two queries, one curve: on a circle the tangent turns 135° exactly
-  # halfway along the first segment, so both anchors land on 45° and
-  # coincide. They read the fitted geometry, not the source points.
+  # The fitter's own error, measured from inside the language: read these
+  # with `chi inspect` or in the playground's inspector. The handle length
+  # is chosen so the arc passes exactly through 45°, which is the midpoint
+  # of the first segment — so `waist` is zero, and the error lives between,
+  # peaking near t = 0.21 at 0.027 % of r.
+  waist = distance(point(main, 0.5), center) - r;   #  0
+  bulge = distance(point(main, 0.2), center) - r;   #  0.0787 at r = 290
+
+  # Three queries, one point: the tangent turns 135° exactly where segment
+  # time reaches 0.5 and where the diagonal crosses, so on a circle all
+  # three anchors land together. They read the fitted geometry, not the
+  # source points.
   anchor corner = directionpoint(main, 135);
   anchor mid    = point(main, 0.5);
 

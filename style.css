@@ -181,3 +181,37 @@ main {
   max-height: 100%;
   height: auto;
 }
+
+#inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 11rem;
+  overflow: auto;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 0.8rem;
+}
+#inspector:empty { display: none; }
+
+#inspector .group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 1rem;
+}
+
+#inspector .label {
+  min-width: 5.5rem;
+  color: var(--text-faint);
+}
+
+#inspector .measure {
+  display: flex;
+  gap: 0.4rem;
+  font-family: ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+#inspector .measure .value { color: var(--text); }

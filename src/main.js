@@ -12,6 +12,7 @@ const exampleSelect = document.querySelector("#example");
 const glyphSelect = document.querySelector("#glyph");
 const debugCheckbox = document.querySelector("#debug");
 const paramsPanel = document.querySelector("#params");
+const inspector = document.querySelector("#inspector");
 const preview = document.querySelector("#preview");
 const status = document.querySelector("#status");
 
@@ -126,6 +127,7 @@ function render() {
     preview.innerHTML = result.svg;
     updateParams(result.params);
     updateGlyphs(result.glyphs);
+    updateInspector(result.measures);
     view.dispatch(setDiagnostics(view.state, []));
   } else {
     status.hidden = false;
@@ -217,8 +219,53 @@ function updateGlyphs(glyphs) {
   }
 }
 
+// Every named number in the document: metrics, top-level bindings, and the
+// glyph's own. Derived measures are otherwise write-only — the source can
+// compute a value but nothing shows it — so this is where a probe like
+// `bulge = distance(point(main, 0.2), center) - r` becomes readable.
+function updateInspector(measures) {
+  const wanted = glyphSelect.value;
+  const groups = [
+    ["metrics", measures.metrics],
+    ["bindings", measures.bindings],
+    ...measures.glyphs.filter(([name]) => !wanted || name === wanted),
+  ].filter(([, numbers]) => numbers.length > 0);
+
+  inspector.innerHTML = "";
+  for (const [title, numbers] of groups) {
+    const group = document.createElement("div");
+    group.className = "group";
+
+    const label = document.createElement("span");
+    label.className = "label";
+    label.textContent = title;
+    group.append(label);
+
+    for (const [name, value] of numbers) {
+      const measure = document.createElement("span");
+      measure.className = "measure";
+      const key = document.createElement("span");
+      key.textContent = name;
+      const shown = document.createElement("span");
+      shown.className = "value";
+      shown.textContent = precise(value);
+      measure.append(key, shown);
+      group.append(measure);
+    }
+    inspector.append(group);
+  }
+}
+
 function format(value) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+// Four decimals is not enough for a slider label but is right for a probe:
+// the fitter's radial error on a 290-unit circle is 0.0787 units.
+function precise(value) {
+  if (Number.isInteger(value)) return String(value);
+  const text = value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  return text === "-0" ? "0" : text;
 }
 
 async function loadExample(name) {
