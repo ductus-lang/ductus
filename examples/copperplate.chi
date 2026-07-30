@@ -1,0 +1,382 @@
+# Copperplate: the seven basic strokes, and letters built from them.
+#
+# Copperplate is written with a pointed pen whose tines spread under
+# pressure, so a stroke swells and thins along its length. chi has no
+# pressure — but a node's width is its own, so pressure is just which nib a
+# node carries, and the fitter draws the swell between them. The pressure
+# profile is sampled at nodes exactly as an outline is sampled at points.
+#
+# The nib is round, and that is not a simplification. A pointed pen's slit
+# runs along the direction of travel, so the tines open across it and the
+# stroke thickens perpendicular to travel — which is what a circular pen
+# does at every angle. Three of them here; pressure is the choice between
+# them.
+#
+# Nothing is authored twice. Each stroke declares its pen path — the
+# gesture, three or four points — and then places pressure *along* it:
+#
+#     e = press(spine, 2.45, full);
+#
+# reads as "at 2.45 of the way along, full weight". Both the position and
+# the direction come from the path, so the banks are true offsets of the
+# curve that renders rather than of angles guessed alongside it. Sampling
+# density is then free, which matters: an arch shoulder turns 125° in one
+# segment, and without nodes inside the turn the inner bank has nothing to
+# trace and folds over itself.
+#
+# A letter is one contour per pen stroke, all counterclockwise, overlapping
+# where the strokes meet. The nonzero rule unions them — which is also how
+# the letter is written, one stroke at a time.
+#
+# Where it runs out
+#   * Pressure is a step function over three nibs. A real swell is
+#     continuous, and its shape — where the stroke reaches full weight, how
+#     quickly it lets go — is most of what distinguishes one hand from
+#     another. Here that shape is only whatever the fitter does between two
+#     samples, and the only control is more samples.
+#   * Pressure and curvature interact, and nothing says so. Widening the pen
+#     where the path turns tightest folds the inner bank over itself and
+#     bites a wedge out of the stroke; an arch shoulder is exactly such a
+#     place. The rule is that the pen's radius must stay under the radius of
+#     curvature, which copperplate obeys for free — you press on the
+#     straight pull and release into the turns — but here it is a trap with
+#     no diagnostic, and the symptom is a shape that looks gnawed. Every
+#     `hairline` on a shoulder below is load-bearing.
+#   * Every stroke spells out the same cap-and-return idiom, because a def
+#     cannot take a variable number of nodes and a path cannot be spliced
+#     into another path. Two thirds of each stroke is that boilerplate.
+#   * A stroke is a macro, not geometry: 'm' re-runs an overturn twice
+#     rather than placing one twice.
+#   * Nothing carries the notion of pressure *rising*. The compound stroke
+#     swells twice and both swells are placed by hand.
+#   * Seven strokes are not an alphabet. The five letters below are the
+#     combinations the reference spells out, and they cost nothing beyond
+#     placing strokes — but the rest of the lowercase needs the three more
+#     strokes it also names: the dot, the flat top, and the small underturn.
+#     The combinatorial promise is real; the count is ten, not seven.
+
+params {
+  slant    = 55 in 40..70;    # the shade axis, degrees from the baseline
+  shade    = 46 in 12..90;    # full-pressure thickness
+  contrast = 11 in 3..24;     # shade / hairline
+  xheight  = 250 in 150..320;
+}
+
+metrics {
+  upm  = 1000;
+  x    = xheight;
+  asc  = 2.6 xheight;         # engrosser's proportions are extreme
+  desc = -1.3 xheight;
+  cap  = 2 xheight;
+}
+
+hair  = shade / contrast;
+half  = 0.48 (shade + hair);
+shear = 1 / tan(slant);       # rightward push per unit of height
+aw    = 0.66 x;               # arch width: the run of one letter part
+sb    = 0.18 x;               # sidebearing
+
+# The three pressures.
+pen hairline { width = hair;  height = hair; }
+pen medium   { width = half;  height = half; }
+pen full     { width = shade; height = shade; }
+
+axis_up   = slant;            # travelling up the shade axis
+axis_down = slant + 180;      # and down it
+
+# A point `run` along the baseline and `rise` above it, pushed right by the
+# slant, so that a fixed run traces the shade axis.
+def at(run, rise) -> p { p = (run + shear * rise, rise); }
+
+# A pressure sample: a node on the pen path at segment time `t`, carrying
+# `nib`. Position and direction both come from the path.
+def press(path, t, nib) -> n {
+  node n = point(path, t) dir direction(path, t) pen nib;
+}
+
+# ---- The seven strokes -----------------------------------------------------
+
+# (1) The entrance stroke: hairline throughout, swinging up from the
+# baseline to meet the letter. No pressure at all.
+def entrance(run) -> (outline, spine) {
+  spine = (run, 0.03 x) {30} .. (run + 0.45 aw, 0.24 x)
+       .. at(run + 0.55 aw, 0.52 x) {axis_up};
+  a = press(spine, 0,   hairline);
+  b = press(spine, 1,   hairline);
+  c = press(spine, 1.6, hairline);
+  d = press(spine, 2,   hairline);
+
+  outline =
+      {a.dir} a.right .. b.right .. c.right .. d.right {d.dir}
+   .. {d.dir + 90} d.tip {d.dir + 90}
+   .. {d.dir + 180} d.left .. c.left .. b.left .. a.left {a.dir + 180}
+   .. {a.dir + 270} a.tail {a.dir + 270}
+   .. cycle;
+}
+
+# (2) The oval: a closed pen path, shaded down its left flank and hairline
+# up its right. Travelling counterclockwise, the right bank is the outer
+# contour and the left bank — taken in reverse — is the counter.
+def oval(run) -> (outer, counter, spine) {
+  cu = run + 0.5 aw;
+  ru = 0.38 aw;
+  spine = at(cu, x) .. at(cu - ru, 0.5 x) .. at(cu, 0) .. at(cu + ru, 0.5 x)
+       .. cycle;
+  a = press(spine, 0,   medium);      # top
+  b = press(spine, 0.5, full);
+  c = press(spine, 1,   full);        # left flank: the shade
+  d = press(spine, 1.5, medium);
+  e = press(spine, 2,   hairline);    # bottom
+  f = press(spine, 2.5, hairline);
+  g = press(spine, 3,   hairline);    # right flank
+  h = press(spine, 3.5, hairline);
+
+  outer = a.right .. b.right .. c.right .. d.right .. e.right .. f.right
+       .. g.right .. h.right .. cycle;
+  counter = a.left .. h.left .. g.left .. f.left .. e.left .. d.left
+       .. c.left .. b.left .. cycle;
+}
+
+# (3) The underturn: down the shade axis under pressure, round the baseline,
+# away as a hairline. The turn is where the pen has already let go.
+def underturn(run) -> (outline, spine) {
+  spine = at(run, x) {axis_down} .. (run + 0.30 x, 0.14 x)
+       .. {right} (run + 0.5 aw, 0) .. at(run + aw, 0.52 x) {axis_up};
+  a = press(spine, 0,    medium);
+  b = press(spine, 0.35, full);
+  c = press(spine, 0.7,  full);
+  d = press(spine, 1,    medium);
+  e = press(spine, 1.5,  hairline);
+  f = press(spine, 2,    hairline);
+  g = press(spine, 3,    hairline);
+
+  outline =
+      {a.dir} a.right .. b.right .. c.right .. d.right .. e.right .. f.right
+   .. g.right {g.dir}
+   .. {g.dir + 90} g.tip {g.dir + 90}
+   .. {g.dir + 180} g.left .. f.left .. e.left .. d.left .. c.left .. b.left
+   .. a.left {a.dir + 180}
+   .. {a.dir + 270} a.tail {a.dir + 270}
+   .. cycle;
+}
+
+# (4) The overturn: hairline up, over the shoulder, then down under
+# pressure. The mirror of the underturn, pressure and all.
+def overturn(run) -> (outline, spine) {
+  spine = (run, 0.03 x) {50} .. at(run + 0.1 aw, 0.6 x)
+       .. {right} at(run + aw, x) .. at(run + aw, 0.03 x) {axis_down};
+  a = press(spine, 0,    hairline);
+  b = press(spine, 1,    hairline);
+  c = press(spine, 2,    hairline);   # the shoulder stays light
+  d = press(spine, 2.4,  medium);
+  e = press(spine, 2.65, full);
+  f = press(spine, 2.85, full);
+  g = press(spine, 3,    medium);
+
+  outline =
+      {a.dir} a.right .. b.right .. c.right .. d.right .. e.right .. f.right
+   .. g.right {g.dir}
+   .. {g.dir + 90} g.tip {g.dir + 90}
+   .. {g.dir + 180} g.left .. f.left .. e.left .. d.left .. c.left .. b.left
+   .. a.left {a.dir + 180}
+   .. {a.dir + 270} a.tail {a.dir + 270}
+   .. cycle;
+}
+
+# (5) The compound: an overturn and an underturn in one pen stroke — up,
+# over, down under pressure, round the bottom, away. Two pressure events on
+# one path, which is where the want of a dynamic nib shows most.
+def compound(run) -> (outline, spine) {
+  spine = (run, 0.03 x) {50} .. at(run + 0.1 aw, 0.6 x)
+       .. {right} at(run + aw, x) .. (run + aw + 0.30 x, 0.14 x)
+       .. {right} (run + 1.5 aw, 0) .. at(run + 2 aw, 0.52 x) {axis_up};
+  a = press(spine, 0,    hairline);
+  b = press(spine, 1,    hairline);
+  c = press(spine, 2,    hairline);   # the shoulder stays light
+  d = press(spine, 2.45, medium);
+  e = press(spine, 2.75, full);
+  f = press(spine, 3,    medium);
+  g = press(spine, 3.5,  hairline);
+  h = press(spine, 4,    hairline);
+  i = press(spine, 5,    hairline);
+
+  outline =
+      {a.dir} a.right .. b.right .. c.right .. d.right .. e.right .. f.right
+   .. g.right .. h.right .. i.right {i.dir}
+   .. {i.dir + 90} i.tip {i.dir + 90}
+   .. {i.dir + 180} i.left .. h.left .. g.left .. f.left .. e.left .. d.left
+   .. c.left .. b.left .. a.left {a.dir + 180}
+   .. {a.dir + 270} a.tail {a.dir + 270}
+   .. cycle;
+}
+
+# (6) The ascender: a hairline loop over the top, then the shaded stem down
+# to the baseline, crossing the loop on the way.
+def ascender(run) -> (outline, spine) {
+  lu = run + 0.34 aw;
+  spine = at(lu, 0.5 asc) {72} .. at(lu + 0.3 aw, 0.84 asc)
+       .. {170} at(lu + 0.02 aw, asc) .. at(lu - 0.26 aw, 0.8 asc)
+       .. at(run, 0.42 asc) .. at(run, 0.03 x) {axis_down};
+  a = press(spine, 0,   hairline);
+  b = press(spine, 1,   hairline);
+  c = press(spine, 2,   hairline);
+  d = press(spine, 2.6, hairline);
+  e = press(spine, 3,   medium);
+  f = press(spine, 3.6, full);
+  g = press(spine, 4,   full);
+  h = press(spine, 5,   medium);
+
+  outline =
+      {a.dir} a.right .. b.right .. c.right .. d.right .. e.right .. f.right
+   .. g.right .. h.right {h.dir}
+   .. {h.dir + 90} h.tip {h.dir + 90}
+   .. {h.dir + 180} h.left .. g.left .. f.left .. e.left .. d.left .. c.left
+   .. b.left .. a.left {a.dir + 180}
+   .. {a.dir + 270} a.tail {a.dir + 270}
+   .. cycle;
+}
+
+# (7) The descender: the shaded stem down through the baseline, then the
+# loop swinging out below and back up as a hairline, crossing the stem.
+def descender(run) -> (outline, spine) {
+  spine = at(run, x) {axis_down} .. at(run, 0.42 desc)
+       .. {185} at(run - 0.34 aw, desc) .. at(run - 0.74 aw, 0.42 desc)
+       .. (run + 0.34 aw, 0.08 x) {28};
+  a = press(spine, 0,    medium);
+  b = press(spine, 0.35, full);
+  c = press(spine, 0.75, full);
+  d = press(spine, 1,    medium);
+  e = press(spine, 1.5,  hairline);
+  f = press(spine, 2,    hairline);
+  g = press(spine, 3,    hairline);
+  h = press(spine, 4,    hairline);
+
+  outline =
+      {a.dir} a.right .. b.right .. c.right .. d.right .. e.right .. f.right
+   .. g.right .. h.right {h.dir}
+   .. {h.dir + 90} h.tip {h.dir + 90}
+   .. {h.dir + 180} h.left .. g.left .. f.left .. e.left .. d.left .. c.left
+   .. b.left .. a.left {a.dir + 180}
+   .. {a.dir + 270} a.tail {a.dir + 270}
+   .. cycle;
+}
+
+# ---- The strokes as glyphs -------------------------------------------------
+#
+# Each shows its own pen path as a guide, so --debug reads as the gesture
+# plus the pressure its nodes carry.
+
+glyph entrance {
+  advance = aw + shear * x + 2 sb;
+  (o, k) = entrance(sb);
+  contour s = o;
+  guide pen_path = k;
+}
+
+glyph oval {
+  advance = aw + shear * x + 2 sb;
+  (body, hole, k) = oval(sb);
+  contour outer = body;
+  contour inner = hole;
+  guide pen_path = k;
+}
+
+glyph underturn {
+  advance = aw + shear * x + 2 sb;
+  (o, k) = underturn(sb);
+  contour s = o;
+  guide pen_path = k;
+}
+
+glyph overturn {
+  advance = aw + shear * x + 2 sb;
+  (o, k) = overturn(sb);
+  contour s = o;
+  guide pen_path = k;
+}
+
+glyph compound {
+  advance = 2 aw + shear * x + 2 sb;
+  (o, k) = compound(sb);
+  contour s = o;
+  guide pen_path = k;
+}
+
+glyph ascender {
+  advance = aw + shear * asc + 2 sb;
+  (o, k) = ascender(sb);
+  contour s = o;
+  guide pen_path = k;
+}
+
+glyph descender {
+  advance = aw + shear * x + 4 sb;
+  (o, k) = descender(sb + 0.8 aw);
+  contour s = o;
+  guide pen_path = k;
+}
+
+# ---- Letters, as the strokes that write them ------------------------------
+
+# (6) ascender + (5) compound
+glyph h : U+0068 {
+  advance = 2 aw + shear * x + 2 sb;
+  (stem, stem_path) = ascender(sb);
+  (arch, arch_path) = compound(sb + 0.05 aw);
+  contour s1 = stem;
+  contour s2 = arch;
+  guide k1 = stem_path;
+  guide k2 = arch_path;
+}
+
+# (5) compound + (3) underturn. No stroke (1): the compound opens with an
+# upstroke of its own, which is the entrance.
+glyph u : U+0075 {
+  advance = 3 aw + shear * x + 2 sb;
+  (first, first_path) = compound(sb);
+  (last, last_path)   = underturn(sb + 2 aw);
+  contour s1 = first;
+  contour s2 = last;
+  guide k1 = first_path;
+  guide k2 = last_path;
+}
+
+# (4) overturn + (4) overturn + (5) compound
+glyph m : U+006D {
+  advance = 4 aw + shear * x + 2 sb;
+  (first, first_path)   = overturn(sb);
+  (second, second_path) = overturn(sb + aw);
+  (last, last_path)     = compound(sb + 2 aw);
+  contour s1 = first;
+  contour s2 = second;
+  contour s3 = last;
+  guide k1 = first_path;
+  guide k2 = second_path;
+  guide k3 = last_path;
+}
+
+# (4) overturn + (5) compound — the same two strokes 'm' ends with.
+glyph n : U+006E {
+  advance = 3 aw + shear * x + 2 sb;
+  (first, first_path) = overturn(sb);
+  (last, last_path)   = compound(sb + aw);
+  contour s1 = first;
+  contour s2 = last;
+  guide k1 = first_path;
+  guide k2 = last_path;
+}
+
+# (1) entrance + (2) oval + (7) descender. The oval opens on a downstroke,
+# so this is a letter that does need the entrance stroke.
+glyph g : U+0067 {
+  advance = 2 aw + shear * x + 2 sb;
+  (lead, lead_path)       = entrance(sb - 0.5 aw);
+  (body, hole, body_path) = oval(sb);
+  (tail, tail_path)       = descender(sb + 0.95 aw);
+  contour s1 = lead;
+  contour s2 = body;
+  contour s3 = hole;
+  contour s4 = tail;
+  guide k1 = body_path;
+  guide k2 = tail_path;
+}
