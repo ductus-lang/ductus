@@ -1,0 +1,218 @@
+# Round shapes: circle, ellipse, rounded square, squircle, oval.
+#
+# Five glyphs cut from the same box, to compare how chi says "curved".
+# There are no arcs and no stroke expansion in the language, so every
+# shape here is a set of on-curve points plus tangent constraints, and
+# the spline fitter supplies the handles.
+#
+# What this file exercises
+#   unitvec, cos, sin           polar construction (circle, squircle)
+#   ^, abs, sign                the superellipse (squircle)
+#   clamp                       the corner radius (rounded square)
+#   sqrt                        box half-diagonal, for the corner guide
+#   angle                       a tangent derived from a chord (squircle)
+#   t[a, b]                     mediation places the oval's waist
+#   yscaled / shifted           one unit path reused by two glyphs
+#   directionpoint, point       probing the geometry that renders
+#
+# Where it meets the walls of v0.1
+#   * No arcs — and for a circle it does not matter. The fitter lands on
+#     the classic four-arc approximation exactly: handles at 0.5523 r,
+#     0.027 % peak radial error, from four points and a 90° span each.
+#     What it will not do is degenerate: `corner` near 0 puts an arc's
+#     two on-curve points on top of each other, and over 0.5 it overlaps
+#     its neighbour. Both ends are clamped rather than special-cased,
+#     because §9.3 rules out dropping the points.
+#   * The handle rule is not affine-equivariant, so that accuracy does
+#     not survive a squash. Scaling the four-point circle yields the same
+#     points and tangents as writing the four ellipse points out by hand,
+#     and both refit to a curve 1.2 % of rx outside a true ellipse — 3.5
+#     units here, bulging around 39°, because the fitter makes the
+#     vertical handle 15 % too long. Eight points bring it to 0.36 %, and
+#     to 0.08 % if the intermediate tangents are supplied too. Circles
+#     are exact; conics in general are not.
+#   * No loops inside a path expression: the squircle's samples are
+#     written out one per line. §9.3 wants that count fixed across the
+#     design space anyway, so the restriction costs nothing.
+#   * Sampling, not fitting, sets the fidelity. The squircle's sixteen
+#     samples track a true superellipse to 0.25 % of the side at exponent
+#     4; by exponent 10 the corner has outrun them and the error is 1 %.
+#     Eight samples are twice to three times as far off — the fitter is
+#     not the bottleneck, the point count is.
+#   * intersection() cuts the chords between on-curve points, not the
+#     fitted curve, so it is exact only where the path is straight. The
+#     corner probes below use directionpoint(), which reads the curve.
+#   * No pi and no inverse trig beyond angle(): angles are degrees
+#     everywhere, so neither has come up yet.
+
+params {
+  size     = 560 in 240..700;   # the box: side length, before overshoot
+  aspect   = 0.72 in 0.35..1.0; # ellipse: height / width
+  corner   = 0.28 in 0..1;      # rounded square: corner radius / side
+  exponent = 4 in 2..10;        # squircle: superellipse exponent
+  waist    = 0.40 in 0.28..0.5; # oval: height of the widest point / height
+}
+
+metrics {
+  upm  = 1000;
+  cap  = size;        # the box top; every shape sits on the baseline
+  x    = 0.5 size;    # half-height, for reference in --debug
+  asc  = 800;
+  desc = -100;
+  over = size / 55;   # round shapes overshoot the flat ones
+}
+
+sb = 60;              # sidebearing, same on every glyph
+
+# A circle centred on the origin: four points on the cardinal bearings,
+# each tangent perpendicular to its radius. Travel is counterclockwise,
+# so the tangent leaving bearing t is t + 90 — which is why the
+# direction constants line up one step ahead of the bearings.
+def ring(r) -> p {
+  p = r * unitvec(right) {up}
+   .. r * unitvec(up)    {left}
+   .. r * unitvec(left)  {down}
+   .. r * unitvec(down)  {right}
+   .. cycle;
+}
+
+# The superellipse |x/a|^n + |y/b|^n = 1, sampled at bearing t. `^` is a
+# plain power, and a negative base with a fractional exponent is not a
+# number, so each coordinate is raised as a magnitude and signed after.
+def superellipse(a, b, n, t) -> p {
+  e = 2 / n;
+  p = (sign(cos(t)) * a * abs(cos(t)) ^ e, sign(sin(t)) * b * abs(sin(t)) ^ e);
+}
+
+# Centre to box corner: the direction every shape in the square box
+# reaches for, and the length none of them reaches.
+def corner_guide(c) -> g {
+  g = c -- c + (sqrt(2) * size / 2) * unitvec(45);
+}
+
+glyph circle {
+  advance = size + 2 sb;
+  center  = (advance / 2, size / 2);
+
+  contour main = ring(size / 2 + over) shifted center;
+
+  guide box = corner_guide(center);
+
+  # Two queries, one curve: on a circle the tangent turns 135° exactly
+  # halfway along the first segment, so both anchors land on 45° and
+  # coincide. They read the fitted geometry, not the source points.
+  anchor corner = directionpoint(main, 135);
+  anchor mid    = point(main, 0.5);
+}
+
+glyph ellipse {
+  advance = size + 2 sb;
+  center  = (advance / 2, aspect * size / 2);
+
+  # The same four points and tangents as the circle, mapped through an
+  # affine. Transforms act on the path value — points and constraints —
+  # and the fit happens afterwards, at render time, so this is exactly
+  # equivalent to writing the four ellipse points out by hand. Which is
+  # also why it is 1.2 % off: the fit that is exact for the circle is not
+  # exact for its own image under a squash. See the header.
+  contour main = ring(size / 2 + over) yscaled aspect shifted center;
+
+  anchor corner = directionpoint(main, 135);
+}
+
+glyph roundsquare {
+  advance = size + 2 sb;
+  center  = (advance / 2, size / 2);
+
+  # Corner radius as a fraction of the side, clamped at both ends —
+  # exactly what the spec has in mind for arithmetic on a param. The
+  # slider runs to 1, but past 0.5 neighbouring arcs would overlap, so
+  # the shape holds at the circle; below a few percent an arc's two
+  # on-curve points would land on top of each other.
+  k  = clamp(corner, 0.04, 0.5) * size;
+  x0 = sb;   x1 = sb + size;
+  y0 = 0;    y1 = size;
+
+  # Counterclockwise from the bottom edge. Line/curve corners are
+  # automatic; each arc is pinned by the tangents of the two sides it
+  # joins, which is what keeps it circular as `size` and `corner` move.
+  contour main =
+      {right} (x0 + k, y0) -- (x1 - k, y0) {right}
+   .. {up}    (x1, y0 + k) -- (x1, y1 - k) {up}
+   .. {left}  (x1 - k, y1) -- (x0 + k, y1) {left}
+   .. {down}  (x0, y1 - k) -- (x0, y0 + k) {down}
+   .. cycle;
+
+  guide box = corner_guide(center);
+  anchor corner = directionpoint(main, 135);
+}
+
+glyph squircle {
+  advance = size + 2 sb;
+  center  = (advance / 2, size / 2);
+
+  n = exponent;
+
+  # Overshoot in proportion to how round the shape still is: exponent 2
+  # is a circle and takes the full amount, a high exponent is nearly a
+  # square and takes almost none.
+  r = size / 2 + 2 over / n;
+
+  # The corner tangent, taken from the chord between the corner sample's
+  # two neighbours. It comes out at 135° for a symmetric superellipse,
+  # but it is derived, so uneven sampling would stay smooth too.
+  slope = angle(superellipse(r, r, n, 56.25) - superellipse(r, r, n, 33.75));
+
+  # Sixteen samples, at 22.5° of bearing. Tangents are given only where
+  # the shape dictates them — the four extremes and the four corners; in
+  # between, the fitter's G2 continuity is the better authority. No loop
+  # can build a path, so the samples are spelled out, and §9.3 wants that
+  # count fixed across the design space anyway.
+  outline =
+      superellipse(r, r, n, 0)     {up}
+   .. superellipse(r, r, n, 22.5)
+   .. superellipse(r, r, n, 45)    {slope}
+   .. superellipse(r, r, n, 67.5)
+   .. superellipse(r, r, n, 90)    {left}
+   .. superellipse(r, r, n, 112.5)
+   .. superellipse(r, r, n, 135)   {slope + 90}
+   .. superellipse(r, r, n, 157.5)
+   .. superellipse(r, r, n, 180)   {down}
+   .. superellipse(r, r, n, 202.5)
+   .. superellipse(r, r, n, 225)   {slope + 180}
+   .. superellipse(r, r, n, 247.5)
+   .. superellipse(r, r, n, 270)   {right}
+   .. superellipse(r, r, n, 292.5)
+   .. superellipse(r, r, n, 315)   {slope + 270}
+   .. superellipse(r, r, n, 337.5)
+   .. cycle;
+
+  contour main = outline shifted center;
+
+  guide box = corner_guide(center);
+  anchor corner = directionpoint(main, 135);
+}
+
+glyph oval {
+  advance = size + 2 sb;
+
+  # An egg. Same height as the rest, but the widest point sits below the
+  # middle: `waist[0, size]` is mediation — waist of the way from the
+  # baseline to the top — so the two ends stay unequal at any size. The
+  # narrow end is not a separate construction; it is just the longer of
+  # the two domes over the same half-width. At waist = 0.5 it is an
+  # ellipse, and the same four points describe both.
+  cx = advance / 2;
+  rx = 0.38 size;
+  yw = waist[0, size];
+
+  contour main =
+      (cx + rx, yw)        {up}
+   .. (cx, size + over)    {left}
+   .. (cx - rx, yw)        {down}
+   .. (cx, -over)          {right}
+   .. cycle;
+
+  guide axis = (cx, -over) -- (cx, size + over);
+  anchor corner = directionpoint(main, 135);
+}
