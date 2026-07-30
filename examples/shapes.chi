@@ -16,14 +16,19 @@
 #
 # Measured limits, as the greatest distance from the fitted outline to the
 # ideal curve it is approximating.
-#   * Circles are exact; ellipses are not. The fitter lands on the classic
-#     four-arc circle exactly — handles at 0.5523 r, 0.027 % of r out —
-#     but its handle rule is not affine-equivariant, so squashing that
-#     circle does not give a good ellipse. The dashed guide in the ellipse
-#     glyph is that squash, standing 1.05 % of rx outside the contour it
-#     ought to coincide with, because the fitter draws the vertical handle
-#     15 % too long. Which is what the eight points of ellipse() buy:
-#     0.062 %.
+#   * Circles are exact at any sampling density — the fitter's velocity is
+#     the exact circular-arc one at every angle. The price is that it reads
+#     angles, so it is not affine-equivariant: squashing a circle is not
+#     the same as squashing its fitted curve. The dashed guide in the
+#     ellipse glyph is that squash, standing 1.05 % of rx outside the
+#     contour it ought to coincide with, and it gets worse the harder you
+#     squash — 3.8 % at a 1:2 aspect. Which is what ellipse() is for; its
+#     eight points hold 0.062 % here.
+#
+#     Not a defect to be fixed, though: an equivariant rule cannot tell a
+#     45° arc from a 90° one (they are affinely equivalent), so it would
+#     have one handle constant and put every eight-point circle 1.05 % out
+#     — the same error, moved somewhere it would be met far more often.
 #   * Sampling sets a squircle's fidelity, not fitting. Sixteen samples
 #     hold exponent 4 to 0.15 % of the side; by exponent 10 the corner has
 #     outrun them, at 0.69 %, and thirty-two bring that back to 0.16 %.
