@@ -2,6 +2,7 @@
 
 use crate::ast::*;
 use crate::doc::{Document, Glyph, Param, SketchCommand};
+use crate::shapes;
 use crate::value::{NodeValue, PathPoint, PathValue, PenValue, Value, unitvec};
 use kurbo::{Affine, Point, Vec2};
 use std::collections::{HashMap, HashSet};
@@ -27,9 +28,17 @@ const BUILTIN_FUNCTIONS: &[&str] = &[
     "point",
     "direction",
     "directionpoint",
+    "circle",
+    "ellipse",
+    "roundrect",
+    "superellipse",
     "draw",
     "fill",
 ];
+
+/// Upper bound on `superellipse()` samples. The count usually comes from a
+/// slider, and a runaway one would hang the playground rather than draw.
+const MAX_SAMPLES: f64 = 1024.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EvalError {
@@ -235,7 +244,10 @@ impl Evaluator {
         if value < min || value > max {
             return Err(err(
                 param.span,
-                format!("{} = {} is outside its range {}..{}", param.name, value, min, max),
+                format!(
+                    "{} = {} is outside its range {}..{}",
+                    param.name, value, min, max
+                ),
             ));
         }
         self.define(&param.name, Value::Number(value), param.span)?;
@@ -252,11 +264,17 @@ impl Evaluator {
         if BUILTIN_FUNCTIONS.contains(&def.name.as_str()) {
             return Err(err(
                 def.span,
-                format!("'{}' is a built-in function and cannot be redefined", def.name),
+                format!(
+                    "'{}' is a built-in function and cannot be redefined",
+                    def.name
+                ),
             ));
         }
         if self.defs.contains_key(&def.name) {
-            return Err(err(def.span, format!("def '{}' is already defined", def.name)));
+            return Err(err(
+                def.span,
+                format!("def '{}' is already defined", def.name),
+            ));
         }
         self.defs.insert(def.name.clone(), def.clone());
         Ok(())
@@ -446,10 +464,7 @@ impl Evaluator {
                         let Value::Path(path) = value else {
                             return Err(err(
                                 *span,
-                                format!(
-                                    "{function}() expects paths, got {}",
-                                    value.type_name()
-                                ),
+                                format!("{function}() expects paths, got {}", value.type_name()),
                             ));
                         };
                         if function == "fill" {
@@ -483,10 +498,12 @@ impl Evaluator {
                         }
                         // Inclusive both ends, like the params `in min..max`
                         // range. min > max iterates zero times.
-                        let count = if max >= min { (max - min) as usize + 1 } else { 0 };
-                        (0..count)
-                            .map(|k| Value::Number(min + k as f64))
-                            .collect()
+                        let count = if max >= min {
+                            (max - min) as usize + 1
+                        } else {
+                            0
+                        };
+                        (0..count).map(|k| Value::Number(min + k as f64)).collect()
                     }
                     Iterable::List(items) => items
                         .iter()
@@ -586,7 +603,10 @@ impl Evaluator {
             });
         }
 
-        let width_expr = node.width.as_ref().expect("lowering guarantees width or pen");
+        let width_expr = node
+            .width
+            .as_ref()
+            .expect("lowering guarantees width or pen");
         let (left_offset, right_offset) = match self.eval_expr(width_expr)? {
             Value::Number(total) => (total / 2.0, total / 2.0),
             Value::Point(offsets) => (offsets.x, offsets.y),
@@ -649,18 +669,17 @@ impl Evaluator {
                 }
             };
             let mut corner = false;
-            let mut resolve = |spec: &Option<DirSpec>,
-                               evaluator: &mut Self|
-             -> Result<Option<f64>, EvalError> {
-                match spec {
-                    None => Ok(None),
-                    Some(DirSpec::Corner) => {
-                        corner = true;
-                        Ok(None)
+            let mut resolve =
+                |spec: &Option<DirSpec>, evaluator: &mut Self| -> Result<Option<f64>, EvalError> {
+                    match spec {
+                        None => Ok(None),
+                        Some(DirSpec::Corner) => {
+                            corner = true;
+                            Ok(None)
+                        }
+                        Some(DirSpec::Angle(expr)) => Ok(Some(evaluator.expect_number(expr)?)),
                     }
-                    Some(DirSpec::Angle(expr)) => Ok(Some(evaluator.expect_number(expr)?)),
-                }
-            };
+                };
             let enter = resolve(&segment.enter, self)?;
             let leave = resolve(&segment.leave, self)?;
             points.push(PathPoint {
@@ -709,9 +728,7 @@ impl Evaluator {
                 let b = self.eval_expr(b)?;
                 match (a, b) {
                     (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a + t * (b - a))),
-                    (Value::Point(a), Value::Point(b)) => {
-                        Ok(Value::Point(a + t * (b - a)))
-                    }
+                    (Value::Point(a), Value::Point(b)) => Ok(Value::Point(a + t * (b - a))),
                     (a, b) => Err(err(
                         expr.span,
                         format!(
@@ -828,12 +845,7 @@ impl Evaluator {
         }
     }
 
-    fn eval_member(
-        &self,
-        span: Span,
-        object: &Value,
-        property: &str,
-    ) -> Result<Value, EvalError> {
+    fn eval_member(&self, span: Span, object: &Value, property: &str) -> Result<Value, EvalError> {
         match object {
             Value::Point(point) => match property {
                 "x" => Ok(Value::Number(point.x)),
@@ -847,7 +859,11 @@ impl Evaluator {
                 "left" => Ok(Value::Point(node.left())),
                 "right" => Ok(Value::Point(node.right())),
                 "tip" | "tail" => {
-                    let point = if property == "tip" { node.tip() } else { node.tail() };
+                    let point = if property == "tip" {
+                        node.tip()
+                    } else {
+                        node.tail()
+                    };
                     point.map(Value::Point).ok_or_else(|| {
                         err(
                             span,
@@ -886,7 +902,10 @@ impl Evaluator {
             let Value::Path(path) = operand_value else {
                 return Err(err(
                     span,
-                    format!("reversed applies to paths, got {}", operand_value.type_name()),
+                    format!(
+                        "reversed applies to paths, got {}",
+                        operand_value.type_name()
+                    ),
                 ));
             };
             return Ok(Value::Path(reverse_path(path)));
@@ -899,15 +918,9 @@ impl Evaluator {
                 Affine::translate(delta.to_vec2())
             }
             TransformOp::Scaled => Affine::scale(self.expect_number(argument)?),
-            TransformOp::XScaled => {
-                Affine::scale_non_uniform(self.expect_number(argument)?, 1.0)
-            }
-            TransformOp::YScaled => {
-                Affine::scale_non_uniform(1.0, self.expect_number(argument)?)
-            }
-            TransformOp::Rotated => {
-                Affine::rotate(self.expect_number(argument)?.to_radians())
-            }
+            TransformOp::XScaled => Affine::scale_non_uniform(self.expect_number(argument)?, 1.0),
+            TransformOp::YScaled => Affine::scale_non_uniform(1.0, self.expect_number(argument)?),
+            TransformOp::Rotated => Affine::rotate(self.expect_number(argument)?.to_radians()),
             TransformOp::Slanted => {
                 let k = self.expect_number(argument)?;
                 // (x, y) -> (x + k*y, y)
@@ -981,7 +994,10 @@ impl Evaluator {
             } else {
                 Err(err(
                     span,
-                    format!("{function}() expects {count} argument(s), got {}", values.len()),
+                    format!(
+                        "{function}() expects {count} argument(s), got {}",
+                        values.len()
+                    ),
                 ))
             }
         };
@@ -1054,7 +1070,11 @@ impl Evaluator {
                 expect_arity(1)?;
                 // Not f64::signum, which returns ±1 for ±0.0.
                 let value = number_at(0)?;
-                Ok(Value::Number(if value == 0.0 { 0.0 } else { value.signum() }))
+                Ok(Value::Number(if value == 0.0 {
+                    0.0
+                } else {
+                    value.signum()
+                }))
             }
             "sqrt" => {
                 expect_arity(1)?;
@@ -1131,6 +1151,69 @@ impl Evaluator {
                 crate::render::direction_point(path_at(0)?, number_at(1)?)
                     .map(Value::Point)
                     .map_err(|error| err(span, error.message))
+            }
+            // Shape constructors; the geometry lives in shapes.rs, which
+            // documents the rules they share.
+            "circle" => {
+                expect_arity(2)?;
+                let radius = number_at(1)?;
+                Ok(Value::Path(shapes::superellipse(
+                    point_at(0)?,
+                    radius,
+                    radius,
+                    2.0,
+                    4,
+                )))
+            }
+            "ellipse" => {
+                expect_arity(3)?;
+                Ok(Value::Path(shapes::superellipse(
+                    point_at(0)?,
+                    number_at(1)?,
+                    number_at(2)?,
+                    2.0,
+                    8,
+                )))
+            }
+            "roundrect" => {
+                expect_arity(3)?;
+                Ok(Value::Path(shapes::roundrect(
+                    point_at(0)?,
+                    point_at(1)?,
+                    number_at(2)?,
+                )))
+            }
+            "superellipse" => {
+                expect_arity(5)?;
+                let exponent = number_at(3)?;
+                if exponent < 2.0 {
+                    return Err(err(
+                        span,
+                        format!(
+                            "superellipse() exponent must be at least 2 \
+                             (2 is the ellipse), got {exponent}"
+                        ),
+                    ));
+                }
+                // A multiple of four puts a sample on each axis extreme,
+                // where every round shape needs a point.
+                let samples = number_at(4)?;
+                if !(4.0..=MAX_SAMPLES).contains(&samples) || samples % 4.0 != 0.0 {
+                    return Err(err(
+                        span,
+                        format!(
+                            "superellipse() takes a multiple of 4 samples, \
+                             from 4 to {MAX_SAMPLES}, got {samples}"
+                        ),
+                    ));
+                }
+                Ok(Value::Path(shapes::superellipse(
+                    point_at(0)?,
+                    number_at(1)?,
+                    number_at(2)?,
+                    exponent,
+                    samples as usize,
+                )))
             }
             other => Err(err(span, format!("unknown function: {other}"))),
         }
@@ -1282,8 +1365,6 @@ fn reverse_path(path: PathValue) -> PathValue {
     }
 }
 
-/// First intersection of two paths, treating their segments as straight
-/// chords. Covers the common construction: intersection(a -- b, c -- d).
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1358,9 +1439,8 @@ mod tests {
 
     #[test]
     fn point_arithmetic() {
-        let evaluator = eval_ok(
-            "a = (1, 2);\nb = (10, 20);\ns = a + b;\nd = b - a;\nk = 3 * a;\nh = b / 2;\n",
-        );
+        let evaluator =
+            eval_ok("a = (1, 2);\nb = (10, 20);\ns = a + b;\nd = b - a;\nk = 3 * a;\nh = b / 2;\n");
         assert_point(point(&evaluator, "s"), 11.0, 22.0);
         assert_point(point(&evaluator, "d"), 9.0, 18.0);
         assert_point(point(&evaluator, "k"), 3.0, 6.0);
@@ -1375,9 +1455,7 @@ mod tests {
 
     #[test]
     fn mediation_on_numbers_and_points() {
-        let evaluator = eval_ok(
-            "m = 0.5[10, 20];\np = 0.25[(0, 0), (100, 40)];\nt = 2[0, 10];\n",
-        );
+        let evaluator = eval_ok("m = 0.5[10, 20];\np = 0.25[(0, 0), (100, 40)];\nt = 2[0, 10];\n");
         assert_close(number(&evaluator, "m"), 15.0);
         assert_point(point(&evaluator, "p"), 25.0, 10.0);
         assert_close(number(&evaluator, "t"), 20.0); // extrapolation works
@@ -1410,8 +1488,9 @@ mod tests {
 
     #[test]
     fn boolean_operators_short_circuit() {
-        let evaluator =
-            eval_ok("x = 1 if 1 < 2 or undefined < 1 else 0;\ny = 1 if 2 < 1 and undefined < 1 else 0;\n");
+        let evaluator = eval_ok(
+            "x = 1 if 1 < 2 or undefined < 1 else 0;\ny = 1 if 2 < 1 and undefined < 1 else 0;\n",
+        );
         assert_close(number(&evaluator, "x"), 1.0);
         assert_close(number(&evaluator, "y"), 0.0);
     }
@@ -1599,7 +1678,11 @@ mod tests {
             error.message
         );
         let error = eval_err("q = point((1, 2), 0.5);\n");
-        assert!(error.message.contains("expects a path"), "{}", error.message);
+        assert!(
+            error.message.contains("expects a path"),
+            "{}",
+            error.message
+        );
     }
 
     #[test]
@@ -1677,8 +1760,7 @@ mod tests {
     fn tip_errors_without_a_round_pen() {
         let error = eval_err("node n = (0, 0) dir up width 10;\nt = n.tip;\n");
         assert!(error.message.contains("pen"), "{}", error.message);
-        let error =
-            eval_err("pen r { width = 10; }\nnode n = (0, 0) dir up pen r;\nt = n.tip;\n");
+        let error = eval_err("pen r { width = 10; }\nnode n = (0, 0) dir up pen r;\nt = n.tip;\n");
         assert!(error.message.contains("razor"), "{}", error.message);
     }
 
@@ -1689,7 +1771,11 @@ mod tests {
         let error = eval_err("pen p { width = 10; height = -1; }\n");
         assert!(error.message.contains("height >= 0"), "{}", error.message);
         let error = eval_err("node n = (0, 0) dir up pen 5;\n");
-        assert!(error.message.contains("expected a pen"), "{}", error.message);
+        assert!(
+            error.message.contains("expected a pen"),
+            "{}",
+            error.message
+        );
     }
 
     #[test]
@@ -1705,9 +1791,8 @@ mod tests {
 
     #[test]
     fn path_evaluation() {
-        let evaluator = eval_ok(
-            "a = (0, 0);\nb = (100, 0);\np = a {45} .. b{corner} -- (50, 50) .. cycle;\n",
-        );
+        let evaluator =
+            eval_ok("a = (0, 0);\nb = (100, 0);\np = a {45} .. b{corner} -- (50, 50) .. cycle;\n");
         let Some(Value::Path(path)) = evaluator.lookup("p") else {
             panic!("p is not a path")
         };
@@ -1749,15 +1834,86 @@ mod tests {
 
     #[test]
     fn intersection_of_line_paths() {
-        let evaluator = eval_ok(
-            "p = intersection((0, 0) -- (10, 10), (0, 10) -- (10, 0));\n",
-        );
+        let evaluator = eval_ok("p = intersection((0, 0) -- (10, 10), (0, 10) -- (10, 0));\n");
         assert_point(point(&evaluator, "p"), 5.0, 5.0);
     }
 
     /// Radius of a point about the origin.
     fn radius(point: Point) -> f64 {
         point.to_vec2().length()
+    }
+
+    fn path(evaluator: &Evaluator, name: &str) -> PathValue {
+        match evaluator.lookup(name) {
+            Some(Value::Path(path)) => path.clone(),
+            other => panic!("{name} is {other:?}"),
+        }
+    }
+
+    /// The geometry a path renders to. Two paths can describe the same curve
+    /// through different constraints — a one-sided tangent pins both sides of
+    /// a smooth point, and 360° is 0° — so equivalence is a question about
+    /// the fit, not about the source.
+    fn fitted(path: &PathValue) -> String {
+        crate::render::fit_path(path).expect("fits").to_svg()
+    }
+
+    #[test]
+    fn circle_matches_the_handwritten_ring() {
+        // Literal coordinates, not `r * unitvec(90)`: the constructor puts
+        // its points exactly on the axes, where unitvec leaves the residue
+        // of cos(90°) behind (see shapes::superellipse_at).
+        let evaluator = eval_ok(concat!(
+            "r = 280;\n",
+            "hand = (r, 0) {up} .. (0, r) {left}",
+            " .. (-r, 0) {down} .. (0, -r) {right} .. cycle;\n",
+            "made = circle((0, 0), r);\n",
+        ));
+        assert_eq!(
+            fitted(&path(&evaluator, "made")),
+            fitted(&path(&evaluator, "hand"))
+        );
+    }
+
+    #[test]
+    fn roundrect_matches_the_handwritten_contour() {
+        let evaluator = eval_ok(concat!(
+            "k = 156.8;\n",
+            "hand = {right} (60 + k, 0) -- (620 - k, 0) {right}\n",
+            "    .. {up}    (620, k) -- (620, 560 - k) {up}\n",
+            "    .. {left}  (620 - k, 560) -- (60 + k, 560) {left}\n",
+            "    .. {down}  (60, 560 - k) -- (60, k) {down}\n",
+            "    .. cycle;\n",
+            "made = roundrect((60, 0), (620, 560), k);\n",
+        ));
+        assert_eq!(
+            fitted(&path(&evaluator, "made")),
+            fitted(&path(&evaluator, "hand"))
+        );
+    }
+
+    #[test]
+    fn exponent_two_is_the_ellipse() {
+        let evaluator = eval_ok(concat!(
+            "a = ellipse((10, 20), 300, 200);\n",
+            "b = superellipse((10, 20), 300, 200, 2, 8);\n",
+        ));
+        assert_eq!(
+            fitted(&path(&evaluator, "a")),
+            fitted(&path(&evaluator, "b"))
+        );
+    }
+
+    #[test]
+    fn superellipse_rejects_an_exponent_below_two() {
+        let error = eval_err("s = superellipse((0, 0), 100, 100, 1, 8);\n");
+        assert!(error.message.contains("at least 2"), "{}", error.message);
+    }
+
+    #[test]
+    fn superellipse_rejects_a_sample_count_off_the_axes() {
+        let error = eval_err("s = superellipse((0, 0), 100, 100, 4, 6);\n");
+        assert!(error.message.contains("multiple of 4"), "{}", error.message);
     }
 
     #[test]
@@ -1802,7 +1958,11 @@ mod tests {
     #[test]
     fn paths_that_do_not_meet_are_an_error() {
         let error = eval_err("p = intersection((0, 0) -- (1, 0), (0, 5) -- (1, 5));\n");
-        assert!(error.message.contains("do not intersect"), "{}", error.message);
+        assert!(
+            error.message.contains("do not intersect"),
+            "{}",
+            error.message
+        );
     }
 
     #[test]

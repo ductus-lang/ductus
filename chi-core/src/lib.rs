@@ -9,4 +9,5 @@ pub mod eval;
 pub mod lower;
 pub mod parse;
 pub mod render;
+pub mod shapes;
 pub mod value;
