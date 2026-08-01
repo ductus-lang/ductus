@@ -111,9 +111,11 @@ the waist tangent to travel. Compare the middle stroke of the family
 figure: same pen, same skeleton, one more node.
 
 This mirrors placing points at extrema in ordinary outline design. The
-razor never needed it because its banks are constant translates — a
-special property of the degenerate pen, and the reason faked broad pens
-feel simpler than they are.
+razor never needed a witness because its banks are constant translates
+of the skeleton — a special property of the degenerate pen. It is easy
+to build a habit on that property and then be baffled the first time a
+real pen keeps a crossing fat; if that happens to you, come back to
+this section.
 
 ## The edge points, precisely
 

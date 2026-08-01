@@ -64,6 +64,6 @@ METAFONT never did. Same point count and types at every instance
 ([interpolation compatibility](interpolation-compatibility.md)), param
 ranges chosen so every query stays satisfiable, `chi inspect` at the
 corners of the space. METAFONT programs described a shape with knobs;
-a chi file describes the *interpolable region* those knobs sweep — and
-the discipline is what makes masters, instances and a variable font
-fall out of one source.
+a chi file describes the *interpolable region* those knobs sweep. Get
+used to thinking that way, and masters, instances and a variable font
+are all the same file.

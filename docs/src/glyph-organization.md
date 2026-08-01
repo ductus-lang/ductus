@@ -98,10 +98,10 @@ glyph c : U+0063 {
 ```
 
 The sheet shows both glyphs, advanced side by side in source order.
-The `c` reuses the `o`'s bowl and simply doesn't travel the right side —
-same nodes, different contour — which is the macros chapter's
-"macros return geometry, callers write the path" earning its keep at
-family scale.
+The `c` reuses the `o`'s bowl and simply doesn't travel the right side
+— same nodes, different contour. This is the macros chapter's pattern
+(macros return geometry, callers write the path) doing family-scale
+work.
 
 A workable layout for a real family, then:
 

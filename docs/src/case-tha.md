@@ -150,4 +150,4 @@ independent:
 Of the three studies this is the one closest to real practice: a
 complex-script glyph is mostly a negotiation between counters, and a
 source format where the advance is *written as* that negotiation keeps
-the negotiation visible forever.
+it on the page, where the next designer can read it.

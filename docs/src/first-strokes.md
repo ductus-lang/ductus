@@ -68,6 +68,11 @@ No handles appear in the source, and none ever will. When a curve isn't
 what you want, you don't reach for handles — you add a point where the
 geometry needs witnessing, or you constrain a direction.
 
+> **Try it** — paste the wave into the playground and push the numbers
+> around: raise a crest, add a fifth point, delete one. You can't break
+> anything; the fitter re-solves on every keystroke, and watching it
+> follow you is the fastest way to trust it.
+
 ## Directions
 
 A direction in braces constrains the curve's tangent at a point: `{45}`
@@ -127,6 +132,13 @@ middle point is a corner: each side is fitted independently, the two
 arches end steeply, and they meet in a cusp. Corners like this — placed
 where two curves should visibly break — are the germ of every teardrop
 terminal and ink trap in Part III.
+
+A confession, and a lesson hiding in it: two earlier drafts of this
+example marked the tip of a teardrop as a corner, and nothing happened —
+the shape came out a smooth egg both times. At a symmetric point, the
+freed tangents can simply agree with the smooth ones. `{corner}` grants
+the fitter freedom; it is the surrounding geometry that decides whether
+the freedom shows.
 
 ## Reading the sheet
 

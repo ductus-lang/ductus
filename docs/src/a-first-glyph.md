@@ -111,6 +111,11 @@ Same file, same four points, same topology — only the numbers moved. That
 invariance is chi's interpolation-compatibility rule at work, and it is
 what will let a designspace be sampled from one source.
 
+> **Try it** — in the playground, watch the sidebearings while you drag
+> `weight`. The advance grows with the stem, so the white on each side
+> holds steady. That's the `advance = stem + 190` line, and it's the
+> first real design decision in this book.
+
 Finally, the debug view of the default instance, now with something to
 show: the metrics lines from the `metrics` block, the baseline, and the
 four on-curve points of the contour:

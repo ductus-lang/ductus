@@ -148,10 +148,12 @@ design.
 
 The next two chapters get you drawing: freehand sketches first, then a
 real glyph. Part II covers the language proper, and Part III — nodes,
-pens, terminals, pressure — is where chi earns its keep; readers who know
-their way around a type design tool can skim ahead to it. Every figure in
-this book is compiled from the source shown (or from a fragment of a
-larger example) by the book build itself, so the code you read is code
-that runs. The normative language definition lives in the
+pens, terminals, pressure — is where chi starts to feel like a design
+tool rather than a programming language; if you already draw type for a
+living, it is fine to skim ahead to it. Keep the playground open in a
+second tab as you read: nearly every example in this book fits in it,
+and dragging a slider teaches faster than we can write. Every figure is
+compiled from the source shown by the book build itself, so the code
+you read is code that runs. The normative language definition lives in the
 [specification](https://gitlab.com/chi-lang/tree-sitter-chi/-/blob/main/Spec.md);
 this book cites it but does not replace it.

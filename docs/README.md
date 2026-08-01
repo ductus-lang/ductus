@@ -41,6 +41,24 @@ Figure layout and the syntax palette live in `chi.css`; the highlight
 classes come from `tree-sitter-chi/queries/highlights.scm`, the same
 query the playground uses.
 
+## Voice
+
+Written for a colleague at the next desk, not an audience in a hall.
+The habits that keep it that way:
+
+- **You** draws things; **we** figure things out together. The book may
+  have opinions, and should say so plainly when something is fiddly,
+  surprising, or was learned the hard way.
+- One landing per chapter. If every section ends on a quotable maxim,
+  none of them land. Most paragraphs should just end.
+- Concrete over abstract: a pen, a slider, a coordinate — not "the
+  machinery", "the discipline", "the promise".
+- Vary the rhythm. Short flat sentences are allowed. So are asides.
+- A few `> **Try it**` blockquotes per part, pointing at the
+  playground, only where an experiment genuinely teaches something the
+  prose can't.
+- Reference chapters are exempt: reference should be dry.
+
 ## Notes
 
 - `book.toml` invokes the preprocessor as `cargo run -q -p chi-docs --`.

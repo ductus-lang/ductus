@@ -117,8 +117,8 @@ case, but any open path value splices the same way.
 Everything else a terminal can be is a combination of moves this book
 has already made — which is the point of having no cap machinery. A
 sharp break between two curves is `{corner}` from the first-strokes
-chapter; a teardrop terminal is a swell traced around a corner point; an
-ink trap is an inner corner pulled open — an `intersection()` point
-nudged into the joint, an ordinary edit that stays parametric. The case
-studies in the next part build several of these on real letters; there
-is deliberately nothing more to teach here.
+chapter; a teardrop terminal is a swell traced around a corner point;
+an ink trap is an inner corner pulled open — an `intersection()` point
+nudged into the joint, an ordinary edit that stays parametric. The
+catalogue stops here, and it stops short on purpose: past this point,
+terminals are design decisions, not language features.

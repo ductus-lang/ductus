@@ -103,14 +103,20 @@ which is how you check a derived value across the design space:
 
 The figure above is the same file at `--set size=460`; running
 `chi inspect dot.chi --set size=460` would show `r` at 230 and `bulge`
-scaled up with it, still 0.027 %. The playground's inspector panel shows
-the same numbers live, following the sliders.
+scaled up with it, still 0.027 %.
+
+> **Try it** — load this file in the playground and drag `size` while
+> watching the inspector. `bulge` moves, but its share of `r` never
+> does. Before probes existed, checking this number meant parsing the
+> output SVG with a Python script; the probe exists so that chi can
+> measure chi.
 
 ## Immutability, and why
 
 Every binding — param, metric, top-level, glyph-local — is
 single-assignment; rebinding a name in the same scope is an error. Inner
-scopes (glyph bodies, macro bodies) may shadow outer names. Combined with
-single-pass evaluation this keeps a file boring to reason about, in the
-best sense: any value traces to one line, evaluated once, from values
-defined above it.
+scopes (glyph bodies, macro bodies) may shadow outer names. Combined
+with single-pass evaluation this makes a chi file pleasantly boring to
+reason about: any value traces to one line, evaluated once, from values
+defined above it. When something looks wrong, there is exactly one
+place to look.

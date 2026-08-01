@@ -106,6 +106,6 @@ wrong except the shape. (The debugging chapter's field guide calls this
 one out.) More skeleton samples around the crossing would widen the
 safe range; narrowing the *declared* range to `45..60` is the cheaper
 fix, and it keeps the constraint written down where the axis is
-declared. Either way, the lesson generalizes: **a param range is not
-paperwork — it is the region of the space where the construction has
-been verified to hold.**
+declared. Either way the range ends up meaning something specific:
+this is where the construction is known to hold, because someone
+looked.

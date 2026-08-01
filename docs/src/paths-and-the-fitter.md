@@ -125,8 +125,8 @@ draw(hit + (-15, -15) -- hit + (15, 15));
 draw(hit + (-15, 15) -- hit + (15, -15));
 ```
 
-Because the queries run the same fitter as the renderer, a curved path is
-cut where it is *drawn* — measure and picture can never disagree. That
-agreement is load-bearing for Part III, where `directionpoint` finds pen
-waists and `intersection` builds joints; here it is enough that a path is
-not just ink but a value you can interrogate.
+Because the queries run the same fitter as the renderer, a curved path
+is cut where it is *drawn*: what you measure is what you see. Part III
+leans on this constantly — `directionpoint` finds pen waists,
+`intersection` builds joints. For now, just file away that a path is
+something you can ask questions of.

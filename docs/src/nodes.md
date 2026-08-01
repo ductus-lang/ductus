@@ -226,9 +226,14 @@ and low contrast at `contrast = 1.0`, where `hair` equals `stem`:
 ```
 
 Eight points, two contours, at every instance. This is the
-skeleton-as-scaffolding principle from the first chapter made concrete:
-the nodes place sixteen numbers' worth of geometry, and the designer
-wrote four widths and four positions.
+skeleton-as-scaffolding principle from the first chapter, made
+concrete: you wrote four positions and four widths, and the nodes
+placed everything else.
+
+> **Try it** — the playground ships this `o` among its examples. Drag
+> `weight` and `contrast` as far as they go and watch the debug view:
+> the edge-point dots slide, the guide breathes, and no point ever
+> appears or disappears.
 
 ## The winding convention
 

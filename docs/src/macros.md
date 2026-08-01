@@ -16,9 +16,9 @@ fill(diamond((3u, u), 55));
 fill(diamond((4.2u, u), 30));
 ```
 
-Parameters are untyped names, arguments pass by value, and any value can
-travel: numbers, points, paths, pens — and nodes, which is where macros
-earn their place in Part III.
+Parameters are untyped names, arguments pass by value, and any value
+can travel: numbers, points, paths, pens — and nodes, which Part III's
+constructions are built on.
 
 ## Returning several things
 
@@ -47,9 +47,9 @@ the path itself, through the returned points.
 
 ## Why macros return geometry, not path pieces
 
-That last example is the pattern to internalize, because it answers a
-question every MetaPost user asks: where is `&`, the path concatenation
-operator? Chi doesn't have one. A contour is **one path expression**, and
+That last example is worth staring at for a moment, because it answers
+the question every MetaPost user asks sooner or later: where is `&`,
+the path concatenation operator? Chi doesn't have one. A contour is **one path expression**, and
 a macro contributes by returning the points (or nodes) the contour passes
 through — not by returning path fragments to be glued.
 
@@ -71,5 +71,5 @@ only, like `params` and `pen` blocks.
 A macro body is an ordinary scope: it sees every top-level binding
 (params, metrics, and anything defined above), its parameters shadow
 outer names, and its locals — everything not exported — vanish at the
-closing brace. There are no side effects to leak: a macro that computes
-nothing you use has done nothing at all.
+closing brace. Nothing leaks; what you don't export doesn't exist
+outside the braces.

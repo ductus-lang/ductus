@@ -70,7 +70,9 @@ in turn: guide right? node dots right? then look at the handles.
 
 ## Failure modes and their looks
 
-A short field guide, all seen earlier in this book:
+A short field guide. Everything on it appears somewhere earlier in this
+book — and more than one entry was met the hard way while the book's
+own figures were being drawn:
 
 - **A fat crossing where a stroke should pinch** — a thin crossing with
   no witness node. The debug view shows no node dot anywhere near the

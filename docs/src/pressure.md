@@ -54,9 +54,9 @@ fill(a.right .. b.right .. c.right .. d.right
 
 A copperplate full-pressure pull: hairline into the stroke, swell
 through the middle, release to hairline out. The pressure profile *is*
-the four `press` lines — where the stroke reaches full weight and how
-quickly it lets go is most of what distinguishes one hand from another,
-and here it is data.
+the four `press` lines. Where a stroke reaches full weight, and how
+quickly it lets go, is most of what distinguishes one hand from another
+— and here it sits in four numbers you can argue with.
 
 Terminals come for free and honestly: a pointed pen leaves either a flat
 cut — the banks joined straight across — or a sharp end, which is
@@ -106,8 +106,8 @@ shifted out afterward, because `scaled` works about the origin — the
 transforms chapter's discipline paying off. Width and height shrink
 *together*, so the pen's aspect and angle never change: a shut pen still
 prints a hairline-sized ellipse, not a point. And the terminals are last
-chapter's `tailcap`/`tipcap` splices, which stay exact at every pressure
-— the cap of a squeezed pen is the squeezed pen.
+chapter's `tailcap`/`tipcap` splices, which stay exact at every
+pressure.
 
 ## Choosing between them
 
@@ -136,5 +136,5 @@ Honest limits, all inherited from sampling:
   bottoms out — is currently not sayable. The copperplate example's
   header discusses exactly where that boundary bites.
 
-That closes the strokes toolkit: skeletons, pens, witnesses, terminals,
-and pressure — everything the case studies ahead are made of.
+That's the whole strokes toolkit. The case studies ahead use all of it,
+on real letters.

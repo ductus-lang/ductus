@@ -13,7 +13,7 @@ chi source.
 Chi's core design makes the rule hold *by construction*: the number and
 type of on-curve points in a contour is fixed by the source text, not by
 parameter values. Moving a param moves coordinates, never topology.
-Every load-bearing construct was shaped around this:
+Every construct that could threaten the rule was shaped around it:
 
 - Shape constructors have fixed point counts — `ellipse()` is always
   eight points, which is why `ellipse(c, r, r)` is not `circle(c, r)`.
@@ -55,8 +55,9 @@ flagged when the language chapters introduced them:
   designed to avoid.
 
 The evaluator does not police any of this in v0.1. Until the sampler
-exists, the discipline is yours; `chi inspect` at the corners of the
-design space is the manual audit.
+exists, keeping the rule is on you — the good news is that
+`chi inspect` at the corners of the design space is a thirty-second
+audit.
 
 ## The other failure mode: existence
 
@@ -86,5 +87,4 @@ chi build family.chi --set weight=900 -o /dev/null
 ```
 
 When the designspace sampler arrives, walking the space and reporting
-both incompatibility and unsatisfiable queries is exactly its job; the
-rule this chapter describes is what makes that walk meaningful.
+both incompatibility and unsatisfiable queries is exactly its job.
