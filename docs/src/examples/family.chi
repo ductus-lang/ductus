@@ -1,0 +1,19 @@
+# Shared foundation for the glyph-organization chapter: axes, metrics,
+# stroke weights, and the bowl construction both round glyphs use.
+
+params { weight = 400 in 100..900; }
+
+metrics {
+  upm = 1000; x = 500; cap = 700; asc = 750; desc = -220;
+  over = 10 + weight / 200;
+}
+
+stem = 40 + 0.14 * weight;
+hair = 0.85 * stem;
+
+def bowl(c, rx, ry) -> (n, w, s, e) {
+  node n = c + (0,  ry) dir left  width hair;
+  node w = c + (-rx, 0) dir down  width stem;
+  node s = c + (0, -ry) dir right width hair;
+  node e = c + (rx, 0)  dir up    width stem;
+}

@@ -21,3 +21,13 @@
 - [Pens](pens.md)
 - [Terminals and caps](terminals-and-caps.md)
 - [Pressure](pressure.md)
+
+# Building a font
+
+- [Glyph organization](glyph-organization.md)
+- [Interpolation compatibility](interpolation-compatibility.md)
+- [Debugging and inspecting](debugging.md)
+- [Case studies](case-studies.md)
+  - [A slab-serifed stem](case-slab.md)
+  - [A broad-nib o](case-broad-nib-o.md)
+  - [Malayalam tha](case-tha.md)
