@@ -1,16 +1,18 @@
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 /* Catppuccin Latte (light) / Mocha (dark), following the OS preference.
    The editor itself is themed in main.js with the matching CodeMirror
    themes; the glyph preview inherits `color` via currentColor fills. */
 :root {
   color-scheme: light;
-  --bg: #e6e9ef;          /* mantle */
-  --panel: #eff1f5;       /* base — matches the editor background */
-  --border: #bcc0cc;      /* surface1 */
+  --bg: #e6e9ef; /* mantle */
+  --panel: #eff1f5; /* base — matches the editor background */
+  --border: #bcc0cc; /* surface1 */
   --text: #4c4f69;
-  --text-muted: #6c6f85;  /* subtext0 */
-  --text-faint: #8c8fa1;  /* overlay1 */
+  --text-muted: #6c6f85; /* subtext0 */
+  --text-faint: #8c8fa1; /* overlay1 */
   --red: #d20f39;
   --green: #40a02b;
   --yellow: #df8e1d;
@@ -25,9 +27,9 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #181825;        /* mantle */
-    --panel: #1e1e2e;     /* base */
-    --border: #45475a;    /* surface1 */
+    --bg: #181825; /* mantle */
+    --panel: #1e1e2e; /* base */
+    --border: #45475a; /* surface1 */
     --text: #cdd6f4;
     --text-muted: #a6adc8;
     --text-faint: #7f849c;
@@ -68,7 +70,10 @@ header h1 {
   font-weight: 700;
 }
 
-header h1 span { font-weight: 300; color: var(--text-faint); }
+header h1 span {
+  font-weight: 300;
+  color: var(--text-faint);
+}
 
 header label {
   font-size: 0.85rem;
@@ -78,7 +83,9 @@ header label {
   gap: 0.4rem;
 }
 
-header select { font-size: 0.85rem; }
+header select {
+  font-size: 0.85rem;
+}
 
 main {
   flex: 1;
@@ -95,27 +102,58 @@ main {
   background: var(--panel);
 }
 
-#editor { flex: 1; min-height: 0; overflow: auto; }
-#editor .cm-editor { height: 100%; }
-#editor .cm-editor.cm-focused { outline: none; }
-#editor .cm-scroller { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13px; }
+#editor {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+#editor .cm-editor {
+  height: 100%;
+}
+#editor .cm-editor.cm-focused {
+  outline: none;
+}
+#editor .cm-scroller {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 13px;
+}
 
 /* Syntax colors from tree-sitter-chi/queries/highlights.scm, mapped onto
    the Catppuccin palette so they track the editor theme. */
-.chi-comment { color: var(--overlay2); }
-.chi-number { color: var(--peach); }
-.chi-string { color: var(--green); }
-.chi-constant-builtin { color: var(--peach); }
+.chi-comment {
+  color: var(--overlay2);
+}
+.chi-number {
+  color: var(--peach);
+}
+.chi-string {
+  color: var(--green);
+}
+.chi-constant-builtin {
+  color: var(--peach);
+}
 .chi-keyword,
 .chi-keyword-conditional,
-.chi-keyword-storage { color: var(--mauve); }
-.chi-attribute { color: var(--yellow); }
-.chi-type { color: var(--yellow); }
+.chi-keyword-storage {
+  color: var(--mauve);
+}
+.chi-attribute {
+  color: var(--yellow);
+}
+.chi-type {
+  color: var(--yellow);
+}
 .chi-function,
 .chi-function-call,
-.chi-function-method { color: var(--blue); }
-.chi-variable-parameter { color: var(--maroon); }
-.chi-property { color: var(--lavender); }
+.chi-function-method {
+  color: var(--blue);
+}
+.chi-variable-parameter {
+  color: var(--maroon);
+}
+.chi-property {
+  color: var(--lavender);
+}
 
 #status {
   padding: 0.4rem 1rem;
@@ -139,7 +177,7 @@ main {
 #params {
   position: absolute;
   right: 1rem;
-  bottom: 1rem;
+  top: 1rem;
   width: 280px;
   z-index: 10;
 }
@@ -147,21 +185,69 @@ main {
 #params .tp-rotv {
   --tp-base-background-color: color-mix(in srgb, var(--panel) 92%, transparent);
   --tp-base-shadow-color: rgb(0 0 0 / 0.2);
-  --tp-container-background-color: color-mix(in srgb, var(--text) 8%, transparent);
-  --tp-container-background-color-active: color-mix(in srgb, var(--text) 22%, transparent);
-  --tp-container-background-color-focus: color-mix(in srgb, var(--text) 17%, transparent);
-  --tp-container-background-color-hover: color-mix(in srgb, var(--text) 12%, transparent);
+  --tp-container-background-color: color-mix(
+    in srgb,
+    var(--text) 8%,
+    transparent
+  );
+  --tp-container-background-color-active: color-mix(
+    in srgb,
+    var(--text) 22%,
+    transparent
+  );
+  --tp-container-background-color-focus: color-mix(
+    in srgb,
+    var(--text) 17%,
+    transparent
+  );
+  --tp-container-background-color-hover: color-mix(
+    in srgb,
+    var(--text) 12%,
+    transparent
+  );
   --tp-container-foreground-color: var(--text);
-  --tp-button-background-color: color-mix(in srgb, var(--text) 12%, transparent);
-  --tp-button-background-color-active: color-mix(in srgb, var(--text) 26%, transparent);
-  --tp-button-background-color-focus: color-mix(in srgb, var(--text) 21%, transparent);
-  --tp-button-background-color-hover: color-mix(in srgb, var(--text) 16%, transparent);
-  --tp-button-foreground-color: var(--text);
-  --tp-groove-foreground-color: color-mix(in srgb, var(--text) 15%, transparent);
+  --tp-button-background-color: color-mix(
+    in srgb,
+    var(--text) 82%,
+    transparent
+  );
+  --tp-button-background-color-active: color-mix(
+    in srgb,
+    var(--text) 99%,
+    transparent
+  );
+  --tp-button-background-color-focus: color-mix(
+    in srgb,
+    var(--text) 95%,
+    transparent
+  );
+  --tp-button-background-color-hover: color-mix(
+    in srgb,
+    var(--text) 96%,
+    transparent
+  );
+  --tp-button-foreground-color: var(--panel);
+  --tp-groove-foreground-color: color-mix(
+    in srgb,
+    var(--text) 15%,
+    transparent
+  );
   --tp-input-background-color: color-mix(in srgb, var(--text) 10%, transparent);
-  --tp-input-background-color-active: color-mix(in srgb, var(--text) 24%, transparent);
-  --tp-input-background-color-focus: color-mix(in srgb, var(--text) 19%, transparent);
-  --tp-input-background-color-hover: color-mix(in srgb, var(--text) 14%, transparent);
+  --tp-input-background-color-active: color-mix(
+    in srgb,
+    var(--text) 24%,
+    transparent
+  );
+  --tp-input-background-color-focus: color-mix(
+    in srgb,
+    var(--text) 19%,
+    transparent
+  );
+  --tp-input-background-color-hover: color-mix(
+    in srgb,
+    var(--text) 14%,
+    transparent
+  );
   --tp-input-foreground-color: var(--text);
   --tp-label-foreground-color: var(--text-muted);
 }
@@ -181,7 +267,10 @@ main {
    margin: auto centres the element when small yet keeps every edge
    reachable by scrolling when zoomed in, which flex centring would not. */
 #preview svg {
-  width: calc(var(--zoom, 1) * min(100cqw, 100cqh * var(--vw, 1) / var(--vh, 1)));
+  width: calc(
+    var(--zoom, 1) *
+    min(100cqw, 100cqh * var(--vw, 1) / var(--vh, 1))
+  );
   height: auto;
   flex: none;
   margin: auto;
@@ -228,4 +317,6 @@ main {
   color: var(--text-muted);
 }
 
-#inspector .measure .value { color: var(--text); }
+#inspector .measure .value {
+  color: var(--text);
+}
