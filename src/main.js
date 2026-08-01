@@ -18,12 +18,12 @@ const status = document.querySelector("#status");
 
 let overrides = {};
 let paramsSignature = "";
-let glyphsSignature = "";
+let glyphsSignature = null;
 let renderTimer = null;
 
 // One persistent pane: the glyph list and debug toggle live for the whole
 // session, while param bindings are disposed and rebuilt per compile result.
-const settings = { glyph: "", debug: true };
+const settings = { glyph: "", debug: true, zoom: 1 };
 const pane = new Pane({ container: paramsPanel, title: "controls" });
 let glyphBinding = null;
 let paramsFolder = null;
@@ -137,6 +137,10 @@ function render() {
   if (result.ok) {
     status.hidden = true;
     preview.innerHTML = result.svg;
+    const svg = preview.querySelector("svg");
+    const [, , vw, vh] = svg.getAttribute("viewBox").split(/\s+/).map(Number);
+    svg.style.setProperty("--vw", vw);
+    svg.style.setProperty("--vh", vh);
     updateParams(result.params);
     updateGlyphs(result.glyphs);
     updateInspector(result.measures);
@@ -179,7 +183,8 @@ function updateParams(params) {
   paneState = {};
   if (params.length === 0) return;
 
-  paramsFolder = pane.addFolder({ title: "params", expanded: true });
+  // index 3 keeps the folder after glyph/debug/zoom but above the svg buttons.
+  paramsFolder = pane.addFolder({ title: "params", expanded: true, index: 3 });
   for (const param of params) {
     paneState[param.name] = param.value;
     paramsFolder
@@ -275,8 +280,41 @@ async function loadExample(name) {
   });
 }
 
+function serializeSvg() {
+  const svg = preview.querySelector("svg");
+  // XMLSerializer keeps the xmlns attribute a standalone .svg file needs.
+  return svg ? new XMLSerializer().serializeToString(svg) : null;
+}
+
 exampleSelect.addEventListener("change", () => loadExample(exampleSelect.value));
+
+updateGlyphs([]);
 pane.addBinding(settings, "debug").on("change", render);
+// Zoom is pure CSS — the svg is sized off this custom property, so no
+// re-render (and no compile) is needed.
+pane.addBinding(settings, "zoom", { min: 0.25, max: 8 }).on("change", (event) => {
+  preview.style.setProperty("--zoom", event.value);
+});
+const copyButton = pane.addButton({ title: "copy svg" });
+copyButton.on("click", async () => {
+  const svg = serializeSvg();
+  if (!svg) return;
+  await navigator.clipboard.writeText(svg);
+  copyButton.title = "copied";
+  setTimeout(() => {
+    copyButton.title = "copy svg";
+  }, 1000);
+});
+pane.addButton({ title: "export svg" }).on("click", () => {
+  const svg = serializeSvg();
+  if (!svg) return;
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${settings.glyph || "chi"}.svg`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
 
 await init({ module_or_path: new URL("./pkg/chi_bg.wasm", document.baseURI) });
 

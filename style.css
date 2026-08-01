@@ -171,15 +171,20 @@ main {
   min-height: 0;
   overflow: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 1rem;
+  container-type: size;
 }
 
+/* Fit-to-container times --zoom, on whichever axis binds. The drawing's
+   viewBox ratio arrives as --vw/--vh (set per render), since a max-height
+   clamp would not preserve the ratio once width is explicitly set.
+   margin: auto centres the element when small yet keeps every edge
+   reachable by scrolling when zoomed in, which flex centring would not. */
 #preview svg {
-  max-width: 100%;
-  max-height: 100%;
+  width: calc(var(--zoom, 1) * min(100cqw, 100cqh * var(--vw, 1) / var(--vh, 1)));
   height: auto;
+  flex: none;
+  margin: auto;
 }
 
 #inspector {
