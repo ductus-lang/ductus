@@ -4,6 +4,7 @@ members = [
   "chi-core",
   "chi-cli",
   "chi-wasm",
+  "chi-docs",
 ]
 
 [workspace.dependencies]

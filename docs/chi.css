@@ -1,0 +1,95 @@
+/* Styles for figures emitted by the chi-docs preprocessor: a highlighted
+   code pane beside the rendered SVG, stacking on narrow screens. */
+
+figure.chi-example {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: stretch;
+  margin: 1.6rem 0;
+}
+
+figure.chi-example .chi-code {
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+figure.chi-example .chi-render {
+  flex: 1 1 16rem;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  border: 1px solid var(--table-border-color);
+  border-radius: 5px;
+}
+
+figure.chi-example .chi-render svg {
+  width: 100%;
+  height: auto;
+  max-height: 24rem;
+}
+
+pre.chi-code {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: var(--quote-bg);
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+pre.chi-code.chi-standalone {
+  margin: 1.6rem 0;
+}
+
+pre.chi-code code {
+  font-family: "Source Code Pro", ui-monospace, Consolas, monospace;
+  font-size: 0.875em;
+  line-height: 1.45;
+  padding: 0;
+  background: transparent;
+}
+
+/* Syntax palette: Catppuccin Latte on the light themes, Mocha on the dark
+   ones — the same mapping of highlights.scm captures the playground uses.
+   Operators, punctuation and plain identifiers keep the text color. */
+
+:root {
+  --chi-comment: #7c7f93;
+  --chi-number: #fe640b;
+  --chi-string: #40a02b;
+  --chi-keyword: #8839ef;
+  --chi-attribute: #df8e1d;
+  --chi-function: #1e66f5;
+  --chi-parameter: #e64553;
+  --chi-property: #7287fd;
+}
+
+html.coal,
+html.navy,
+html.ayu {
+  --chi-comment: #9399b2;
+  --chi-number: #fab387;
+  --chi-string: #a6e3a1;
+  --chi-keyword: #cba6f7;
+  --chi-attribute: #f9e2af;
+  --chi-function: #89b4fa;
+  --chi-parameter: #eba0ac;
+  --chi-property: #b4befe;
+}
+
+.chi-comment { color: var(--chi-comment); }
+.chi-number,
+.chi-constant-builtin { color: var(--chi-number); }
+.chi-string { color: var(--chi-string); }
+.chi-keyword,
+.chi-keyword-conditional,
+.chi-keyword-storage { color: var(--chi-keyword); }
+.chi-attribute,
+.chi-type { color: var(--chi-attribute); }
+.chi-function,
+.chi-function-call,
+.chi-function-method { color: var(--chi-function); }
+.chi-variable-parameter { color: var(--chi-parameter); }
+.chi-property { color: var(--chi-property); }

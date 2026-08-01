@@ -114,6 +114,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "chi-docs"
+version = "0.1.0"
+dependencies = [
+ "chi-core",
+ "serde_json",
+ "tree-sitter",
+ "tree-sitter-chi",
+]
+
+[[package]]
 name = "chi-wasm"
 version = "0.1.0"
 dependencies = [
