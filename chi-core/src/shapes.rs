@@ -13,7 +13,7 @@
 //! topology across the whole design space, as interpolation compatibility
 //! requires.
 
-use crate::ast::Joint;
+use crate::value::PathJoint;
 use crate::value::{PathPoint, PathValue};
 use kurbo::{Point, Vec2};
 
@@ -37,7 +37,7 @@ pub fn superellipse(center: Point, rx: f64, ry: f64, n: f64, count: usize) -> Pa
         .collect();
     PathValue {
         points,
-        joints: vec![Joint::Curve; count],
+        joints: vec![PathJoint::Curve; count],
         closed: true,
     }
 }
@@ -114,14 +114,14 @@ pub fn roundrect(corner: Point, opposite: Point, radius: f64) -> PathValue {
             at(x0, y0 + k, None, down),
         ],
         joints: vec![
-            Joint::Line,  // bottom edge
-            Joint::Curve, // bottom-right corner
-            Joint::Line,  // right edge
-            Joint::Curve, // top-right corner
-            Joint::Line,  // top edge
-            Joint::Curve, // top-left corner
-            Joint::Line,  // left edge
-            Joint::Curve, // closing back over the bottom-left corner
+            PathJoint::Line,  // bottom edge
+            PathJoint::Curve, // bottom-right corner
+            PathJoint::Line,  // right edge
+            PathJoint::Curve, // top-right corner
+            PathJoint::Line,  // top edge
+            PathJoint::Curve, // top-left corner
+            PathJoint::Line,  // left edge
+            PathJoint::Curve, // closing back over the bottom-left corner
         ],
         closed: true,
     }

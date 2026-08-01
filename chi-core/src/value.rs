@@ -2,6 +2,7 @@
 
 use crate::ast::Joint;
 use kurbo::{Point, Vec2};
+use std::f64::consts::{FRAC_PI_2, PI, TAU};
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -108,6 +109,133 @@ impl NodeValue {
         let pen = self.pen?;
         (pen.b > 0.0).then(|| self.pos + pen.support(self.dir + 180.0))
     }
+
+    /// The front terminal: the pen's boundary from the right bank contact,
+    /// around `tip`, to the left bank contact, as fixed cubics. None
+    /// without a pen or for a razor, like `tip`.
+    pub fn tip_cap(&self) -> Option<PathValue> {
+        self.cap(self.dir)
+    }
+
+    /// The back terminal: from the left bank contact, around `tail`, to
+    /// the right bank contact; see `tip_cap`.
+    pub fn tail_cap(&self) -> Option<PathValue> {
+        self.cap(self.dir + 180.0)
+    }
+
+    /// Half of the pen's boundary centered on the contact point of
+    /// `center`, traversed from the contact of `center - 90` to the
+    /// contact of `center + 90`.
+    ///
+    /// Built in unit-circle space, where support contacts sit at their
+    /// ellipse parameter and every cap is a half-turn of circular arc:
+    /// cubics for arcs of at most 90 degrees are visually exact there
+    /// (max radial error ~2.7e-4), and mapping them through the pen's
+    /// affine preserves that bound at any eccentricity — precisely where
+    /// spline-fitting support points in world space breaks down.
+    fn cap(&self, center: f64) -> Option<PathValue> {
+        let pen = self.pen?;
+        if pen.b <= 0.0 {
+            return None;
+        }
+
+        // Ellipse parameter of the contact point `support(theta)`: the
+        // support formula's local coordinates are (a·cos φ, b·sin φ).
+        let contact = |theta: f64| -> f64 {
+            let psi = (theta - pen.angle).to_radians();
+            (pen.b * psi.sin()).atan2(pen.a * psi.cos())
+        };
+        let start = contact(center - 90.0);
+        // Antipodal normals have antipodal parameters, so the cap spans
+        // exactly half a turn; the center contact lands strictly inside.
+        let end = start + PI;
+        let mid = start + (contact(center) - start).rem_euclid(TAU);
+
+        // On-curve parameters: both bank contacts, the center contact
+        // (so `.tip`/`.tail` stay on the outline), and a split wherever a
+        // piece exceeds a quarter turn.
+        let mut params = vec![start];
+        for target in [mid, end] {
+            let from = *params.last().expect("params start non-empty");
+            if target - from > FRAC_PI_2 {
+                params.push((from + target) / 2.0);
+            }
+            params.push(target);
+        }
+
+        // The pen's affine: unit circle -> scale(a, b) -> rotate -> pos.
+        let (rot_sin, rot_cos) = pen.angle.to_radians().sin_cos();
+        let linear = |v: Vec2| -> Vec2 {
+            let scaled = Vec2::new(pen.a * v.x, pen.b * v.y);
+            Vec2::new(
+                rot_cos * scaled.x - rot_sin * scaled.y,
+                rot_sin * scaled.x + rot_cos * scaled.y,
+            )
+        };
+        let on_curve = |phi: f64| -> Point { self.pos + linear(Vec2::new(phi.cos(), phi.sin())) };
+        // World tangent of the counterclockwise traversal at parameter phi.
+        let tangent = |phi: f64| -> f64 {
+            let t = linear(Vec2::new(-phi.sin(), phi.cos()));
+            t.y.atan2(t.x).to_degrees()
+        };
+
+        let points = params
+            .iter()
+            .map(|&phi| {
+                let angle = tangent(phi);
+                PathPoint {
+                    pos: on_curve(phi),
+                    enter: Some(angle),
+                    leave: Some(angle),
+                    corner: false,
+                }
+            })
+            .collect();
+        let joints = params
+            .windows(2)
+            .map(|pair| {
+                let (u, v) = (pair[0], pair[1]);
+                // Standard circular-arc cubic: handles along the tangents,
+                // length (4/3)·tan(sweep/4) in circle space.
+                let k = (4.0 / 3.0) * ((v - u) / 4.0).tan();
+                let c1 = Vec2::new(u.cos() - k * u.sin(), u.sin() + k * u.cos());
+                let c2 = Vec2::new(v.cos() + k * v.sin(), v.sin() - k * v.cos());
+                PathJoint::Fixed {
+                    c1: self.pos + linear(c1),
+                    c2: self.pos + linear(c2),
+                }
+            })
+            .collect();
+
+        Some(PathValue {
+            points,
+            joints,
+            closed: false,
+        })
+    }
+}
+
+/// A joint between consecutive path points, resolved at eval time.
+/// `Line` and `Curve` come from the source; `Fixed` carries geometry only
+/// evaluation can produce (pen terminals), which the fitter passes through
+/// untouched.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PathJoint {
+    Line,
+    Curve,
+    /// An explicit cubic: control points are final, endpoints are the
+    /// adjacent path points. Transforms map the controls directly — an
+    /// affine image of a cubic is that cubic's affine image.
+    Fixed { c1: Point, c2: Point },
+}
+
+impl From<Joint> for PathJoint {
+    fn from(joint: Joint) -> Self {
+        match joint {
+            Joint::Line => PathJoint::Line,
+            Joint::Curve => PathJoint::Curve,
+        }
+    }
 }
 
 /// An evaluated path: positions with resolved direction constraints.
@@ -117,7 +245,7 @@ pub struct PathValue {
     pub points: Vec<PathPoint>,
     /// `joints[i]` connects `points[i]` to `points[i + 1]`; when `closed`,
     /// the final joint connects the last point back to the first.
-    pub joints: Vec<Joint>,
+    pub joints: Vec<PathJoint>,
     pub closed: bool,
 }
 

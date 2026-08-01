@@ -1,8 +1,7 @@
 //! Curve fitting and SVG output.
 
-use crate::ast::Joint;
 use crate::doc::{Document, Glyph, SketchCommand};
-use crate::value::{PathValue, unitvec};
+use crate::value::{PathJoint, PathValue, unitvec};
 use curve_fitter::{InputPoint, PointType, fit_curve};
 use kurbo::{
     Affine, BezPath, CubicBez, Line, ParamCurve, ParamCurveDeriv, PathEl, PathSeg, Point, Rect,
@@ -44,8 +43,15 @@ pub fn fit_path(path: &PathValue) -> Result<BezPath, RenderError> {
     if count < 2 {
         return Err(render_err("a path needs at least 2 points"));
     }
+    if path
+        .joints
+        .iter()
+        .any(|joint| matches!(joint, PathJoint::Fixed { .. }))
+    {
+        return fit_mixed_path(path);
+    }
 
-    let joint_before = |index: usize| -> Option<Joint> {
+    let joint_before = |index: usize| -> Option<PathJoint> {
         if index > 0 {
             Some(path.joints[index - 1])
         } else if path.closed {
@@ -54,7 +60,7 @@ pub fn fit_path(path: &PathValue) -> Result<BezPath, RenderError> {
             None
         }
     };
-    let joint_after = |index: usize| -> Option<Joint> {
+    let joint_after = |index: usize| -> Option<PathJoint> {
         path.joints.get(index).copied()
     };
 
@@ -77,12 +83,12 @@ pub fn fit_path(path: &PathValue) -> Result<BezPath, RenderError> {
             let mut incoming = point.enter;
             let mut outgoing = point.leave;
             match (joint_before(index), joint_after(index)) {
-                (Some(Joint::Line), Some(Joint::Line)) => point_type = PointType::Corner,
-                (Some(Joint::Line), _) => {
+                (Some(PathJoint::Line), Some(PathJoint::Line)) => point_type = PointType::Corner,
+                (Some(PathJoint::Line), _) => {
                     point_type = PointType::Corner;
                     incoming = Some(chord((index + count - 1) % count, index));
                 }
-                (_, Some(Joint::Line)) => {
+                (_, Some(PathJoint::Line)) => {
                     point_type = PointType::Corner;
                     outgoing = Some(chord(index, (index + 1) % count));
                 }
@@ -102,6 +108,135 @@ pub fn fit_path(path: &PathValue) -> Result<BezPath, RenderError> {
         .collect();
 
     fit_curve(input_points, path.closed).map_err(render_err)
+}
+
+/// Fit a path that mixes fitted joints with fixed cubics (pen terminals).
+/// Fixed joints render verbatim; each maximal run of fittable joints is
+/// fitted as an open path. Boundary points carry explicit tangents (fixed
+/// geometry bakes them in), so the seams are smooth by construction.
+fn fit_mixed_path(path: &PathValue) -> Result<BezPath, RenderError> {
+    let count = path.points.len();
+    let joint_count = path.joints.len();
+
+    // One cubic per joint, in path order; fixed joints fill theirs now.
+    let mut cubics: Vec<Option<CubicBez>> = path
+        .joints
+        .iter()
+        .enumerate()
+        .map(|(index, joint)| match joint {
+            PathJoint::Fixed { c1, c2 } => Some(CubicBez::new(
+                path.points[index].pos,
+                *c1,
+                *c2,
+                path.points[(index + 1) % count].pos,
+            )),
+            _ => None,
+        })
+        .collect();
+
+    // Maximal runs of fittable joints. A closed path is scanned from just
+    // past a fixed joint, so no run ever wraps across the scan origin.
+    let scan: Vec<usize> = if path.closed {
+        let anchor = path
+            .joints
+            .iter()
+            .position(|joint| matches!(joint, PathJoint::Fixed { .. }))
+            .expect("a mixed path has a fixed joint");
+        (1..joint_count)
+            .map(|offset| (anchor + offset) % joint_count)
+            .collect()
+    } else {
+        (0..joint_count).collect()
+    };
+    let mut runs: Vec<Vec<usize>> = Vec::new();
+    let mut current: Vec<usize> = Vec::new();
+    for index in scan {
+        if cubics[index].is_none() {
+            current.push(index);
+        } else if !current.is_empty() {
+            runs.push(std::mem::take(&mut current));
+        }
+    }
+    if !current.is_empty() {
+        runs.push(current);
+    }
+
+    for run in runs {
+        let first = run[0];
+        // The run's points: one more than its joints, wrapping when the
+        // run crosses a closed path's seam.
+        let indices: Vec<usize> = (0..=run.len()).map(|o| (first + o) % count).collect();
+        let input_points = run_input_points(path, &indices);
+        let fitted = fit_curve(input_points, false).map_err(render_err)?;
+        let segments: Vec<CubicBez> = fitted
+            .segments()
+            .take(run.len())
+            .map(|segment| segment.to_cubic())
+            .collect();
+        if segments.len() != run.len() {
+            return Err(render_err("fitted run has fewer segments than joints"));
+        }
+        for (offset, joint_index) in run.iter().enumerate() {
+            cubics[*joint_index] = Some(segments[offset]);
+        }
+    }
+
+    let mut bez = BezPath::new();
+    bez.move_to(path.points[0].pos);
+    for cubic in cubics {
+        let cubic = cubic.expect("every joint has a cubic");
+        bez.curve_to(cubic.p1, cubic.p2, cubic.p3);
+    }
+    if path.closed {
+        bez.close_path();
+    }
+    Ok(bez)
+}
+
+/// Input points for one fittable run, `indices` being consecutive path
+/// point indices. The same line/corner rules as the whole-path fit apply,
+/// with neighbours outside the run out of sight — their influence arrives
+/// through the boundary points' explicit angles instead.
+fn run_input_points(path: &PathValue, indices: &[usize]) -> Vec<InputPoint> {
+    let chord = |from: usize, to: usize| -> f64 {
+        let delta = path.points[to].pos - path.points[from].pos;
+        delta.y.atan2(delta.x).to_degrees()
+    };
+    let last = indices.len() - 1;
+    indices
+        .iter()
+        .enumerate()
+        .map(|(offset, &index)| {
+            let point = &path.points[index];
+            let before = (offset > 0).then(|| path.joints[indices[offset - 1]]);
+            let after = (offset < last).then(|| path.joints[indices[offset]]);
+            let mut point_type = PointType::Smooth;
+            let mut incoming = point.enter;
+            let mut outgoing = point.leave;
+            match (before, after) {
+                (Some(PathJoint::Line), Some(PathJoint::Line)) => point_type = PointType::Corner,
+                (Some(PathJoint::Line), _) => {
+                    point_type = PointType::Corner;
+                    incoming = Some(chord(indices[offset - 1], index));
+                }
+                (_, Some(PathJoint::Line)) => {
+                    point_type = PointType::Corner;
+                    outgoing = Some(chord(index, indices[offset + 1]));
+                }
+                _ => {}
+            }
+            if point.corner {
+                point_type = PointType::Corner;
+            }
+            InputPoint {
+                x: point.pos.x,
+                y: point.pos.y,
+                point_type,
+                incoming_angle: incoming,
+                outgoing_angle: outgoing,
+            }
+        })
+        .collect()
 }
 
 // ---- Path queries ----------------------------------------------------------
@@ -761,7 +896,7 @@ fn escape(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::value::{PathPoint, PathValue};
+    use crate::value::{NodeValue, PathPoint, PathValue, PenValue};
     use kurbo::Point;
 
     fn smooth(x: f64, y: f64) -> PathPoint {
@@ -782,7 +917,7 @@ mod tests {
                 smooth(200.0, 100.0),
                 smooth(100.0, 200.0),
             ],
-            joints: vec![Joint::Curve; 4],
+            joints: vec![PathJoint::Curve; 4],
             closed: true,
         };
         let fitted = fit_path(&path).unwrap();
@@ -807,7 +942,7 @@ mod tests {
                 },
                 smooth(100.0, 100.0),
             ],
-            joints: vec![Joint::Curve],
+            joints: vec![PathJoint::Curve],
             closed: false,
         };
         let fitted = fit_path(&path).unwrap();
@@ -835,7 +970,7 @@ mod tests {
                 },
                 smooth(200.0, -100.0),
             ],
-            joints: vec![Joint::Curve, Joint::Curve],
+            joints: vec![PathJoint::Curve, PathJoint::Curve],
             closed: false,
         };
         let fitted = fit_path(&path).unwrap();
@@ -860,7 +995,7 @@ mod tests {
                 smooth(100.0, 200.0),
                 smooth(0.0, 200.0),
             ],
-            joints: vec![Joint::Line; 4],
+            joints: vec![PathJoint::Line; 4],
             closed: true,
         };
         let fitted = fit_path(&path).unwrap();
@@ -892,7 +1027,7 @@ mod tests {
                     corner: false,
                 },
             ],
-            joints: vec![Joint::Line, Joint::Curve],
+            joints: vec![PathJoint::Line, PathJoint::Curve],
             closed: false,
         };
         let fitted = fit_path(&path).unwrap();
@@ -917,7 +1052,7 @@ mod tests {
                 smooth(100.0, 50.0),
                 smooth(150.0, 0.0),
             ],
-            joints: vec![Joint::Curve, Joint::Line, Joint::Curve],
+            joints: vec![PathJoint::Curve, PathJoint::Line, PathJoint::Curve],
             closed: false,
         };
         let fitted = fit_path(&path).unwrap();
@@ -952,7 +1087,7 @@ mod tests {
                 "body".to_string(),
                 PathValue {
                     points: vec![smooth(100.0, 0.0), smooth(300.0, 0.0), smooth(200.0, 400.0)],
-                    joints: vec![Joint::Line; 3],
+                    joints: vec![PathJoint::Line; 3],
                     closed: true,
                 },
             )],
@@ -1004,5 +1139,67 @@ mod tests {
         assert!(!svg.contains("<defs"));
         assert!(!svg.contains("chi-grid"));
         assert!(svg.contains("fill=\"currentColor\""));
+    }
+
+    #[test]
+    fn mixed_path_keeps_one_cubic_per_joint_and_smooth_seams() {
+        // A full stroke: tail cap, right bank up, tip cap, and a closing
+        // joint back along the left bank. The caps are fixed geometry; the
+        // banks are fitted runs — one of which is the closing joint, so it
+        // wraps the scan seam.
+        let pen = PenValue {
+            a: 50.0,
+            b: 15.0,
+            angle: 0.0,
+        };
+        let start = NodeValue {
+            pos: Point::new(0.0, 0.0),
+            dir: 90.0,
+            left_offset: 50.0,
+            right_offset: 50.0,
+            nib: 180.0,
+            pen: Some(pen),
+        };
+        let end = NodeValue {
+            pos: Point::new(0.0, 200.0),
+            ..start
+        };
+        let tail = start.tail_cap().expect("cap");
+        let tip = end.tip_cap().expect("cap");
+
+        let mut points = tail.points.clone();
+        points.extend(tip.points.clone());
+        let mut joints = tail.joints.clone();
+        joints.push(PathJoint::Curve); // start.right -> end.right
+        joints.extend(tip.joints.clone());
+        joints.push(PathJoint::Curve); // end.left -> start.left, closing
+        let path = PathValue {
+            points,
+            joints,
+            closed: true,
+        };
+
+        let segments = fitted_segments(&path).expect("mixed path fits");
+        assert_eq!(segments.len(), path.joints.len());
+
+        // G1 at every point: the tangent leaving segment i-1 matches the
+        // tangent entering segment i, in particular across cap/bank seams.
+        let count = segments.len();
+        for index in 0..count {
+            let previous = &segments[(index + count - 1) % count];
+            let outgoing = tangent(&segments[index], 0.0);
+            let incoming = tangent(previous, 1.0);
+            let cross = incoming.cross(outgoing).abs()
+                / (incoming.length() * outgoing.length());
+            assert!(
+                cross < 1e-6,
+                "kink at point {index}: {incoming:?} vs {outgoing:?}"
+            );
+        }
+
+        // The first bank joint sits right after the tail cap and starts at
+        // the pen's right contact.
+        let bank = tail.joints.len();
+        assert!((segments[bank].p0 - start.right()).length() < 1e-9);
     }
 }

@@ -3,7 +3,7 @@
 use crate::ast::*;
 use crate::doc::{Document, Glyph, Param, SketchCommand};
 use crate::shapes;
-use crate::value::{NodeValue, PathPoint, PathValue, PenValue, Value, unitvec};
+use crate::value::{NodeValue, PathJoint, PathPoint, PathValue, PenValue, Value, unitvec};
 use kurbo::{Affine, Point, Vec2};
 use std::collections::{HashMap, HashSet};
 
@@ -689,9 +689,33 @@ impl Evaluator {
 
     fn eval_path(&mut self, path: &PathExpr) -> Result<PathValue, EvalError> {
         let mut points = Vec::with_capacity(path.segments.len());
-        for segment in &path.segments {
+        let mut joints: Vec<PathJoint> = Vec::with_capacity(path.joints.len());
+        for (index, segment) in path.segments.iter().enumerate() {
+            if index > 0 {
+                joints.push(PathJoint::from(path.joints[index - 1]));
+            }
             let pos = match self.eval_expr(&segment.point)? {
                 Value::Point(point) => point,
+                // A path element splices in: its points and joints join the
+                // host path, the written joints connecting to its ends.
+                Value::Path(sub) => {
+                    if sub.closed {
+                        return Err(err(
+                            segment.point.span,
+                            "a closed path cannot be spliced into a path",
+                        ));
+                    }
+                    if segment.enter.is_some() || segment.leave.is_some() {
+                        return Err(err(
+                            segment.point.span,
+                            "a spliced path carries its own tangents; \
+                             direction constraints cannot apply to it",
+                        ));
+                    }
+                    points.extend(sub.points);
+                    joints.extend(sub.joints);
+                    continue;
+                }
                 Value::Node(_) => {
                     return Err(err(
                         segment.point.span,
@@ -726,9 +750,13 @@ impl Evaluator {
                 corner,
             });
         }
+        if path.closed {
+            let closing = path.joints.last().expect("closed path has a closing joint");
+            joints.push(PathJoint::from(*closing));
+        }
         Ok(PathValue {
             points,
-            joints: path.joints.clone(),
+            joints,
             closed: path.closed,
         })
     }
@@ -911,11 +939,27 @@ impl Evaluator {
                         )
                     })
                 }
+                "tipcap" | "tailcap" => {
+                    let cap = if property == "tipcap" {
+                        node.tip_cap()
+                    } else {
+                        node.tail_cap()
+                    };
+                    cap.map(Value::Path).ok_or_else(|| {
+                        err(
+                            span,
+                            format!(
+                                ".{property} needs a pen with height > 0; \
+                                 a razor's terminal is not a curve"
+                            ),
+                        )
+                    })
+                }
                 _ => Err(err(
                     span,
                     format!(
-                        "nodes have .pos, .dir, .width, .left, .right, .tip and .tail, \
-                         not .{property}"
+                        "nodes have .pos, .dir, .width, .left, .right, .tip, .tail, \
+                         .tipcap and .tailcap, not .{property}"
                     ),
                 )),
             },
@@ -997,7 +1041,17 @@ impl Evaluator {
                         corner: point.corner,
                     })
                     .collect(),
-                joints: path.joints,
+                joints: path
+                    .joints
+                    .iter()
+                    .map(|joint| match joint {
+                        PathJoint::Fixed { c1, c2 } => PathJoint::Fixed {
+                            c1: affine * *c1,
+                            c2: affine * *c2,
+                        },
+                        other => *other,
+                    })
+                    .collect(),
                 closed: path.closed,
             })),
             other => Err(err(
@@ -1386,7 +1440,15 @@ fn reverse_path(path: PathValue) -> PathValue {
         })
         .collect();
     points.reverse();
-    let mut joints = path.joints;
+    // Travelling the other way through a fixed cubic swaps its controls.
+    let mut joints: Vec<PathJoint> = path
+        .joints
+        .into_iter()
+        .map(|joint| match joint {
+            PathJoint::Fixed { c1, c2 } => PathJoint::Fixed { c1: c2, c2: c1 },
+            other => other,
+        })
+        .collect();
     if path.closed {
         // The closing joint stays the closing joint.
         let closing = joints.pop().expect("closed path has a closing joint");
@@ -2068,5 +2130,167 @@ mod tests {
         // the prelude-shadowing top level.
         let evaluator = eval_ok("left = 5;\n");
         assert_close(number(&evaluator, "left"), 5.0);
+    }
+
+    // ---- Pen terminals -----------------------------------------------------
+
+    const CAP_PEN: &str = "pen main { width = 100; height = 30; angle = 20; }\n\
+         node n = (10, 5) dir 40 pen main;\n\
+         r = n.right;\nl = n.left;\ntip = n.tip;\ntail = n.tail;\n\
+         front = n.tipcap;\nback = n.tailcap;\n";
+
+    #[test]
+    fn tip_cap_runs_from_right_contact_over_tip_to_left_contact() {
+        let evaluator = eval_ok(CAP_PEN);
+        for (name, from, over, to) in [("front", "r", "tip", "l"), ("back", "l", "tail", "r")] {
+            let cap = path(&evaluator, name);
+            let first = cap.points.first().expect("has points").pos;
+            let last = cap.points.last().expect("has points").pos;
+            assert!((first - point(&evaluator, from)).length() < 1e-9, "{name} start");
+            assert!((last - point(&evaluator, to)).length() < 1e-9, "{name} end");
+            let center = point(&evaluator, over);
+            assert!(
+                cap.points.iter().any(|p| (p.pos - center).length() < 1e-9),
+                "{name} passes through {over}"
+            );
+            assert!(!cap.closed);
+            assert!(
+                cap.joints
+                    .iter()
+                    .all(|joint| matches!(joint, PathJoint::Fixed { .. })),
+                "{name} is fixed geometry"
+            );
+        }
+    }
+
+    #[test]
+    fn cap_boundary_tangents_follow_the_travel_direction() {
+        let evaluator = eval_ok(CAP_PEN);
+        let front = path(&evaluator, "front");
+        let start = front.points.first().unwrap();
+        let end = front.points.last().unwrap();
+        let normalize = |angle: f64| angle.rem_euclid(360.0);
+        assert_close(normalize(start.enter.expect("pinned")), 40.0);
+        assert_close(normalize(end.leave.expect("pinned")), 220.0);
+    }
+
+    #[test]
+    fn cap_cubics_stay_on_the_pen_boundary_at_high_eccentricity() {
+        // The case the spline fit gets wrong: a near-razor pen. Map every
+        // fixed cubic back into unit-circle space; the error bound there
+        // is inherited from the quarter-circle approximation.
+        let evaluator = eval_ok(
+            "pen blade { width = 150; height = 2; angle = 9; }\n\
+             node n = (0, 0) dir 50 pen blade;\n\
+             cap = n.tipcap;\n",
+        );
+        use kurbo::ParamCurve;
+        let cap = path(&evaluator, "cap");
+        let (sin, cos) = 9.0_f64.to_radians().sin_cos();
+        let unmap = |p: Point| {
+            let local = Vec2::new(cos * p.x + sin * p.y, -sin * p.x + cos * p.y);
+            Vec2::new(local.x / 75.0, local.y / 1.0)
+        };
+        for (index, joint) in cap.joints.iter().enumerate() {
+            let PathJoint::Fixed { c1, c2 } = joint else {
+                panic!("cap joint is fixed");
+            };
+            let cubic = kurbo::CubicBez::new(
+                cap.points[index].pos,
+                *c1,
+                *c2,
+                cap.points[index + 1].pos,
+            );
+            for step in 0..=20 {
+                let sample = cubic.eval(step as f64 / 20.0);
+                let radius = unmap(sample).length();
+                assert!(
+                    (radius - 1.0).abs() < 1e-3,
+                    "segment {index} leaves the ellipse: radius {radius}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn caps_splice_into_paths() {
+        // The caps' boundary points ARE the bank ends, so the banks are
+        // just the written joints between the two splices.
+        let evaluator = eval_ok(
+            "pen main { width = 100; height = 30; }\n\
+             node s = (0, 0) dir up pen main;\n\
+             node e = (0, 200) dir up pen main;\n\
+             tc = s.tailcap;\ntip = e.tipcap;\n\
+             stroke = s.tailcap .. e.tipcap .. cycle;\n",
+        );
+        let stroke = path(&evaluator, "stroke");
+        let (tail_cap, tip_cap) = (path(&evaluator, "tc"), path(&evaluator, "tip"));
+        assert!(stroke.closed);
+        assert_eq!(
+            stroke.points.len(),
+            tail_cap.points.len() + tip_cap.points.len()
+        );
+        // The caps' fixed joints, plus the two written bank joints.
+        assert_eq!(
+            stroke.joints.len(),
+            tail_cap.joints.len() + tip_cap.joints.len() + 2
+        );
+        let fixed = stroke
+            .joints
+            .iter()
+            .filter(|joint| matches!(joint, PathJoint::Fixed { .. }))
+            .count();
+        assert_eq!(fixed, tail_cap.joints.len() + tip_cap.joints.len());
+        crate::render::fit_path(&stroke).expect("mixed path fits");
+    }
+
+    #[test]
+    fn transforms_carry_fixed_joints_along() {
+        let evaluator = eval_ok(&format!(
+            "{CAP_PEN}moved = front shifted (7, -3);\nback2 = front reversed;\n"
+        ));
+        let front = path(&evaluator, "front");
+        let moved = path(&evaluator, "moved");
+        let (PathJoint::Fixed { c1: a, .. }, PathJoint::Fixed { c1: b, .. }) =
+            (&front.joints[0], &moved.joints[0])
+        else {
+            panic!("fixed joints survive transforms");
+        };
+        assert!((*b - (*a + Vec2::new(7.0, -3.0))).length() < 1e-9);
+
+        // Reversal swaps each cubic's controls and reverses joint order.
+        let reversed = path(&evaluator, "back2");
+        let (PathJoint::Fixed { c1, c2 }, PathJoint::Fixed { c1: rc1, c2: rc2 }) =
+            (front.joints.first().unwrap(), reversed.joints.last().unwrap())
+        else {
+            panic!("fixed joints survive reversal");
+        };
+        assert!((*rc1 - *c2).length() < 1e-9);
+        assert!((*rc2 - *c1).length() < 1e-9);
+    }
+
+    #[test]
+    fn cap_needs_a_pen_with_height() {
+        let error = eval_err("node m = (0, 0) dir up width 10;\ncap = m.tipcap;\n");
+        assert!(error.message.contains("pen"), "{}", error.message);
+    }
+
+    #[test]
+    fn spliced_paths_reject_closed_paths_and_constraints() {
+        let error = eval_err(
+            "ring = (0, 0) .. (10, 0) .. (5, 8) .. cycle;\n\
+             p = (0, -20) .. ring .. (0, 20);\n",
+        );
+        assert!(error.message.contains("closed"), "{}", error.message);
+
+        let error = eval_err(
+            "arc = (0, 0) {up} .. (10, 10);\n\
+             p = (0, -20) .. {up} arc .. (0, 20);\n",
+        );
+        assert!(
+            error.message.contains("direction constraints"),
+            "{}",
+            error.message
+        );
     }
 }
