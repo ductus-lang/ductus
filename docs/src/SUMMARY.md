@@ -31,3 +31,13 @@
   - [A slab-serifed stem](case-slab.md)
   - [A broad-nib o](case-broad-nib-o.md)
   - [Malayalam tha](case-tha.md)
+
+# Reference
+
+- [Built-in functions](builtins-reference.md)
+- [Shape constructors](shape-constructors.md)
+- [CLI and file reference](cli-reference.md)
+
+---
+
+[Chi for MetaPost users](for-metapost-users.md)
