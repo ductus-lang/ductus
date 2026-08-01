@@ -10,8 +10,6 @@ const STORAGE_KEY = "chi-playground-source";
 const DEFAULT_EXAMPLE = "o";
 
 const exampleSelect = document.querySelector("#example");
-const glyphSelect = document.querySelector("#glyph");
-const debugCheckbox = document.querySelector("#debug");
 const paramsPanel = document.querySelector("#params");
 const inspector = document.querySelector("#inspector");
 const inspectorGroups = inspector.querySelector(".groups");
@@ -20,8 +18,15 @@ const status = document.querySelector("#status");
 
 let overrides = {};
 let paramsSignature = "";
+let glyphsSignature = "";
 let renderTimer = null;
-let pane = null;
+
+// One persistent pane: the glyph list and debug toggle live for the whole
+// session, while param bindings are disposed and rebuilt per compile result.
+const settings = { glyph: "", debug: true };
+const pane = new Pane({ container: paramsPanel, title: "controls" });
+let glyphBinding = null;
+let paramsFolder = null;
 let paneState = {};
 // pane.refresh() re-emits change events; this flag keeps those echoes from
 // being recorded as user overrides.
@@ -126,7 +131,7 @@ function render() {
 
   const source = view.state.doc.toString();
   const result = JSON.parse(
-    compile(source, JSON.stringify(overrides), glyphSelect.value, debugCheckbox.checked),
+    compile(source, JSON.stringify(overrides), settings.glyph, settings.debug),
   );
 
   if (result.ok) {
@@ -164,20 +169,20 @@ function updateParams(params) {
     // Keep the pane; just sync displayed values from the compile result.
     paneSyncing = true;
     for (const param of params) paneState[param.name] = param.value;
-    pane?.refresh();
+    pane.refresh();
     paneSyncing = false;
     return;
   }
   paramsSignature = signature;
-  pane?.dispose();
-  pane = null;
+  paramsFolder?.dispose();
+  paramsFolder = null;
   paneState = {};
   if (params.length === 0) return;
 
-  pane = new Pane({ container: paramsPanel, title: "params" });
+  paramsFolder = pane.addFolder({ title: "params", expanded: true });
   for (const param of params) {
     paneState[param.name] = param.value;
-    pane
+    paramsFolder
       .addBinding(paneState, param.name, {
         min: param.min,
         max: param.max,
@@ -189,7 +194,7 @@ function updateParams(params) {
         scheduleRender();
       });
   }
-  pane.addButton({ title: "reset" }).on("click", () => {
+  paramsFolder.addButton({ title: "reset" }).on("click", () => {
     overrides = {};
     paramsSignature = "";
     render();
@@ -197,19 +202,19 @@ function updateParams(params) {
 }
 
 function updateGlyphs(glyphs) {
-  const current = glyphSelect.value;
   const options = ["", ...glyphs];
-  const existing = [...glyphSelect.options].map((option) => option.value);
-  if (options.join(",") !== existing.join(",")) {
-    glyphSelect.innerHTML = "";
-    for (const name of options) {
-      const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name === "" ? "all" : name;
-      glyphSelect.append(option);
-    }
-    glyphSelect.value = options.includes(current) ? current : "";
-  }
+  const signature = options.join(",");
+  if (signature === glyphsSignature) return;
+  glyphsSignature = signature;
+  if (!options.includes(settings.glyph)) settings.glyph = "";
+  // A list binding's options are fixed at creation, so a changed glyph set
+  // means a fresh binding; index 0 keeps it at the top of the pane.
+  glyphBinding?.dispose();
+  glyphBinding = pane.addBinding(settings, "glyph", {
+    index: 0,
+    options: options.map((name) => ({ text: name === "" ? "all" : name, value: name })),
+  });
+  glyphBinding.on("change", render);
 }
 
 // Every named number in the document: metrics, top-level bindings, and the
@@ -217,7 +222,7 @@ function updateGlyphs(glyphs) {
 // compute a value but nothing shows it — so this is where a probe like
 // `bulge = distance(point(main, 0.2), center) - r` becomes readable.
 function updateInspector(measures) {
-  const wanted = glyphSelect.value;
+  const wanted = settings.glyph;
   const groups = [
     ["metrics", measures.metrics],
     ["bindings", measures.bindings],
@@ -263,14 +268,15 @@ async function loadExample(name) {
   const source = await response.text();
   overrides = {};
   paramsSignature = "";
+  settings.glyph = "";
+  glyphsSignature = "";
   view.dispatch({
     changes: { from: 0, to: view.state.doc.length, insert: source },
   });
 }
 
 exampleSelect.addEventListener("change", () => loadExample(exampleSelect.value));
-glyphSelect.addEventListener("change", render);
-debugCheckbox.addEventListener("change", render);
+pane.addBinding(settings, "debug").on("change", render);
 
 await init({ module_or_path: new URL("./pkg/chi_bg.wasm", document.baseURI) });
 

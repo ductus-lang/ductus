@@ -143,7 +143,6 @@ main {
   width: 280px;
   z-index: 10;
 }
-#params:empty { display: none; }
 
 #params .tp-rotv {
   --tp-base-background-color: color-mix(in srgb, var(--panel) 92%, transparent);
