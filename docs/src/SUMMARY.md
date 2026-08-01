@@ -14,3 +14,10 @@
 - [Parameters, metrics, and bindings](parameters-metrics-bindings.md)
 - [Macros](macros.md)
 - [Lists, loops, and imports](lists-loops-imports.md)
+
+# Strokes
+
+- [Nodes and derived points](nodes.md)
+- [Pens](pens.md)
+- [Terminals and caps](terminals-and-caps.md)
+- [Pressure](pressure.md)
