@@ -183,7 +183,7 @@ function updateParams(params) {
   paneState = {};
   if (params.length === 0) return;
 
-  // index 3 keeps the folder after glyph/debug/zoom but above the svg buttons.
+  // index 3 keeps the folder after glyph/debug/zoom but above the Export folder.
   paramsFolder = pane.addFolder({ title: "params", expanded: true, index: 3 });
   for (const param of params) {
     paneState[param.name] = param.value;
@@ -295,7 +295,8 @@ pane.addBinding(settings, "debug").on("change", render);
 pane.addBinding(settings, "zoom", { min: 0.25, max: 8 }).on("change", (event) => {
   preview.style.setProperty("--zoom", event.value);
 });
-const copyButton = pane.addButton({ title: "copy svg" });
+const exportFolder = pane.addFolder({ title: "Export", expanded: false });
+const copyButton = exportFolder.addButton({ title: "copy svg" });
 copyButton.on("click", async () => {
   const svg = serializeSvg();
   if (!svg) return;
@@ -305,7 +306,7 @@ copyButton.on("click", async () => {
     copyButton.title = "copy svg";
   }, 1000);
 });
-pane.addButton({ title: "export svg" }).on("click", () => {
+exportFolder.addButton({ title: "export svg" }).on("click", () => {
   const svg = serializeSvg();
   if (!svg) return;
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
