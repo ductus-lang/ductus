@@ -1,0 +1,7 @@
+# Shared sketch helpers, imported by the lists-loops-imports chapter.
+
+u = 100;
+
+def diamond(c, r) -> p {
+  p = c + (0, r) -- c + (r, 0) -- c + (0, -r) -- c + (-r, 0) -- cycle;
+}
