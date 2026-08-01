@@ -13,6 +13,7 @@
     "@codemirror/language": "^6.10.0",
     "@codemirror/lint": "^6.8.0",
     "@codemirror/view": "^6.28.0",
-    "codemirror": "^6.0.1"
+    "codemirror": "^6.0.1",
+    "tweakpane": "^4.0.5"
   }
 }

@@ -3,6 +3,7 @@ import { Decoration, EditorView } from "@codemirror/view";
 import { Compartment, EditorState, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
 import { setDiagnostics } from "@codemirror/lint";
 import { catppuccinLatte, catppuccinMocha } from "@catppuccin/codemirror";
+import { Pane } from "tweakpane";
 import init, { analyze, compile } from "../pkg/chi.js";
 
 const STORAGE_KEY = "chi-playground-source";
@@ -19,6 +20,11 @@ const status = document.querySelector("#status");
 let overrides = {};
 let paramsSignature = "";
 let renderTimer = null;
+let pane = null;
+let paneState = {};
+// pane.refresh() re-emits change events; this flag keeps those echoes from
+// being recorded as user overrides.
+let paneSyncing = false;
 
 // Syntax colors live in a decoration field so they follow edits (deco.map)
 // between analyses and are replaced wholesale when fresh spans arrive.
@@ -154,53 +160,39 @@ function markError({ line, column, message }) {
 function updateParams(params) {
   const signature = params.map((p) => `${p.name}:${p.min}:${p.max}`).join(";");
   if (signature === paramsSignature) {
-    // Keep the sliders; just refresh displayed values.
-    for (const param of params) {
-      const value = paramsPanel.querySelector(`[data-param="${param.name}"] .value`);
-      if (value) value.textContent = format(param.value);
-    }
+    // Keep the pane; just sync displayed values from the compile result.
+    paneSyncing = true;
+    for (const param of params) paneState[param.name] = param.value;
+    pane?.refresh();
+    paneSyncing = false;
     return;
   }
   paramsSignature = signature;
-  paramsPanel.innerHTML = "";
+  pane?.dispose();
+  pane = null;
+  paneState = {};
+  if (params.length === 0) return;
+
+  pane = new Pane({ container: paramsPanel, title: "params" });
   for (const param of params) {
-    const row = document.createElement("div");
-    row.className = "param";
-    row.dataset.param = param.name;
-
-    const label = document.createElement("span");
-    label.textContent = param.name;
-
-    const slider = document.createElement("input");
-    slider.type = "range";
-    slider.min = param.min;
-    slider.max = param.max;
-    slider.step = (param.max - param.min) / 200;
-    slider.value = param.value;
-    slider.addEventListener("input", () => {
-      overrides[param.name] = Number(slider.value);
-      value.textContent = format(Number(slider.value));
-      scheduleRender();
-    });
-
-    const value = document.createElement("span");
-    value.className = "value";
-    value.textContent = format(param.value);
-
-    row.append(label, slider, value);
-    paramsPanel.append(row);
+    paneState[param.name] = param.value;
+    pane
+      .addBinding(paneState, param.name, {
+        min: param.min,
+        max: param.max,
+        step: (param.max - param.min) / 200,
+      })
+      .on("change", (event) => {
+        if (paneSyncing) return;
+        overrides[param.name] = event.value;
+        scheduleRender();
+      });
   }
-  if (params.length > 0) {
-    const reset = document.createElement("button");
-    reset.className = "reset";
-    reset.textContent = "reset";
-    reset.addEventListener("click", () => {
-      overrides = {};
-      paramsSignature = "";
-      render();
-    });
-    paramsPanel.append(reset);
-  }
+  pane.addButton({ title: "reset" }).on("click", () => {
+    overrides = {};
+    paramsSignature = "";
+    render();
+  });
 }
 
 function updateGlyphs(glyphs) {
@@ -254,10 +246,6 @@ function updateInspector(measures) {
     }
     inspector.append(group);
   }
-}
-
-function format(value) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
 // Four decimals is not enough for a slider label but is right for a probe:

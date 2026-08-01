@@ -131,39 +131,40 @@ main {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  position: relative;
 }
 
+/* Tweakpane floats over the preview's bottom-right corner; its stock theme
+   is dark-only, so remap its variables onto the Catppuccin palette. */
 #params {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 2rem;
-  padding: 0.6rem 1rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-  min-height: 1rem;
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  width: 280px;
+  z-index: 10;
 }
+#params:empty { display: none; }
 
-#params .param {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-#params .param input[type="range"] { width: 160px; }
-#params .param .value {
-  font-family: ui-monospace, monospace;
-  min-width: 3.5em;
-  text-align: right;
-}
-#params .reset {
-  font-size: 0.8rem;
-  color: var(--blue);
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 0;
+#params .tp-rotv {
+  --tp-base-background-color: color-mix(in srgb, var(--panel) 92%, transparent);
+  --tp-base-shadow-color: rgb(0 0 0 / 0.2);
+  --tp-container-background-color: color-mix(in srgb, var(--text) 8%, transparent);
+  --tp-container-background-color-active: color-mix(in srgb, var(--text) 22%, transparent);
+  --tp-container-background-color-focus: color-mix(in srgb, var(--text) 17%, transparent);
+  --tp-container-background-color-hover: color-mix(in srgb, var(--text) 12%, transparent);
+  --tp-container-foreground-color: var(--text);
+  --tp-button-background-color: color-mix(in srgb, var(--text) 12%, transparent);
+  --tp-button-background-color-active: color-mix(in srgb, var(--text) 26%, transparent);
+  --tp-button-background-color-focus: color-mix(in srgb, var(--text) 21%, transparent);
+  --tp-button-background-color-hover: color-mix(in srgb, var(--text) 16%, transparent);
+  --tp-button-foreground-color: var(--text);
+  --tp-groove-foreground-color: color-mix(in srgb, var(--text) 15%, transparent);
+  --tp-input-background-color: color-mix(in srgb, var(--text) 10%, transparent);
+  --tp-input-background-color-active: color-mix(in srgb, var(--text) 24%, transparent);
+  --tp-input-background-color-focus: color-mix(in srgb, var(--text) 19%, transparent);
+  --tp-input-background-color-hover: color-mix(in srgb, var(--text) 14%, transparent);
+  --tp-input-foreground-color: var(--text);
+  --tp-label-foreground-color: var(--text-muted);
 }
 
 #preview {
