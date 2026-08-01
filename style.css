@@ -90,8 +90,27 @@ header select {
 main {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(320px, 44%) 1fr;
+  grid-template-columns:
+    minmax(320px, min(var(--editor-width, 44%), 100% - 320px - 6px))
+    6px 1fr;
   min-height: 0;
+}
+
+#divider {
+  cursor: col-resize;
+  touch-action: none;
+}
+
+#divider:hover,
+body.resizing #divider {
+  background: var(--overlay2);
+}
+
+/* While dragging, the pointer crosses the editor and preview; keep the
+   resize cursor and stop text selection until the capture is released. */
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 #editor-pane {

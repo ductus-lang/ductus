@@ -286,6 +286,23 @@ function serializeSvg() {
   return svg ? new XMLSerializer().serializeToString(svg) : null;
 }
 
+// Dragging the divider resizes the panes: the grid template reads the
+// editor width from --editor-width, clamped in CSS on both sides.
+const mainPane = document.querySelector("main");
+const divider = document.querySelector("#divider");
+divider.addEventListener("pointerdown", (event) => {
+  divider.setPointerCapture(event.pointerId);
+  document.body.classList.add("resizing");
+});
+divider.addEventListener("pointermove", (event) => {
+  if (!divider.hasPointerCapture(event.pointerId)) return;
+  const left = mainPane.getBoundingClientRect().left;
+  mainPane.style.setProperty("--editor-width", `${event.clientX - left}px`);
+});
+divider.addEventListener("lostpointercapture", () => {
+  document.body.classList.remove("resizing");
+});
+
 exampleSelect.addEventListener("change", () => loadExample(exampleSelect.value));
 
 updateGlyphs([]);
