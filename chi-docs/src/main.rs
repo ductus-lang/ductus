@@ -14,12 +14,17 @@
 //! debug                 render guides, nodes, metrics lines and handles
 //! norender              show the code only (fragments that don't compile alone)
 //! hide                  append to the chapter's hidden preamble; show nothing
+//! acc                   show the block *and* append it to the preamble
 //! ```
 //!
-//! `hide` blocks accumulate per chapter and every visible block compiles as
-//! preamble + block, so tutorial fragments stay compiler-checked without
-//! repeating boilerplate on the page. A block that fails to compile fails
-//! the book build, with the chapter file and line in the message.
+//! `hide` and `acc` blocks accumulate per chapter and every visible block
+//! compiles as preamble + block, so tutorial fragments stay compiler-checked
+//! without repeating boilerplate on the page. `norender acc` shows setup code
+//! (a params block, say) without rendering it. An *empty* visible block
+//! renders the preamble alone — an output-only figure for showing another
+//! instance (`set=`) or view (`debug`) of geometry the chapter already
+//! built. A block that fails to compile fails the book build, with the
+//! chapter file and line in the message.
 
 use chi_core::doc::Document;
 use chi_core::render::RenderOptions;
@@ -191,7 +196,7 @@ fn process_block(
     preamble: &mut String,
     chapter_dir: &Path,
 ) -> Result<String, BlockError> {
-    if options.hide {
+    if options.hide || (options.acc && options.norender) {
         let offset = preamble.lines().count();
         preamble.push_str(block);
         preamble.push('\n');
@@ -199,13 +204,20 @@ fn process_block(
         // rather than at the first visible example that uses it.
         compile(preamble, &HashMap::new(), chapter_dir)
             .map_err(|error| error.into_block(offset))?;
-        return Ok(String::new());
+        return Ok(if options.hide {
+            String::new()
+        } else {
+            format!(
+                "<pre class=\"chi-code chi-standalone\"><code>{}</code></pre>",
+                highlight(block)
+            )
+        });
     }
 
-    let code = highlight(block);
     if options.norender {
         return Ok(format!(
-            "<pre class=\"chi-code chi-standalone\"><code>{code}</code></pre>"
+            "<pre class=\"chi-code chi-standalone\"><code>{}</code></pre>",
+            highlight(block)
         ));
     }
 
@@ -221,7 +233,22 @@ fn process_block(
         line: None,
         message: error.message,
     })?;
-    Ok(figure(&code, &svg))
+    if options.acc {
+        preamble.push_str(block);
+        preamble.push('\n');
+    }
+
+    // An empty block renders the preamble alone: an output-only figure, for
+    // showing another instance or view of geometry the chapter already built.
+    if block.trim().is_empty() {
+        let svg = svg.replace('\n', " ");
+        return Ok(format!(
+            "<figure class=\"chi-example chi-output-only\">\
+             <div class=\"chi-render\">{svg}</div>\
+             </figure>"
+        ));
+    }
+    Ok(figure(&highlight(block), &svg))
 }
 
 // ---- Fence options ----------------------------------------------------------
@@ -233,6 +260,7 @@ struct Options {
     debug: bool,
     norender: bool,
     hide: bool,
+    acc: bool,
 }
 
 impl Options {
@@ -245,6 +273,8 @@ impl Options {
                 options.norender = true;
             } else if token == "hide" {
                 options.hide = true;
+            } else if token == "acc" {
+                options.acc = true;
             } else if let Some(name) = token.strip_prefix("glyph=") {
                 options.glyph = Some(name.to_string());
             } else if let Some(pairs) = token.strip_prefix("set=") {
@@ -262,7 +292,7 @@ impl Options {
             }
         }
         let renders = options.debug || options.glyph.is_some() || !options.set.is_empty();
-        if options.hide && (options.norender || renders) {
+        if options.hide && (options.norender || options.acc || renders) {
             return Err("`hide` cannot be combined with other options".to_string());
         }
         if options.norender && renders {
@@ -563,6 +593,25 @@ mod tests {
     fn debug_renders_the_grid() {
         let html = chapter(&SKETCH.replace("```chi\n", "```chi debug\n")).unwrap();
         assert!(html.contains("chi-grid"), "{html}");
+    }
+
+    #[test]
+    fn acc_shows_the_block_and_feeds_the_next_one() {
+        let content = "```chi norender acc\nu = 100;\n```\n\n```chi acc\ndraw((0,0) -- (u, u));\n```\n\n```chi\nfill((0,0) -- (u,0) -- 0.5[(0,0), (u,u)] -- cycle);\n```";
+        let html = chapter(content).unwrap();
+        assert!(html.contains("chi-standalone"), "acc block is visible: {html}");
+        assert!(html.contains(">100<"), "acc block is visible: {html}");
+        // Three chi blocks, two of them rendered (norender acc has no pane).
+        assert_eq!(html.matches("<svg").count(), 2, "{html}");
+    }
+
+    #[test]
+    fn empty_block_is_an_output_only_figure() {
+        let content = "```chi hide\nu = 100;\ndraw((0,0) .. (u, u) .. (2u, 0));\n```\n\n```chi debug\n```";
+        let html = chapter(content).unwrap();
+        assert!(html.contains("chi-output-only"), "{html}");
+        assert!(html.contains("<svg"), "{html}");
+        assert!(!html.contains("<pre"), "no code pane: {html}");
     }
 
     #[test]

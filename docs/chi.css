@@ -31,6 +31,14 @@ figure.chi-example .chi-render svg {
   max-height: 24rem;
 }
 
+/* Output-only figures (an empty ```chi block): just the render pane,
+   centered and kept to a modest width. */
+figure.chi-example.chi-output-only .chi-render {
+  flex: 1 1 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+}
+
 pre.chi-code {
   margin: 0;
   padding: 0.75rem 1rem;
