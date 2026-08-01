@@ -28,7 +28,10 @@ Options after `chi` in the fence's info string:
 
 `hide` and `acc` blocks accumulate per chapter, in order, and every other
 block compiles as preamble + block — so a chapter can bind params and
-metrics once and keep each visible example small. `norender acc` shows
+metrics once and keep each visible example small. Mind what accumulates:
+a glyph (or a sketch `draw`/`fill`) in the preamble renders in **every**
+later figure of the chapter — order standalone sketch sections before an
+accumulated glyph, or their sheets overlap. `norender acc` shows
 setup code (a `params` block, say) without rendering it. An **empty**
 visible block renders the preamble alone: an output-only figure, used to
 show another instance (`set=`) or view (`debug`) of what the chapter
