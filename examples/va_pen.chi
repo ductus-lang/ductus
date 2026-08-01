@@ -38,9 +38,9 @@ glyph va : U+006F {
   # below trace the ellipse.
   contour bowl =
       {m.dir} m.right .. n.right .. o.right .. p.right .. q.right
-      {q.dir} .. {q.dir + 90} q.tip .. {q.dir + 180} q.left
+      {q.dir} .. q.tipcap .. {q.dir + 180} q.left
       .. p.left .. o.left .. n.left .. m.left
-      {m.dir + 180} .. {m.dir - 90} m.tail .. cycle;
+      {m.dir + 180} ..  m.tailcap .. cycle;
 
   # Bar + stem: one stroke q -> r -> s with a 90-degree turn at r. The
   # outer shoulder traces the pen through an intermediate travel
@@ -55,7 +55,7 @@ glyph va : U+006F {
       {q2.dir} q2.right -- r.right
       {right} .. rj.right .. {up}
       r2.right -- s.right
-      {s.dir} .. {s.dir + 90} s.tip .. {s.dir + 180} s.left
+      {s.dir} ..  s.tipcap .. {s.dir + 180} s.left
       -- inner -- q2.left
-      {q2.dir + 180} .. {q2.dir - 90} q2.tail .. cycle;
+      {q2.dir + 180} .. q2.tailcap.. cycle;
 }

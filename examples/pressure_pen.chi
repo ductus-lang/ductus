@@ -1,7 +1,8 @@
 params {
-  slant    = 55 in 40..70;    # the shade axis, degrees from the baseline
-  shade    = 46 in 12..90;    # full-pressure thickness
+  shade    = 46 in 12..90;    # full-pressure pen width
   contrast = 11 in 3..24;     # shade / hairline
+  aspect   = 35 in 10..100;   # pen height as a percentage of its width
+  penangle = 20 in 0..180;    # angle of the pen's major axis
   xheight  = 250 in 150..320;
 }
 
@@ -12,32 +13,48 @@ metrics {
   desc = -1.3 xheight;
   cap  = 2 xheight;
   u = upm/100;
+  slant    = 55;
+
 }
 
 hair  = shade / contrast;
 aw    = 0.66 x;               # arch width: the run of one letter part
 sb    = 0.18 x;               # sidebearing
 
-# A pressure sample: a node on the pen path at segment time `t`, its width
-# the tine spread at `pressure` — 0 for a shut pen, 1 for full weight.
-# Position and direction come from the path; a shut pen still writes a
-# hairline, and the tines spread along the pen's fixed axis, perpendicular
-# to the slant — not perpendicular to travel.
+# The nib at full pressure: an ellipse. Its .left/.right are the true
+# contact points of the moving ellipse, so the banks are envelope edges,
+# and .tip/.tail trace its round ends for the terminals.
+pen brush {
+  width  = shade;
+  height = aspect * shade / 100;
+  angle  = penangle;
+}
+
+# A pressure sample: a node on the pen path at segment time `t`, the whole
+# nib scaled by pressure — 0 for a shut pen, 1 for full weight. Width and
+# height shrink together, so aspect and angle never change, and a shut pen
+# still prints a hairline-sized ellipse, not a point. The node is built at
+# the origin because `scaled` works about the origin, then shifted out.
 def press(path, t, pressure) -> n {
-  node n = point(path, t) dir direction(path, t)
-           width hair + pressure * (shade - hair);
+  squeeze = (hair + pressure * (shade - hair)) / shade;
+  node m = (0, 0) dir direction(path, t) pen brush;
+  n = m scaled squeeze shifted point(path, t);
 }
 
 glyph wave {
   advance = 60u;
-  guide spine = (0,0){up}..(20u,20u){right} .. (40u,0){right}..(60u,20u);
+  guide spine = (0,0)..(20u,20u) .. (40u,0)..(60u,20u);
   a = press(spine, 0,  0);
   b = press(spine, 1,  0.22);
   c = press(spine, 2,  0.73);
   d = press(spine, 3,  1);
 
-  contour outline = a.right{a.dir} .. b.right{b.dir}
-  .. c.right{c.dir} .. d.right{d.dir} -- d.left
-         .. c.left{c.dir+180} .. b.left{b.dir+180} .. a.left{a.dir+180} -- cycle;
+  # Right bank out, around the d terminal, left bank back, closing over
+  # the a terminal. The caps are exact half-ellipses: they splice in with
+  # their own endpoints and tangents, so the banks just connect to them.
+  contour outline =
+      a.tailcap .. b.right{b.dir} .. c.right{c.dir}
+      .. d.tipcap
+      .. c.left{c.dir+180} .. b.left{b.dir+180} .. cycle;
 }
 

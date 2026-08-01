@@ -90,7 +90,7 @@ shear = 1 / tan(slant);       # rightward push per unit of height
 aw    = 0.66 x;               # arch width: the run of one letter part
 sb    = 0.18 x;               # sidebearing
 
-touch = hair / shade;         # the lightest mark: the tines only just apart
+touch = 0;         # the lightest mark: the tines only just apart
 
 axis_up   = slant;            # travelling up the shade axis
 axis_down = slant + 180;      # and down it
@@ -103,7 +103,8 @@ def at(run, rise) -> p { p = (run + shear * rise, rise); }
 # the tine spread at `pressure` — 0 for a shut pen, 1 for full weight.
 # Position and direction both come from the path.
 def press(path, t, pressure) -> n {
-  node n = point(path, t) dir direction(path, t) width pressure * shade;
+  node n = point(path, t) dir direction(path, t)
+           width hair + pressure * (shade - hair);
 }
 
 # ---- The seven strokes -----------------------------------------------------
