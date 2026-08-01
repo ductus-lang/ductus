@@ -1,0 +1,43 @@
+params {
+  slant    = 55 in 40..70;    # the shade axis, degrees from the baseline
+  shade    = 46 in 12..90;    # full-pressure thickness
+  contrast = 11 in 3..24;     # shade / hairline
+  xheight  = 250 in 150..320;
+}
+
+metrics {
+  upm  = 1000;
+  x    = xheight;
+  asc  = 2.6 xheight;         # engrosser's proportions are extreme
+  desc = -1.3 xheight;
+  cap  = 2 xheight;
+  u = upm/100;
+}
+
+hair  = shade / contrast;
+aw    = 0.66 x;               # arch width: the run of one letter part
+sb    = 0.18 x;               # sidebearing
+
+# A pressure sample: a node on the pen path at segment time `t`, its width
+# the tine spread at `pressure` — 0 for a shut pen, 1 for full weight.
+# Position and direction come from the path; a shut pen still writes a
+# hairline, and the tines spread along the pen's fixed axis, perpendicular
+# to the slant — not perpendicular to travel.
+def press(path, t, pressure) -> n {
+  node n = point(path, t) dir direction(path, t)
+           width hair + pressure * (shade - hair);
+}
+
+glyph wave {
+  advance = 60u;
+  guide spine = (0,0){up}..(20u,20u){right} .. (40u,0){right}..(60u,20u);
+  a = press(spine, 0,  0);
+  b = press(spine, 1,  0.22);
+  c = press(spine, 2,  0.73);
+  d = press(spine, 3,  1);
+
+  contour outline = a.right{a.dir} .. b.right{b.dir}
+  .. c.right{c.dir} .. d.right{d.dir} -- d.left
+         .. c.left{c.dir+180} .. b.left{b.dir+180} .. a.left{a.dir+180} -- cycle;
+}
+
