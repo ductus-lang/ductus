@@ -25,6 +25,7 @@
         <option value="latin_set">English small letters</option>
         <option value="shapes">shapes — circle, squircle, oval</option>
         <option value="copperplate">copperplate — 7 strokes, and letters</option>
+        <option value="pressure_pen">Pressure pen</option>
       </select>
     </label>
     <label>glyph
@@ -40,7 +41,10 @@
     <section id="preview-pane">
       <div id="params"></div>
       <div id="preview"></div>
-      <div id="inspector"></div>
+      <details id="inspector">
+        <summary>inspector</summary>
+        <div class="groups"></div>
+      </details>
     </section>
   </main>
   <script type="module" src="dist/main.js"></script>

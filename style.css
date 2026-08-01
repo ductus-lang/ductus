@@ -184,9 +184,6 @@ main {
 }
 
 #inspector {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
   max-height: 11rem;
   overflow: auto;
   padding: 0.6rem 1rem;
@@ -194,7 +191,19 @@ main {
   background: var(--panel);
   font-size: 0.8rem;
 }
-#inspector:empty { display: none; }
+
+#inspector summary {
+  cursor: pointer;
+  color: var(--text-faint);
+  user-select: none;
+}
+
+#inspector .groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
 
 #inspector .group {
   display: flex;

@@ -14,6 +14,7 @@ const glyphSelect = document.querySelector("#glyph");
 const debugCheckbox = document.querySelector("#debug");
 const paramsPanel = document.querySelector("#params");
 const inspector = document.querySelector("#inspector");
+const inspectorGroups = inspector.querySelector(".groups");
 const preview = document.querySelector("#preview");
 const status = document.querySelector("#status");
 
@@ -223,7 +224,8 @@ function updateInspector(measures) {
     ...measures.glyphs.filter(([name]) => !wanted || name === wanted),
   ].filter(([, numbers]) => numbers.length > 0);
 
-  inspector.innerHTML = "";
+  inspector.hidden = groups.length === 0;
+  inspectorGroups.innerHTML = "";
   for (const [title, numbers] of groups) {
     const group = document.createElement("div");
     group.className = "group";
@@ -244,7 +246,7 @@ function updateInspector(measures) {
       measure.append(key, shown);
       group.append(measure);
     }
-    inspector.append(group);
+    inspectorGroups.append(group);
   }
 }
 
