@@ -105,6 +105,11 @@ at a given time. `directionpoint` matches *orientation*, not mere
 parallelism — 0° means traveling rightward, 180° leftward — and it is an
 error if no such point exists, as is querying past the end of the path.
 
+A wavy path can have several points with the same tangent; an optional
+0-based index picks the later ones. In the path above, `directionpoint(p,
+0)` finds the crest and `directionpoint(p, 0, 1)` the trough that follows
+it; asking for more matches than exist is an error.
+
 ## intersection
 
 `intersection(p, q)` returns the first point where two paths cross —

@@ -50,6 +50,7 @@ all of this.
 | `point(p, t)` | the position on `p` at time `t` | `t` outside `0..n` |
 | `direction(p, t)` | tangent angle at `t`, degrees | `t` outside `0..n` |
 | `directionpoint(p, d)` | first point of `p` whose tangent is `d` | no such point |
+| `directionpoint(p, d, i)` | the `i`-th such point, 0-based | fewer than `i + 1` such points |
 | `intersection(p, q)` | first intersection of the two paths | they don't meet |
 
 Fine print worth knowing:
@@ -59,7 +60,10 @@ Fine print worth knowing:
   crossing — depends on this.
 - "First", in both `directionpoint` and `intersection`, means least
   position along the first path: its segments in path order, then the
-  least time within a segment.
+  least time within a segment. `directionpoint`'s optional index counts
+  matches in that same order, from 0 — `directionpoint(p, d, 0)` is
+  `directionpoint(p, d)`. A match landing exactly on a joint (or on a
+  closed path's start point) counts once.
 - `intersection` on two line segments is exact — the `whatever` idioms
   of METAFONT (stem meets diagonal, serif meets stem) land here.
 - Zero-length segments (see `roundrect` at radius 0) have no tangent

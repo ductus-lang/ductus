@@ -1238,8 +1238,33 @@ impl Evaluator {
                     .map_err(|error| err(span, error.message))
             }
             "directionpoint" => {
-                expect_arity(2)?;
-                crate::render::direction_point(path_at(0)?, number_at(1)?)
+                if !(2..=3).contains(&values.len()) {
+                    return Err(err(
+                        span,
+                        format!(
+                            "directionpoint() expects 2 or 3 arguments, got {}",
+                            values.len()
+                        ),
+                    ));
+                }
+                // Optional 0-based index selects a later match; the two
+                // argument form is the first match.
+                let index = if values.len() == 3 {
+                    let index = number_at(2)?;
+                    if index < 0.0 || index.fract() != 0.0 {
+                        return Err(err(
+                            span,
+                            format!(
+                                "directionpoint() index must be a \
+                                 non-negative integer, got {index}"
+                            ),
+                        ));
+                    }
+                    index as usize
+                } else {
+                    0
+                };
+                crate::render::direction_point(path_at(0)?, number_at(1)?, index)
                     .map(Value::Point)
                     .map_err(|error| err(span, error.message))
             }
@@ -1827,12 +1852,75 @@ mod tests {
     }
 
     #[test]
+    fn directionpoint_index_selects_later_matches() {
+        let evaluator = eval_ok(
+            "p = (0, 0) -- (100, 0) -- (100, 50) -- (200, 50) -- (200, 100);\n\
+             a = directionpoint(p, 90);\n\
+             b = directionpoint(p, 90, 0);\n\
+             c = directionpoint(p, 90, 1);\n",
+        );
+        assert_point(point(&evaluator, "a"), 100.0, 0.0);
+        assert_point(point(&evaluator, "b"), 100.0, 0.0);
+        assert_point(point(&evaluator, "c"), 200.0, 50.0);
+    }
+
+    #[test]
+    fn directionpoint_counts_a_match_on_a_joint_once() {
+        // The tangent is `right` exactly on the middle point, which is both
+        // the end of the first segment and the start of the second.
+        let error = eval_err(
+            "skel = (0, 500) {up} .. {right} (500, 1000) .. {up} (1000, 1500);\n\
+             w = directionpoint(skel, 0, 1);\n",
+        );
+        assert!(
+            error.message.contains("only 1 point with direction 0"),
+            "{}",
+            error.message
+        );
+    }
+
+    #[test]
+    fn directionpoint_counts_a_closed_path_start_once() {
+        // The circle starts at (100, 0) travelling up, so the start point
+        // is also the closing joint's end; a circle has exactly one point
+        // per direction.
+        let evaluator = eval_ok("c = circle((0, 0), 100);\nw = directionpoint(c, 90);\n");
+        assert_point(point(&evaluator, "w"), 100.0, 0.0);
+        let error = eval_err("c = circle((0, 0), 100);\nw = directionpoint(c, 90, 1);\n");
+        assert!(
+            error.message.contains("only 1 point with direction 90"),
+            "{}",
+            error.message
+        );
+    }
+
+    #[test]
     fn path_query_errors() {
         let error = eval_err("p = (0, 0) -- (100, 0);\nq = point(p, 1.5);\n");
         assert!(error.message.contains("outside"), "{}", error.message);
         let error = eval_err("p = (0, 0) -- (100, 0);\nq = directionpoint(p, 90);\n");
         assert!(
             error.message.contains("no point with direction"),
+            "{}",
+            error.message
+        );
+        let error = eval_err(
+            "p = (0, 0) -- (100, 0) -- (100, 50);\nq = directionpoint(p, 90, 1);\n",
+        );
+        assert!(
+            error.message.contains("only 1 point with direction 90"),
+            "{}",
+            error.message
+        );
+        let error = eval_err("p = (0, 0) -- (100, 0);\nq = directionpoint(p, 90, 1.5);\n");
+        assert!(
+            error.message.contains("non-negative integer"),
+            "{}",
+            error.message
+        );
+        let error = eval_err("p = (0, 0) -- (100, 0);\nq = directionpoint(p, 90, 1, 2);\n");
+        assert!(
+            error.message.contains("expects 2 or 3 arguments"),
             "{}",
             error.message
         );

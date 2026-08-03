@@ -301,10 +301,19 @@ pub fn direction_at(path: &PathValue, t: f64) -> Result<f64, RenderError> {
     Ok(d.y.atan2(d.x).to_degrees())
 }
 
-/// First position along the path where the tangent points in `degrees`
-/// (matching orientation, not just parallel).
-pub fn direction_point(path: &PathValue, degrees: f64) -> Result<Point, RenderError> {
+/// The `index`-th (0-based) position along the path where the tangent
+/// points in `degrees` (matching orientation, not just parallel). Matches
+/// are ordered by position: segments in path order, then ascending time
+/// within a segment.
+pub fn direction_point(
+    path: &PathValue,
+    degrees: f64,
+    index: usize,
+) -> Result<Point, RenderError> {
     let dir = unitvec(degrees);
+    let mut found = 0;
+    let mut first: Option<Point> = None;
+    let mut previous: Option<Point> = None;
     for cubic in &fitted_segments(path)? {
         // The derivative is quadratic in t: c2·t² + c1·t + c0. The tangent
         // is parallel to `dir` where cross(deriv, dir) = 0.
@@ -313,14 +322,37 @@ pub fn direction_point(path: &PathValue, degrees: f64) -> Result<Point, RenderEr
         let c1 = 2.0 * (deriv.p1 - deriv.p0);
         let c2 = c0 - 2.0 * deriv.p1.to_vec2() + deriv.p2.to_vec2();
         for t in quadratic_roots_in_unit(c2.cross(dir), c1.cross(dir), c0.cross(dir)) {
-            if tangent(cubic, t).dot(dir) > 0.0 {
-                return Ok(cubic.eval(t));
+            if tangent(cubic, t).dot(dir) <= 0.0 {
+                continue;
             }
+            let point = cubic.eval(t);
+            // A match on a joint is reported twice, as t = 1 of one segment
+            // and t = 0 of the next; count it once. On a closed path the
+            // start point doubles as the closing joint's end.
+            let coincides = |seen: Option<Point>| {
+                seen.is_some_and(|seen| seen.distance_squared(point) < 1e-12)
+            };
+            if coincides(previous) || (path.closed && coincides(first)) {
+                continue;
+            }
+            if found == index {
+                return Ok(point);
+            }
+            found += 1;
+            first.get_or_insert(point);
+            previous = Some(point);
         }
     }
-    Err(render_err(format!(
-        "the path has no point with direction {degrees}"
-    )))
+    if found == 0 {
+        Err(render_err(format!(
+            "the path has no point with direction {degrees}"
+        )))
+    } else {
+        let plural = if found == 1 { "point" } else { "points" };
+        Err(render_err(format!(
+            "the path has only {found} {plural} with direction {degrees}"
+        )))
+    }
 }
 
 /// Real roots of a·t² + b·t + c in [0, 1], ascending. An identically-zero
