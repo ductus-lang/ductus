@@ -1,10 +1,6 @@
 # Terminals and caps
 
-Chi has no automatic caps, and that is a principle, not a gap: a
-terminal is outline like any other. Whatever a stroke's end should be —
-a flat cut, a traced round cap, a teardrop, an ink trap — it is written
-into the contour, stays editable point by point, and stays parametric.
-This chapter is the catalogue.
+Chi doesn't include automatic caps, and that's a conscious design choice, not something we've missed. We believe a terminal should be treated like any other part of an outline. Whether you envision a stroke's end as a clean flat cut, a gracefully traced round cap, a soft teardrop, or even a subtle ink trap, you'll write it directly into the contour. This approach ensures it remains editable point by point and fully parametric. This chapter provides a detailed look at how you can achieve these.
 
 ```chi hide
 u = 100;
@@ -14,11 +10,7 @@ pen flat { width = 130; height = 10; angle = 110; }
 
 ## Cuts
 
-The terminal you have been writing all along: the two banks joined
-straight across, `-- ` or the closing `cycle`. And because the cut line
-is yours, so is its angle — extend one corner and the cut turns oblique;
-a broad-pen node's cut already runs along the nib. Three uprights, three
-ends:
+Meet the terminal you've likely been creating all along: where the two banks connect straight across, using either `-- ` or the closing `cycle`. Because you're in complete control of this cut line, its angle is also entirely up to you. Simply extending one corner, for instance, makes the cut turn oblique. And with a broad-pen node, the cut naturally follows the direction of the nib. Here, we'll demonstrate three uprights, each with a different kind of end:
 
 ```chi
 def bar(x) -> (a, b) {
@@ -37,27 +29,17 @@ fill(a3.right -- b3.right {b3.dir} .. {b3.dir + 90} b3.tip
   .. {b3.dir + 180} b3.left -- a3.left -- cycle);
 ```
 
-The first is the plain cut. The second raises one corner by 55 units —
-an oblique cut, one expression. The third is new: it *traces the pen*.
+The first example demonstrates a plain, straightforward cut. In the second, we've raised one corner by 55 units, giving us an oblique cut—all accomplished within a single expression. The third example introduces a powerful new capability: it *traces the pen*'s distinctive shape.
 
 ## Tracing the pen: .tip and .tail
 
-Pen nodes derive two more points: `n.tip`, the ellipse's support point
-along the direction of travel — the front of the pen — and `n.tail`,
-the same thing backwards. (Both are errors on razor and `width`/`nib`
-nodes: a zero-height pen has no front.) The ellipse's tangent at those
-points is perpendicular to travel, so a terminal that traces the pen is
-three points whose direction constraints are known before you draw
-anything:
+Pen nodes provide you with two more handy points: `n.tip` and `n.tail`. `n.tip` represents the ellipse's support point right along the direction of travel—essentially, the front of the pen. Conversely, `n.tail` is its mirror image, found at the back. (A quick note: attempting to use these on razor or `width`/`nib` nodes will result in errors, as a zero-height pen doesn't have a distinct front or back.) The ellipse's tangent at these points is always perpendicular to the direction of travel. This crucial detail means that when you're crafting a terminal that traces the pen, you know the direction constraints for its three key points before you even begin to draw.
 
 ```chi norender
 ... -- b.right {b.dir} .. {b.dir + 90} b.tip .. {b.dir + 180} b.left -- ...
 ```
 
-Leave the right bank still traveling with the stroke, round the front
-turning left, arrive on the left bank traveling backwards. A `.tail` cap
-at the *start* of a stroke is the mirror image — this is the idiom the
-`va_pen.chi` example uses at every stroke end:
+To visualize this: let the right bank continue its journey with the stroke, then gently round the front as it turns left, and finally arrive on the left bank traveling backwards. A `.tail` cap applied at the *start* of a stroke works as a perfect mirror image of this sequence. You'll see this precise idiom in action in the `va_pen.chi` example, where it's used for every stroke end.
 
 ```chi norender
 ... a.left {a.dir + 180} .. {a.dir - 90} a.tail .. cycle;
@@ -65,13 +47,7 @@ at the *start* of a stroke is the mirror image — this is the idiom the
 
 ## Where tracing breaks: flat pens
 
-The traced cap hands the fitter three points and asks it for half an
-ellipse. For a plump pen that is easy. For an eccentric one — here a
-realistic razor with `height` a tenth of `width`, held with its long
-axis across the travel so the stroke is broad and its ends nearly flat —
-the three support points cluster at the pen's tips, and the fit must
-turn ninety degrees across a nearly-zero chord. The result renders as a
-corner where the cap should turn, and a bulge where it should lie flat:
+When you use a traced cap, you're essentially providing the fitter with three specific points and asking it to construct half an ellipse. For a nicely plump pen, this task is usually quite straightforward. But things get a little tricky when you're working with more eccentric pens. Imagine, for example, a realistic razor pen where the `height` is only a tenth of its `width`, and it's held with its long axis perpendicular to the direction of travel. This creates a very broad stroke with ends that are nearly flat. In these situations, the three support points tend to cluster tightly at the pen's tips, forcing the fitter to attempt a ninety-degree turn across an almost-zero chord. The visual result often isn't what you'd hope for: you might see a sharp corner where the cap should curve, and an unexpected bulge where it ought to lie flat:
 
 ```chi
 node a = (u, u)              dir 20 pen flat;
@@ -87,38 +63,18 @@ node d = c.pos + 1.8u * unitvec(20) dir 20 pen flat;
 fill(c.tailcap .. d.tipcap .. cycle);
 ```
 
-The lower stroke is the traced idiom; look closely at its ends — the cap
-overshoots the pen's true footprint. The upper stroke uses the fix:
-**`.tipcap` and `.tailcap`**, cap geometry constructed *analytically*
-instead of fitted. Each returns a small path — the exact half-ellipse
-from one bank contact around the front (or back) to the other — carrying
-its own fixed curve segments, immune to eccentricity. However flat the
-pen, the cap is the pen.
+Take a close look at the lower stroke; it demonstrates the standard traced idiom. If you inspect its ends, you'll see how the cap slightly overshoots the pen's true footprint. Now, for the fix, observe the upper stroke. It introduces **`.tipcap` and `.tailcap`**, which provide cap geometry constructed *analytically* instead of being fitted. Each of these returns a small path—the exact half-ellipse from one bank contact, around the front (or back), to the other. They carry their own fixed curve segments, making them wonderfully immune to eccentricity. It means that no matter how flat the pen, the cap will perfectly reflect its true shape.
 
 ## Splicing
 
-`c.tailcap` in that contour introduced one last path feature: a path
-value used as an *element* of a path expression splices in — its points
-and segments merge into the host path, and the joints written on either
-side connect to the splice's endpoints. The cap's boundary points carry
-their exact tangents with them, so nothing needs to be written at the
-seam: the whole outline of a stroke can be as short as
+Using `c.tailcap` in that contour revealed one more clever path feature: splicing. When a path value is used as an *element* within a larger path expression, it essentially splices itself in. Its points and segments seamlessly merge into the host path, and any joints you define on either side will connect smoothly to the splice's endpoints. The great thing is that the cap's boundary points inherently carry their exact tangents along with them. This means there's no need to explicitly write anything at the seam, allowing the entire outline of a stroke to be wonderfully concise, like this:
 
 ```chi norender
 fill(a.tailcap .. b.tipcap .. cycle);
 ```
 
-— two caps and the two bank curves the fitter runs between them. A
-closed path cannot be spliced, only open ones; caps are the motivating
-case, but any open path value splices the same way.
+— a straightforward combination of two caps and the two bank curves that the fitter smoothly connects between them. Just a quick note: you can only splice open paths, not closed ones. While caps are a prime example and a common use case, any open path value will splice in the very same fashion.
 
 ## Teardrops, torn ends, traps
 
-Everything else a terminal can be is a combination of moves this book
-has already made — which is the point of having no cap machinery. A
-sharp break between two curves is `{corner}` from the first-strokes
-chapter; a teardrop terminal is a swell traced around a corner point;
-an ink trap is an inner corner pulled open — an `intersection()` point
-nudged into the joint, an ordinary edit that stays parametric. The
-catalogue stops here, and it stops short on purpose: past this point,
-terminals are design decisions, not language features.
+Anything else you can imagine a terminal to be will simply be a creative combination of moves we've already explored in this book. And that's exactly the beauty of not having rigid cap machinery. For example, a sharp break between two curves comes to life with `{corner}` from the first-strokes chapter. If you're envisioning a teardrop terminal, that's just a swell traced gracefully around a corner point. An ink trap can be fashioned by pulling an inner corner open—perhaps by nudging an `intersection()` point into the joint. These are all straightforward edits that remain completely parametric. Our catalogue comes to a close here, and we're intentionally stopping short. Past this point, terminals evolve into exciting design decisions that are entirely yours to make, rather than being dictated by fixed language features.

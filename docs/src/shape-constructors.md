@@ -1,10 +1,6 @@
 # Shape constructors
 
-Four builtins return the closed shapes that would otherwise be written
-out point by point. What they return are **ordinary path values** — the
-on-curve points and their tangent constraints, handles still left to the
-fitter — so they transform, they answer the path queries, and anything
-they build the designer could also write by hand:
+Instead of meticulously plotting points one by one, chi offers four delightful built-in functions to conjure up common closed shapes. What you get back are **ordinary path values** — complete with on-curve points and tangent constraints, with the fine-tuning of handles gracefully left to the fitter. This means these shapes are incredibly versatile: you can transform them, query their paths, and ultimately, anything they craft, you could also painstakingly draw by hand if you truly wished:
 
 ```chi
 u = 100;
@@ -15,45 +11,24 @@ fill(roundrect((4.8u, 0.3u), (6.4u, 1.7u), 30));
 fill(superellipse((8u, u), 0.8u, 0.8u, 4, 16));
 ```
 
-Two properties are shared by all four, and both are design decisions:
+These four handy constructors share a couple of key traits, both carefully considered design choices:
 
-- **Counterclockwise**, so the result is directly usable as an outer
-  contour. A counter is the same call `reversed`.
-- **The point count never depends on a value** — only on which
-  constructor was called — so a shape keeps its topology across the
-  whole design space, per the
-  [interpolation rule](interpolation-compatibility.md).
+- **Counterclockwise**: We've set them up this way so the shapes are immediately ready to serve as an outer contour. If you need a counter (an inner hole), simply pop `reversed` on the call.
+- **Consistent Point Count**: Here's a neat trick: the number of points defining your shape depends *only* on the constructor you choose, never on any specific value you feed it. This ensures your shape beautifully maintains its topology throughout the entire design space, perfectly aligning with chi's clever [interpolation rule](interpolation-compatibility.md).
 
 ## circle(c, r) — 4 points
 
-A point on each axis extreme, tangents pinned. The fitter is essentially
-exact on circular arcs, so four points describe a circle to 0.027 % of
-`r` — invisible at any size type is seen.
+Imagine placing a point right at each axis extreme, with tangents neatly pinned. That's how `circle` works its magic. Because chi's fitter is wonderfully precise with circular arcs, these four points are more than enough to describe a circle with astonishing accuracy — we're talking a mere 0.027 % of `r`, an error you'd never spot at any typical type size.
 
 ## ellipse(c, rx, ry) — 8 points
 
-Eight, not four, and a separate constructor rather than
-`circle(...) yscaled k` — both for the same reason. Four points describe
-an ellipse only to about 1 % (the fitter's handle rule is exact for
-circles, not ellipses — the [fitter
-chapter](paths-and-the-fitter.md#the-one-gotcha-squashed-circles)'s
-gotcha), so `ellipse` spends eight points and reaches 0.06 %. And
-`ellipse(c, r, r)` is deliberately *not* `circle(c, r)`: branching on
-`rx == ry` would change the point count as an axis crossed 1.0.
+You might notice `ellipse` uses eight points, not four, and it's a distinct constructor rather than simply scaling a `circle(...)`. There's a good reason for both. While four points are plenty for a circle, they only capture an ellipse to about 1% accuracy. That's because the fitter's handle rule is absolutely spot-on for circles, but not quite for ellipses — it's a little [gotcha](paths-and-the-fitter.md#the-one-gotcha-squashed-circles) you'll find in the fitter chapter. So, to give you a beautifully precise ellipse, `ellipse` thoughtfully allocates eight points, achieving a much tighter 0.06%. And here's another key detail: using `ellipse(c, r, r)` is intentionally *not* the same as `circle(c, r)`. If chi were to cleverly switch between them when `rx == ry`, it would unfortunately alter the point count as an axis crossed that 1.0 threshold, messing with your design space consistency.
 
-For very flat ellipses, spend more points still —
-`superellipse(c, rx, ry, 2, count)` is the same curve with a chosen
-count: at a 1:5 aspect it goes from 3.9 % at eight points to 0.6 % at
-sixteen and 0.05 % at thirty-two.
+For those really flat ellipses, you might want to consider spending a few more points. Happily, `superellipse(c, rx, ry, 2, count)` offers the very same elliptical curve, but lets you pick your desired point count. For instance, with a dramatic 1:5 aspect ratio, you'll see a precision jump from 3.9% with eight points, to a much nicer 0.6% with sixteen, and an impressive 0.05% with thirty-two.
 
 ## roundrect(p, q, r) — 8 points
 
-Two opposite corners, in any order, and a corner radius: four lines and
-four quarter-arcs. The radius is clamped to half the shorter side,
-above which neighbouring arcs would overlap. At `r = 0` it is a
-rectangle that still *carries* eight points — four of its segments are
-zero-length — rather than a four-point path, so the count stays fixed
-across a design space where a param drives the radius to zero:
+`roundrect` takes two opposite corners (you can give them in any order) and a corner radius to create its charming shape: four straight lines meeting four gentle quarter-arcs. Just a heads-up: the radius is cleverly clamped to half the shorter side of the rectangle. Go beyond that, and the neighboring arcs would start bumping into each other. Even if you set `r = 0`, it's still a rectangle that *carries* eight points — though four of its segments magically become zero-length. This might seem a bit curious, but it's crucial: by maintaining eight points instead of shrinking to a four-point path, your roundrect keeps its consistent point count, even if a parameter smoothly drives the radius all the way down to zero across your design space:
 
 ```chi
 u = 100;
@@ -63,17 +38,11 @@ fill(roundrect((4.4u, 0), (6u, 1.6u), 60));
 fill(roundrect((6.6u, 0), (8.2u, 1.6u), 500));   # clamped to 80
 ```
 
-One consequence of the zero-length segments: they have no tangent, so
-the path queries cannot see them. A `directionpoint` on a radius-0
-roundrect finds the sides, never the degenerate corners.
+There's a little consequence of those zero-length segments: since they don't have a tangent, path queries won't be able to "see" them. For example, if you ask for a `directionpoint` on a radius-0 roundrect, you'll find points along the main sides, but never on those perfectly sharp, degenerate corners.
 
 ## superellipse(c, rx, ry, n, count)
 
-The family `|x/rx|^n + |y/ry|^n = 1`: `n = 2` is the ellipse, larger
-`n` squares the shape off toward the bounding box. The exponent may be
-any expression ≥ 2 (an error below — the family is not defined toward
-the diamond side here), and since `n` only moves *positions*, it can be
-a param: a squareness axis is one binding.
+Here we have the wonderfully versatile superellipse, defined by the family `|x/rx|^n + |y/ry|^n = 1`. Think of it as a spectrum of shapes: when `n = 2`, you get a classic ellipse, but as you increase `n`, the shape gracefully squares off, pushing outward toward its bounding box. You can use any expression for `n` as long as it's ≥ 2 (values below that would lead to an error here, as this family isn't defined for the diamond-like shapes). And since `n` primarily shifts *positions* rather than changing the fundamental structure, it makes a perfect candidate for a parameter — imagine defining a whole 'squareness' axis for your type design.
 
 ```chi
 u = 100;
@@ -82,19 +51,11 @@ fill(superellipse((3.2u, u), 0.8u, 0.8u, 4, 16));
 fill(superellipse((5.4u, u), 0.8u, 0.8u, 10, 16));
 ```
 
-`count` is the sampled point count: at least 4, at most 1024, and a
-multiple of 4 so a point lands on each axis extreme. It is an argument
-precisely so that it can *not* silently vary — passing a param-derived
-count is the interpolation chapter's trapdoor, spelled out. Sampling,
-not fitting, limits accuracy: sixteen points hold `n = 4` to 0.15 % of
-the side, but only 0.69 % at `n = 10`; flatter and squarer shapes both
-reward more points.
+The `count` argument determines how many points are sampled along the superellipse. You'll need at least 4 points, and you can go up to 1024; it's also a multiple of 4, ensuring a point always lands perfectly on each axis extreme. We've made `count` an explicit argument for a very good reason: it ensures it can *never* silently change on you. As we detail in the interpolation chapter, passing a count derived from a parameter is a classic 'trapdoor' for unexpected behavior. Here, it's the sampling process, not the fitter, that truly limits accuracy. For instance, sixteen points keep `n = 4` accurate to a lovely 0.15% of the side, but only achieve 0.69% at `n = 10`. It's a good rule of thumb that both flatter and squarer shapes will generally sing with a few more points.
 
 ## Constructors in glyphs
 
-Inside a glyph the constructors are contour factories, and `reversed`
-makes counters — here a washer whose outer edge squareness and hole are
-both parametric:
+When you bring these constructors inside a glyph, they truly shine as contour factories. And remember our friend `reversed`? That's your go-to for creating counters, or inner holes. Take a peek at this washer example, where both the outer edge's squareness and the inner hole are beautifully parametric:
 
 ```chi
 metrics { upm = 1000; asc = 750; desc = -220; }
@@ -108,6 +69,4 @@ glyph washer {
 }
 ```
 
-The [debugging chapter](debugging.md)'s winding rules apply unchanged:
-the constructor hands you counterclockwise, and `reversed` is the whole
-story of making it a hole.
+Just a quick note: all those handy [winding rules](debugging.md) from the debugging chapter still apply here, precisely as you'd expect. These constructors kindly give you a counterclockwise path, and if you need to turn it into a lovely hole, `reversed` is truly all you need.

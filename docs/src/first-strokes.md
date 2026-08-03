@@ -1,11 +1,6 @@
 # First strokes
 
-Before glyphs, metrics, and advance widths, there is a simpler way to run
-chi: the sketch. A file with no `glyph` block is a sketch file — top-level
-`draw()` renders paths as thin spines, `fill()` fills closed ones. Sketches
-are how you doodle, test an idea, or follow along with this chapter. Paste
-any example into the [playground](https://gitlab.com/chi-lang/chi-playground)
-or run it from a file:
+Before you dive into glyphs, metrics, and advance widths, there's a wonderfully straightforward way to get chi up and running: we call it a sketch. If your file doesn't include a `glyph` block, it's considered a sketch file. In these files, a top-level `draw()` call will render your paths as thin spines, and `fill()` will fill in any closed shapes you've made. Sketches are perfect for when you want to doodle around, quickly test out an idea, or simply follow along with the examples in this chapter. Feel free to paste any example into the [playground](https://gitlab.com/chi-lang/chi-playground), or you can run it directly from a file:
 
 ```sh
 chi build sketch.chi -o sketch.svg
@@ -13,27 +8,20 @@ chi build sketch.chi -o sketch.svg
 
 ## Numbers, names, comments
 
-A chi statement ends with a semicolon; `#` starts a comment; `=` binds a
-name. Bindings are single-assignment — rebinding a name in the same scope
-is an error, which keeps any value in a file traceable to one line.
+Each statement you write in chi should end with a semicolon. If you want to add a helpful note, just use `#` to start a comment. And when you need to give something a name, the `=` symbol is your friend. It's worth noting that bindings are single-assignment here. This means if you try to rebind a name within the same scope, chi will gently let you know it's an error. This design choice ensures that every value in your file can be traced back to a single, clear line.
 
-A number literal directly in front of an expression multiplies it, so once
-you bind a unit, coordinates read like graph paper: `3u` is three units,
-`2(a + b)` twice a sum.
+Here's a neat trick: placing a number directly in front of an expression automatically multiplies it. This means once you've set up a unit, your coordinates will start to feel delightfully intuitive, almost like working on graph paper. For instance, `3u` simply means three units, and `2(a + b)` gives you twice the sum.
 
 ```chi
 u = 100;                   # our unit
 draw((0, 0) -- (4u, 2u));  # a line segment
 ```
 
-The coordinate system is Cartesian and y-up: x grows right, y grows up,
-like the maths you learned and unlike most screen APIs. `--` joins points
-with a straight line.
+The coordinate system is Cartesian and y-up. This means x grows to the right and y grows upwards, just like the mathematics you're familiar with, and quite unlike most screen APIs. By the way, `--` is how you join points with a straight line.
 
 ## Points are values
 
-`(x, y)` is a point. Points add, subtract, and scale, and a point does
-double duty as a 2-D vector, so displacement is just arithmetic:
+In chi, `(x, y)` creates a point. These points are quite versatile: you can add them, subtract them, and scale them with ease. What's more, a point also happily doubles as a 2-D vector, which makes calculating displacements a delightfully straightforward arithmetic task:
 
 ```chi
 u = 100;
@@ -46,17 +34,11 @@ draw(m + (-u/4, 0) -- m + (u/4, 0));   # a cross marking m
 draw(m + (0, -u/4) -- m + (0, u/4));
 ```
 
-`t[a, b]` is *mediation*, the expression you will use most in chi: the
-point (or number) `t` of the way from `a` to `b`. `0.5[a, b]` is the
-midpoint; `t` can be any expression.
+Meet `t[a, b]`, an operation we call *mediation*. Chances are, this will quickly become one of your most frequently used expressions in chi. It elegantly finds a point (or number) `t` of the way from `a` to `b`. So, if you're looking for the exact midpoint, `0.5[a, b]` will do the trick. The best part is, `t` can be any expression you dream up.
 
 ## Curves
 
-Join points with `..` instead of `--` and chi fits a smooth curve through
-them. This is the heart of the language: you place on-curve points, and a
-two-parameter spline solver — a descendant of the one John Hobby built for
-METAFONT — chooses every control handle, keeping the curve smooth through
-each point.
+Want to create a beautiful curve? Just connect your points with `..` instead of `--`, and chi will gracefully fit a smooth path right through them. This is truly the heart of the language's approach to curves: you simply place your on-curve points, and a sophisticated two-parameter spline solver — a clever descendant of the one John Hobby crafted for METAFONT — intelligently selects every control handle for you, ensuring the curve flows smoothly through each and every point.
 
 ```chi
 u = 100;
@@ -64,22 +46,13 @@ p = (0, 0) .. (2u, 2u) .. (4u, 0) .. (6u, 2u);
 draw(p);
 ```
 
-No handles appear in the source, and none ever will. When a curve isn't
-what you want, you don't reach for handles — you add a point where the
-geometry needs witnessing, or you constrain a direction.
+You'll notice that no handles ever appear in your source code, and they never will. If a curve isn't quite shaping up how you envisioned, your instinct won't be to fiddle with handles. Instead, you'll simply add another point exactly where you feel the geometry needs a bit more definition, or perhaps you'll constrain its direction.
 
-> **Try it** — paste the wave into the playground and push the numbers
-> around: raise a crest, add a fifth point, delete one. You can't break
-> anything; the fitter re-solves on every keystroke, and watching it
-> follow you is the fastest way to trust it.
+> **Try it** — Feel encouraged to paste this wave example into the playground and have some fun pushing those numbers around. Try raising a crest, adding a fifth point, or even deleting one. Don't worry, you really can't break anything. The fitter is wonderfully responsive, re-solving the curve with every keystroke, and watching it gracefully adapt is truly the quickest way to build a rapport with it.
 
 ## Directions
 
-A direction in braces constrains the curve's tangent at a point: `{45}`
-means "leave (or enter) at 45 degrees". Angles are in degrees,
-counterclockwise, with 0° pointing right; `right`, `up`, `left`, `down`
-are ordinary bindings for 0, 90, 180, 270. A spec before a point
-constrains the curve *entering* it, after a point the curve *leaving* it.
+Sometimes you want a curve to head in a specific direction. You can constrain its tangent at a point by enclosing a direction in braces. For example, `{45}` tells the curve to leave (or enter) at a 45-degree angle. We use degrees for angles, measured counterclockwise, with 0° pointing to the right. Handy named bindings like `right`, `up`, `left`, and `down` are also available, representing 0, 90, 180, and 270 degrees respectively. If you place a direction specifier *before* a point, it constrains the curve *entering* that point; *after* a point, it guides the curve *leaving* it.
 
 ```chi
 u = 100;
@@ -93,29 +66,22 @@ draw(p);
 draw(q shifted (5u, 0));            # beside it, to compare
 ```
 
-The left wave takes the gentle route; the right one is forced to leave `a`
-straight up and dive into `b` straight down. (`shifted` is one of chi's
-transform operators — they get a chapter of their own.)
+Notice how the wave on the left follows the fitter's gentle, natural route. The wave on the right, however, is beautifully constrained, forced to gracefully leave point `a` straight up and then elegantly dive into `b` straight down. (By the way, `shifted` is just one of chi's handy transform operators – we'll dedicate an entire chapter to them later.)
 
 ## Mixing lines and curves
 
-`--` and `..` mix freely in one path. Where a line meets a curve, the
-meeting point automatically becomes a line/curve corner: the curve arrives
-tangent to whatever direction it needs, the line stays perfectly straight.
+You'll be pleased to know that `--` for lines and `..` for curves can be mixed together quite freely within a single path. When a line gracefully meets a curve, that intersection point effortlessly transforms into a natural line/curve corner. The curve will arrive perfectly tangent to whatever direction it needs, while the line, of course, remains wonderfully straight.
 
 ```chi
 u = 100;
 fill((0, 0) -- (3u, 0) .. (4u, u) .. (3u, 2u) -- (0, 2u) -- cycle);
 ```
 
-`cycle` closes the path back to its first point — closedness is always
-written, never inferred — and `fill()` needs a closed path.
+The `cycle` keyword thoughtfully closes your path, bringing it right back to its starting point. It's important to remember that closedness is always explicitly written, never just inferred. And speaking of closed paths, `fill()` naturally requires one to work its magic.
 
 ## Corners
 
-Sometimes a point should be sharp *between two curves*. Mark it with
-`{corner}` and the fitter treats each side independently, no smoothness
-across the point:
+What if you want a point to be distinctly sharp *between two curves*? You can achieve this by marking it with `{corner}`. When you do, the fitter intelligently treats each side of that point independently, which means you won't get any automatic smoothness across it.
 
 ```chi
 u = 100;
@@ -126,26 +92,13 @@ draw(wave);
 draw(scallop shifted (5u, 0));
 ```
 
-Same five points. On the left the fitter keeps the curve smooth through
-the middle point, so it swings through a rounded valley. On the right the
-middle point is a corner: each side is fitted independently, the two
-arches end steeply, and they meet in a cusp. Corners like this — placed
-where two curves should visibly break — are the germ of every teardrop
-terminal and ink trap in Part III.
+We're using the very same five points in both examples. On the left, you can see how the fitter keeps the curve beautifully smooth right through the middle point, allowing it to gracefully swing through a rounded valley. On the right, however, that middle point becomes a deliberate corner. Here, each side is fitted entirely independently, causing the two arches to end quite steeply, meeting in a distinct cusp. Corners like these — strategically placed where two curves should visibly break apart — are truly the seeds for crafting every teardrop terminal and ink trap we'll explore in Part III.
 
-A confession, and a lesson hiding in it: two earlier drafts of this
-example marked the tip of a teardrop as a corner, and nothing happened —
-the shape came out a smooth egg both times. At a symmetric point, the
-freed tangents can simply agree with the smooth ones. `{corner}` grants
-the fitter freedom; it is the surrounding geometry that decides whether
-the freedom shows.
+Here's a little confession, with a valuable lesson tucked inside: in two earlier drafts of this very example, I tried marking the tip of a teardrop as a corner, and absolutely nothing changed. The shape stubbornly remained a smooth egg both times. The trick is, at a perfectly symmetric point, the tangents that the `{corner}` specifier frees up can simply choose to align perfectly with what the smooth ones would have done anyway. Think of `{corner}` as granting the fitter the *freedom* to break smoothness; it's the surrounding geometry that ultimately decides whether that freedom actually makes a visible difference.
 
 ## Reading the sheet
 
-Everything renders onto one sheet. Passing `--debug` to `chi build` (or
-toggling debug in the playground) draws a coordinate grid under it — the
-book's debug figures use it too, like this rendering of the wave from
-earlier:
+Everything you draw in chi gracefully appears together on a single sheet. If you ever want a peek behind the curtain, simply pass `--debug` to `chi build` (or toggle the debug option in the playground), and chi will thoughtfully draw a coordinate grid right underneath your work. Our debug figures throughout this book also take advantage of this, just like this rendering of our earlier wave:
 
 ```chi hide
 u = 100;
@@ -155,9 +108,4 @@ draw((0, 0) .. (2u, 2u) .. (4u, 0) .. (6u, 2u));
 ```chi debug
 ```
 
-The grid is graph paper in font units: fine lines every 10, heavier every
-50, heaviest every 100 — so the wave's crests at `y = 200` sit two heavy
-squares above the baseline. For sketches
-the sheet simply sizes itself to what you drew; a real glyph, as the next
-chapter shows, gets its vertical extent from font metrics instead — along
-with baselines, heights, and everything else the debug view is really for.
+This grid is essentially graph paper, measured in font units. You'll see fine lines every 10 units, heavier ones every 50, and the heaviest lines marking every 100 units. So, if you look at our wave, its crests at `y = 200` are comfortably sitting two heavy squares above the baseline. For sketches, the sheet simply and conveniently sizes itself to whatever you've drawn. A real glyph, however, as we'll discover in the next chapter, derives its vertical extent from font metrics — which, along with baselines, heights, and all those other helpful indicators, is truly what the debug view is designed for.

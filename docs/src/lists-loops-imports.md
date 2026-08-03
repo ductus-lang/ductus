@@ -1,16 +1,12 @@
 # Lists, loops, and imports
 
-Chi's repetition and reuse machinery is small and, like conditionals, it
-comes with an interpolation-shaped warning label.
+Chi offers some neat tools for repetition and reuse. They're pretty lean, much like conditionals, and they come with a special heads-up about how they play with interpolation.
 
 ## for over a range
 
-`for i in a..b` iterates from `a` to `b` **inclusive on both ends**,
-stepping by 1 — the same range form the `params` block uses. Each
-iteration runs in a fresh scope with the loop variable bound first, so
-nothing carries over between iterations; the loop exists for its side
-effects (`draw`, `fill`) and for statements parameterized by the
-variable:
+`for i in a..b` is your go-to for stepping through a sequence of numbers. It'll count from `a` all the way up to `b`, making sure to include both ends of that range, and it increments by 1 each time. This is the very same range style you'll find in the `params` block.
+
+Each time the loop runs, it gets a brand new, clean scope, with your loop variable ready and waiting. This means absolutely nothing carries over from one iteration to the next. So, what's it good for? Primarily, it's there to produce side effects, like `draw` and `fill`, or to help you parameterize statements using that handy loop variable:
 
 ```chi
 u = 100;
@@ -20,13 +16,11 @@ for i in 0..6 {
 }
 ```
 
-Seven rays, 0° through 90°. `ray` is rebound each time around — legally,
-because each iteration is a new scope.
+And just like that, you get seven rays, spanning from 0° right up to 90°. Notice how `ray` gets a fresh assignment each time the loop goes around, which is perfectly fine because, as we saw, every iteration sets up its own clean scope.
 
 ## for over a list
 
-`[a, b, c]` is a list literal, and `for` iterates any values — here a
-list of points seeding a row of domes:
+You can create a list right in your code using `[a, b, c]`. And guess what? `for` can happily loop over any values you toss into a list. Take this example, where a list of points lays the groundwork for a charming row of domes:
 
 ```chi
 u = 100;
@@ -36,26 +30,19 @@ for c in [(0, 0), (2.5u, 0), (5u, 0)] {
 }
 ```
 
-Lists are iterated, not indexed — chi has no subscripting (the postfix
-bracket means mediation), and no way to ask a list its length. If you
-find yourself wanting either, you usually want a macro taking the values
-as parameters instead.
+Now, here's a key point about lists in chi: you iterate over them, but you can't index them directly. Chi doesn't offer subscripting (that postfix bracket actually means mediation, which is a different beast entirely), and there's no built-in way to check a list's length either. If you ever catch yourself wishing for those features, you'll generally find that a macro, designed to take those values as parameters, is a much better fit for what you're trying to achieve.
 
 ## Loops versus the design space
 
-The warning label: a `for` bound that varies with a param — say, one
-decorative diamond per 100 units of weight — would give different
-instances different geometry, breaking interpolation compatibility
-exactly the way a structural conditional does. Bounds should be constants
-of the design. (The evaluator does not police this yet; the future
-designspace sampler will.)
+Alright, let's talk about that warning label we mentioned earlier. Imagine you tie a `for` loop's bounds to a parameter – perhaps you want one snazzy decorative diamond for every 100 units of weight. What happens then? Well, different instances of your design would end up with wildly different geometries. This completely breaks interpolation compatibility, much in the same way a structural conditional would. The takeaway here is clear: your loop bounds really ought to be constants inherent to your design.
+
+By the way, the current evaluator isn't strict about this yet, but the upcoming designspace sampler will certainly be keeping an eye on it.
 
 ## import
 
-`import "file.chi";` evaluates another file's items — params, metrics,
-pens, macros, bindings, glyphs — into the current scope, at the import's
-position, as if written inline. This chapter's sibling file
-`examples/units.chi` holds a unit and a macro:
+`import "file.chi";` is your way of bringing in goodies from another file. It takes all sorts of items – parameters, metrics, pens, macros, bindings, even entire glyphs – and evaluates them right into your current scope, exactly where you placed the import statement. Think of it as if you had typed all that content directly into your file.
+
+To see it in action, let's look at `examples/units.chi`, a companion file for this chapter. It thoughtfully provides us with a handy unit and a macro:
 
 ```chi norender
 # examples/units.chi
@@ -66,7 +53,7 @@ def diamond(c, r) -> p {
 }
 ```
 
-and importing it makes both available:
+Once we import it, both become instantly available for us to use:
 
 ```chi
 import "examples/units.chi";
@@ -75,21 +62,14 @@ fill(diamond((u, u), 80));
 fill(diamond((0, 0), 80) yscaled 0.5 shifted (3u, u));
 ```
 
-The rules, quickly:
+A few quick rules to keep in mind about importing:
 
-- **Top level only** — an import inside a glyph or macro body is an
-  error.
-- **Include-once** per canonical file: importing the same file along two
-  routes evaluates it once. Import cycles are errors.
-- **Relative to the importing file**, so a library can import its own
-  helpers no matter where the root file lives.
-- **Errors carry the file name** — a broken binding in an imported file
-  is reported against that file.
-- **The playground rejects imports** for now: file resolution belongs to
-  the host, and the browser has no filesystem. The CLI resolves them
-  relative to your source file.
+- **Top level only** — You'll want to place your imports at the top level of your file; tucking an import inside a glyph or macro body will result in an error.
+- **Include-once** per canonical file: No need to worry about duplicate evaluations. Even if you import the same file via different paths, chi will only evaluate it once. Also, do keep an eye out for import cycles; those will trigger an error.
+- **Relative to the importing file**, which is super handy. This setup means a library can confidently import its own internal helpers, no matter where your main project file decides to call home.
+- **Errors carry the file name** — If something goes wrong, say a binding is broken in an imported file, chi will let you know by reporting the error against that specific file. It helps keep debugging clear.
+- **The playground rejects imports** for now: Just a heads-up that the playground isn't quite ready for imports yet. That's because file resolution is handled by the host environment, and, well, your browser doesn't have a filesystem to browse. The CLI, on the other hand, handles them beautifully, resolving paths relative to your source file.
 
-Between `def` and `import` you have chi's whole reuse story: macros share
-construction within a file, imports share files within a family. What
-they share, from Part III on, is mostly nodes — which is where this book
-goes next.
+So, there you have it. Between `def` for defining things and `import` for bringing in outside resources, you've got chi's entire story for reusing your work. Think of it this way: macros are perfect for sharing clever constructions right within a single file, while imports are designed for sharing entire files across a whole family of designs.
+
+And what exactly do they share? Well, from Part III onward, you'll discover that it's mostly about nodes – and that's precisely where we're headed next in this book.

@@ -1,10 +1,6 @@
 # Parameters, metrics, and bindings
 
-Three block-and-binding forms give a chi file its structure: `params`
-declares what varies, `metrics` names the font-level measures, and plain
-bindings derive everything else. This chapter is also about reading
-values back *out* — chi's answer to "how thick did that stem actually
-come out?".
+A chi file finds its structure through three distinct forms for blocks and bindings. You'll use `params` to declare all the variables in your design, `metrics` to name those essential font-level measurements, and plain bindings to derive everything else. This chapter also dives into how you can read values back *out* of your design. It's chi's elegant answer to questions like, "how thick did that stem actually turn out?"
 
 ## params
 
@@ -14,27 +10,17 @@ params { size = 300 in 100..460; }
 metrics { upm = 1000; x = 500; cap = 700; asc = 750; desc = -220; }
 ```
 
-Each entry in `params` is a design axis: a name, a default, and a range
-after `in`. Inside the language a param is simply a number binding —
-what makes it an axis is that it can be overridden *from outside* the
-source, per instance:
+When you define an entry in `params`, you're essentially creating a design axis. Each one needs a name, a default value, and a range specified with `in`. Within the chi language itself, a parameter acts just like a regular number binding. What makes it special, though, is its ability to be overridden *from outside* your source file, allowing for unique instances:
 
 ```sh
 chi build dot.chi --set size=460
 ```
 
-The playground generates its sliders from this block, one per param, with
-the declared range. Evaluation order is fixed and single-pass: params
-first (defaults, then any `--set` overrides), then metrics, then the rest
-of the file top to bottom.
+The chi playground automatically generates handy sliders from this block, providing one for each parameter and respecting its declared range. When chi evaluates your file, it follows a clear, single-pass process. First, it handles your parameters — applying defaults, then any `--set` overrides. Next up are the metrics, and after that, the rest of your file is evaluated from top to bottom.
 
 ## metrics
 
-Five metric keys are meaningful to the renderer: `upm`, `x`, `cap`,
-`asc`, `desc` size the sheet and draw the debug guidelines, as the
-first-glyph chapter showed. Every other key is just a named number that
-happens to live with them. Metric values are ordinary expressions and may
-reference params — a weight-dependent overshoot is one line:
+The renderer pays special attention to five particular metric keys. These are `upm`, `x`, `cap`, `asc`, and `desc`, which together define the overall sheet size and help draw those useful debug guidelines, just as we explored in the first-glyph chapter. Any other key you include here is simply a named number that comfortably lives alongside these essential ones. Metric values behave just like ordinary expressions, and they can even reference your parameters. This means defining something like a weight-dependent overshoot can be as simple as a single line:
 
 ```chi norender
 metrics {
@@ -45,12 +31,7 @@ metrics {
 
 ## Bindings are the measuring instrument
 
-A plain binding derives a value; there is no separate "measure" keyword.
-But numeric bindings do double duty: chi **reports them to tooling** —
-top-level ones in source order, and a glyph's own bindings alongside its
-advance. Since chi has no print statement, a binding is the only way to
-read a computed number back out of a source file. That makes a binding
-over geometry a *probe*:
+A plain binding is how you derive a value; there's no separate "measure" keyword to worry about. But here's where numeric bindings serve a dual purpose: chi is designed to **report them directly to tooling**. Top-level bindings are reported in source order, and a glyph's own bindings appear right alongside its advance. Since chi doesn't include a traditional print statement, these bindings become your only way to retrieve a computed number from your source file. This powerful feature means that a binding applied to geometry acts as a *probe*:
 
 ```chi acc
 glyph dot {
@@ -63,16 +44,11 @@ glyph dot {
 }
 ```
 
-`bulge` measures the fitted contour itself: how far a point one fifth
-into the first segment strays from a perfect circle. (`circle()` is a
-shape constructor — a plain path value with four points; the reference
-chapter covers its siblings.) Nothing uses `bulge`; it exists to be read.
+Here, `bulge` gets right into measuring the fitted contour itself. It tells us precisely how far a point, one fifth of the way into the first segment, deviates from a perfect circle. (By the way, `circle()` is a shape constructor that provides a simple path value with four points; you can explore its relatives in the reference chapter.) Notice that nothing actually uses `bulge` within the file; its sole purpose is to be observed and understood.
 
 ## chi inspect
 
-`chi inspect` evaluates a file and prints every number in it — params
-with their ranges, metrics, bindings, and each glyph's advance, probes,
-and per-contour point counts:
+When you run `chi inspect`, it thoroughly evaluates your file and then thoughtfully reports every number contained within. This includes your parameters and their ranges, all your metrics, every binding, and for each glyph, you'll see its advance, any probes you've defined, and the point counts for each contour:
 
 ```text
 $ chi inspect dot.chi
@@ -92,18 +68,12 @@ glyph dot
   contour main        4 points
 ```
 
-That `bulge` of 0.0407 font units on a radius of 150 is the fitter's
-0.027 % circle error, measured from inside the language. Only *numeric*
-bindings appear — `center` is a point, so it is reported by geometry
-(anchors, contours), not in the number table. `--set` works here too,
-which is how you check a derived value across the design space:
+So, that `bulge` value of 0.0407 font units, when compared to a radius of 150, precisely indicates the fitter's 0.027 % circle error. And yes, all of this is measured right from within the chi language itself. You'll only find *numeric* bindings appearing in this list. For instance, `center` is a point, so it's reported as part of your geometry (like anchors and contours) rather than showing up in this number table. Happily, `--set` works here too, providing a great way to quickly check a derived value across your design space:
 
 ```chi set="size=460"
 ```
 
-The figure above is the same file at `--set size=460`; running
-`chi inspect dot.chi --set size=460` would show `r` at 230 and `bulge`
-scaled up with it, still 0.027 %.
+The figure you see above displays the very same file, but this time with `--set size=460` applied. If you were to run `chi inspect dot.chi --set size=460` yourself, you'd observe `r` at 230 and `bulge` neatly scaled up right alongside it, still maintaining that consistent 0.027 %.
 
 > **Try it** — load this file in the playground and drag `size` while
 > watching the inspector. `bulge` moves, but its share of `r` never
@@ -113,10 +83,4 @@ scaled up with it, still 0.027 %.
 
 ## Immutability, and why
 
-Every binding — param, metric, top-level, glyph-local — is
-single-assignment; rebinding a name in the same scope is an error. Inner
-scopes (glyph bodies, macro bodies) may shadow outer names. Combined
-with single-pass evaluation this makes a chi file pleasantly boring to
-reason about: any value traces to one line, evaluated once, from values
-defined above it. When something looks wrong, there is exactly one
-place to look.
+Here's an important principle: every single binding in chi — whether it's a parameter, a metric, a top-level declaration, or glyph-local — is designed for single-assignment. Trying to rebind a name within the same scope will actually result in an error. Of course, inner scopes, like those within glyph bodies or macro bodies, are allowed to shadow names from outer scopes. When you combine this immutability with chi's single-pass evaluation, it makes reasoning about your chi file delightfully straightforward. Any value you see can be traced back to one specific line, evaluated just once, using values that were clearly defined above it. So, if something ever seems amiss, you know there's exactly one place you need to investigate.

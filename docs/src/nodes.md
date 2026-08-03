@@ -1,17 +1,12 @@
 # Nodes and derived points
 
-Everything so far drew outlines point by point. But type is made of
-*strokes* — an `o` is a round stroke, an `l` a straight one — and a
-stroke has a direction and a thickness before it has an outline. A
-**node** is how chi says that:
+Up until now, we've been crafting outlines point by point. But here's the thing: type is fundamentally about *strokes*. Think of an `o` as a lovely round stroke, or an `l` as a crisp straight one. Each stroke carries its own direction and thickness, long before it takes on its final outline. And in chi, a **node** is how we elegantly capture all of that information:
 
 ```chi norender
 node n = (x, y) dir theta width w;
 ```
 
-A node is a skeleton point that knows the imaginary stroke's local
-direction of travel (`dir`, degrees) and total thickness (`width`). It
-never renders by itself. What it does is *derive*, exactly:
+Essentially, a node is a special skeleton point that holds vital information about an imaginary stroke. It knows the local direction of travel (`dir`, measured in degrees) and the stroke's total thickness (`width`). It's a foundational concept, but it never actually appears on its own. Instead, its true power comes from its ability to *derive* other points, like so:
 
 ```chi norender
 n.pos      # the point itself
@@ -20,16 +15,11 @@ n.left     # n.pos + (w/2) * unitvec(n.dir + 90)
 n.right    # n.pos - (w/2) * unitvec(n.dir + 90)
 ```
 
-*Left* and *right* are relative to the direction of travel, like a
-river's banks: stand on the skeleton facing `dir`, and `n.left` is half
-the width to your left. There is no offset-curve machinery behind this —
-the derived points are plain arithmetic, and the formulas above are the
-whole story.
+Think of *left* and *right* like the banks of a river, always relative to your direction of travel. If you're standing on the skeleton facing `dir`, `n.left` will be half the stroke's width to your left. No fancy offset-curve magic happening here; these derived points are simply born from straightforward arithmetic. What you see in those formulas above is exactly how it works.
 
 ## A first stroke
 
-Outlines are written *through* the derived points. Two nodes make a
-tapered stroke: skeleton down the middle, one bank out, one bank back.
+So, how do we actually create outlines with these clever points? We write them *through* the derived points. Just two nodes are enough to define a beautiful tapered stroke. Imagine a skeleton running down the middle, with one bank stretching out, and the other coming back.
 
 ```chi
 u = 100;
@@ -41,9 +31,7 @@ draw(a.left {a.dir} .. {b.dir} b.left);     # each bank echoes it
 draw(a.right {a.dir} .. {b.dir} b.right);
 ```
 
-The banks are ordinary curves through ordinary points — they reuse the
-node's direction as their own constraint, which is what makes them run
-parallel to the skeleton. Close the ends and it is a contour:
+These banks are simply ordinary curves, passing through ordinary points. The neat trick is that they intelligently reuse the node's direction as their own constraint, which is precisely what makes them glide so gracefully parallel to the skeleton. Now, let's close off those ends, and voilà, we have a complete contour:
 
 ```chi
 u = 100;
@@ -54,23 +42,13 @@ fill(a.right {a.dir} .. {b.dir} b.right
   -- b.left {b.dir + 180} .. {a.dir + 180} a.left -- cycle);
 ```
 
-Out along the right bank, straight across the far end, back along the
-left bank with every direction reversed (`+ 180`), straight across the
-near end via `cycle`. Those two straight crossings are *cut terminals* —
-the simplest ends a stroke can have, and a chapter of their own comes
-later.
+Picture this path: we journey out along the right bank, then take a straight shot across the far end, cruise back along the left bank (notice how every direction is cleverly reversed with `+ 180`), and finally, complete the loop by crossing the near end with `cycle`. Those two neat, straight crossings are what we call *cut terminals*. They're the most straightforward way a stroke can end, and we'll dive much deeper into them in a dedicated chapter later on.
 
-Note what chi did **not** do: it never offset a curve. It offset four
-*points* and fitted curves through them. Where a true parallel curve and
-the fitted bank would disagree, the cure is the same as everywhere else
-in chi — add a witness point — and the pens chapter makes that precise.
+It's important to notice what chi *didn't* do here. It didn't perform any complex curve offsetting. Instead, it precisely offset four *points* and then skillfully fitted curves right through them. If a truly parallel curve and our fitted bank ever have a minor disagreement, the solution is delightfully simple, just like many other things in chi: we simply add a witness point. The pens chapter will explain this in fine detail.
 
 ## Asymmetric width
 
-`width w` splits the stroke evenly: `w/2` to each bank. `width (wl, wr)`
-gives the banks separately — `width w` is just `width (w/2, w/2)` — and
-that asymmetry is how off-axis stress is written. The same C-shaped
-stroke, weight centered and weight pushed to the outer bank:
+By default, `width w` beautifully distributes the stroke evenly, assigning `w/2` to each bank. But what if you need more control? `width (wl, wr)` lets you specify the banks separately. In fact, `width w` is just a neat shorthand for `width (w/2, w/2)`. This lovely asymmetry is precisely how we articulate off-axis stress in our designs. Let's observe the same elegant C-shaped stroke, first with its weight perfectly centered, and then with that weight playfully pushed towards the outer bank:
 
 ```chi
 u = 100;
@@ -88,24 +66,18 @@ fill(bowl(1.5u, 30, 30));
 fill(bowl(4.5u, 5, 55));
 ```
 
-Both strokes are 60 units thick, and their skeletons are identical. On
-the right, nearly all of it lies outside the skeleton — the skeleton is
-no longer the middle of the stroke, and nothing requires it to be.
+Notice that both of these strokes maintain a thickness of 60 units, and their underlying skeletons are absolutely identical. However, on the right, you'll see almost the entire stroke extends beyond its skeleton. This clearly illustrates that the skeleton doesn't always have to sit perfectly in the middle of the stroke, and there's no rule saying it must.
 
 ## The nib axis
 
-One more clause. By default width is applied perpendicular to travel —
-`unitvec(dir + 90)` in the formulas above. `nib phi` overrides that
-axis:
+Now, let's explore one more intriguing clause. Normally, width spreads out perpendicular to the direction of travel, as shown by `unitvec(dir + 90)` in our earlier formulas. But with `nib phi`, you gain the delightful ability to override that default axis:
 
 ```chi norender
 node k = (x, y) dir theta width w nib phi;
 # k.left = k.pos + wl * unitvec(phi)  — phi, not theta + 90
 ```
 
-A *fixed* nib axis, independent of travel, is a broad pen: the stroke is
-thick where travel runs across the axis and thin where travel runs along
-it. No pen machinery — the same bowl with every node's nib pinned to 30°:
+Imagine a *fixed* nib axis, one that remains steadfast regardless of the stroke's travel direction. This effectively simulates a broad pen: the stroke becomes wonderfully thick when it travels across the axis, and elegantly thin when it glides along it. No complex pen machinery needed here, just the same familiar bowl, but this time with every node's nib axis gracefully pinned to 30°:
 
 ```chi
 u = 100;
@@ -126,17 +98,11 @@ node b = (4u, 2.4u) dir up width 70 nib 30;
 fill(a.right -- b.right -- b.left -- a.left -- cycle);
 ```
 
-The upright stroke beside the bowl shows the other broad-pen signature:
-its cut ends run along the nib axis, giving the entry angle a broad pen
-leaves. And the bowl hints at a problem — somewhere between two nodes
-the travel direction crosses the nib axis, and there the true stroke
-should thin to *nothing*. The pens chapter is about saying that
-properly.
+Take a look at the upright stroke nestled next to our bowl. It beautifully showcases another signature of broad-pen behavior: its cut ends neatly align with the nib axis, perfectly capturing the entry angle a broad pen would naturally leave. The bowl, however, subtly hints at a fascinating challenge. Somewhere along its path, between two nodes, the travel direction crosses the nib axis. At precisely that point, a true stroke would gracefully thin to *nothing*. The good news is, the upcoming pens chapter will teach us how to articulate this behavior perfectly.
 
 ## Building the o
 
-Now the glyph this book opened with, from nothing. The scaffolding first
-— params, metrics, and the two stroke weights:
+Let's finally build the 'o' glyph that greeted us at the very beginning of this book, starting from scratch. First, we lay down the essential scaffolding: our parameters, metrics, and the definitions for the two key stroke weights:
 
 ```chi norender acc
 params {
@@ -152,14 +118,9 @@ stem = 40 + 0.14 * weight;
 hair = contrast * stem;
 ```
 
-`stem` is the thick stroke, `hair` the thin one, `over` the overshoot —
-how far a round shape must poke past the flat metrics to *look* aligned
-with them.
+`stem` defines our lovely thick stroke, while `hair` handles the delicate thin one. And `over`? That's our clever overshoot value, determining just how much a round shape needs to gently extend beyond the flat metrics to *appear* perfectly aligned.
 
-The skeleton is four nodes on an ellipse, traveling counterclockwise:
-across the top leftward, down the left side, along the bottom rightward,
-up the right side. Horizontal travel gets `hair`, vertical travel gets
-`stem` — that is all the contrast in the design:
+Our skeleton is beautifully formed by four nodes arranged on an ellipse, gracefully traveling counterclockwise. It moves across the top going leftward, sweeps down the left side, glides along the bottom heading rightward, and finally rises up the right side. Horizontal movements are assigned the `hair` thickness, while vertical movements take on the `stem` thickness. This simple distinction is the secret to all the delightful contrast in our design.
 
 ```chi glyph=o debug
 glyph o : U+006F {
@@ -179,14 +140,9 @@ glyph o : U+006F {
 }
 ```
 
-The debug view shows exactly what exists so far: four nodes with their
-direction arrows, each with its two derived edge points, and the guide
-running through them. No contours yet — nothing would render in a normal
-build. The radii deserve a second look: they are *mid-stroke* radii,
-pulled in by half a stroke so that the outline's extremes — half a
-stroke further out — land exactly on the overshoot line.
+The debug view gives us a clear peek at what we've crafted so far: four nodes, each proudly displaying its direction arrow, along with its two cleverly derived edge points, and the graceful guide line connecting them all. There are no contours just yet, so nothing would actually render in a typical build. Those radii are quite special and worth a closer look. They're actually *mid-stroke* radii, thoughtfully pulled in by half a stroke's thickness. This ensures that the very extremes of the outline, which are half a stroke further out, land perfectly on our defined overshoot line.
 
-Two path expressions turn the scaffolding into ink:
+Now, with just two elegant path expressions, we transform our scaffolding into beautiful ink:
 
 ```chi acc glyph=o debug
 glyph o : U+006F {
@@ -214,66 +170,43 @@ Without the debug overlay:
 ```chi glyph=o
 ```
 
-And because every number traces back to the params, the whole design
-space came along for free — `weight = 850`:
+And here's the magic: because every single number in our design gracefully traces back to our initial parameters, the entire design space comes along for the ride, absolutely free. For example, setting `weight = 850` gives us:
 
 ```chi glyph=o set="weight=850"
 ```
 
-and low contrast at `contrast = 1.0`, where `hair` equals `stem`:
+Or perhaps a low contrast look at `contrast = 1.0`, where `hair` and `stem` charmingly become equal:
 
 ```chi glyph=o set="weight=850 contrast=1.0"
 ```
 
-Eight points, two contours, at every instance. This is the
-skeleton-as-scaffolding principle from the first chapter, made
-concrete: you wrote four positions and four widths, and the nodes
-placed everything else.
+We've created eight distinct points and two flowing contours, all dynamically at every instance. This truly embodies the 'skeleton-as-scaffolding' principle introduced in our first chapter, bringing it vividly to life. You defined just four positions and four widths, and the nodes, in their wisdom, effortlessly positioned everything else.
 
-> **Try it** — the playground ships this `o` among its examples. Drag
-> `weight` and `contrast` as far as they go and watch the debug view:
-> the edge-point dots slide, the guide breathes, and no point ever
-> appears or disappears.
+> **Try it** — the playground ships this `o` among its examples. Go ahead, drag `weight` and `contrast` to their limits in the playground and watch the debug view. You'll see the edge-point dots gracefully slide, the guide line gently breathe and reshape, and yet, not a single point will ever mysteriously appear or disappear.
 
 ## The winding convention
 
-Look again at the two contours:
+Let's take a closer look at our two contours, shall we:
 
 ```chi norender
 contour outer = n.right .. w.right .. s.right .. e.right .. cycle;
 contour inner = n.left  .. e.left  .. s.left  .. w.left  .. cycle;
 ```
 
-The skeleton travels counterclockwise, so the `right` bank is the
-outside of the ring and the `left` bank is the inside. The outer contour
-follows skeleton order — `n, w, s, e` — and is counterclockwise. The
-inner contour walks the *left* points in **reverse** order — `n, e, s,
-w` — which makes it clockwise: exactly what the nonzero fill rule needs
-a counter to be. This is the rule to memorize:
+Our skeleton journeys along in a pleasing counterclockwise direction. This means the `right` bank naturally forms the outside of our ring, while the `left` bank gracefully defines the inside. Notice that the outer contour follows the exact order of our skeleton — `n, w, s, e` — and it too is counterclockwise. Now, for the inner contour, we smartly walk the *left* points in **reverse** order — `n, e, s, w`. This clever reversal makes it clockwise, which is precisely the orientation the nonzero fill rule expects for a perfect counter. So, here's a handy rule to tuck away for future reference:
 
 > Traverse a closed skeleton counterclockwise: the `right` points in
 > order form the outer contour, and the `left` points in reverse order
 > form the counter.
 
-(Equivalently: build both banks in skeleton order and apply the
-transforms chapter's `reversed` to the inner one. Written out in reverse
-with each direction implicit, as here, there is nothing to reverse.)
+(If you prefer, you could also build both banks in skeleton order and then simply apply the `reversed` transform from the dedicated transforms chapter to the inner one. But by writing it out in reverse, with each direction implicitly handled as we've done here, there's no need for an explicit reversal.)
 
 ## The designer owns every point
 
-Derived points are ordinary points. `w.right + (3, 0)` nudges the left
-flank of the `o` three units without touching the node; replacing
-`s.right` entirely with a hand-placed point is an ordinary edit; and
-because a nudge is an expression, it can be parametric like everything
-else:
+Here's a liberating thought: derived points are, at heart, just ordinary points. This means you can do wonderful things: `w.right + (3, 0)` will gently nudge the left flank of the `o` three units to the right, all without disturbing the original node. You could even entirely replace `s.right` with a carefully hand-placed point, which is a perfectly normal edit. And because a nudge is itself an expression, it can be beautifully parametric, just like everything else in chi:
 
 ```chi norender
 contour outer = n.right .. w.right + (3, 0) .. s.right .. e.right .. cycle;
 ```
 
-Nodes also transform — `shifted`, `rotated` and friends move the
-position and turn the direction (and the nib axis) together, and
-`scaled` additionally scales the width. A macro that returns nodes,
-like `bowl()` above, therefore hands the caller everything: position,
-direction, thickness, and both banks, ready to be written through — or
-overruled.
+Nodes themselves are also quite transformable. Functions like `shifted`, `rotated`, and their companions will gracefully move the node's position and, at the same time, adjust its direction (and even its nib axis). `scaled`, of course, thoughtfully scales the width as well. So, when a macro like our `bowl()` example returns nodes, it generously hands the caller everything they might need: the position, the direction, the thickness, and both derived banks, all perfectly ready to be either artfully written through or, if inspiration strikes, confidently overruled.

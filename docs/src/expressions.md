@@ -1,15 +1,10 @@
 # Expressions
 
-Everything in chi — a stem width, a point on a contour, an angle — is an
-expression, and the expression language is deliberately small. This
-chapter is arithmetic, mediation, and the numeric builtins; if you have
-skimmed the first-strokes chapter, some of it will already feel familiar.
+Everything in chi — be it a stem width, a point on a contour, or an angle — is expressed as, well, an expression. We've kept the expression language wonderfully concise, making it easy to learn and use. In this chapter, we'll dive into arithmetic, mediation, and chi's handy numeric builtins. If you've already peeked at the first-strokes chapter, some of these ideas might just feel like old friends.
 
 ## Arithmetic
 
-`+ - * / ^` with the usual precedence; `^` is exponentiation and
-right-associative; `-` also negates. One rule does a lot of work: a
-**number literal directly in front of an expression multiplies it**.
+You'll find the familiar arithmetic operators here: `+ - * / ^`. They follow the usual precedence rules, with `^` handling exponentiation (and being right-associative), while `-` pulls double duty by also negating values. Here's a clever little rule that simplifies things quite a bit: if you place a **number literal directly in front of an expression, it automatically multiplies it**.
 
 ```chi norender
 stem = 40 + 0.14 * weight;
@@ -17,14 +12,11 @@ hair = 0.8 stem;            # same as 0.8 * stem
 gap  = 2(stem + hair);      # parenthesized expressions too
 ```
 
-This is why chi code full of `2u` and `3u` reads like graph paper. The
-rule applies to number *literals* only — `stem hair` is a syntax error,
-not a product — so it never makes two names ambiguous.
+This handy shorthand is why chi code often looks so neat, peppered with expressions like `2u` and `3u`, giving it a clean, graph-paper feel. Just remember, this special rule applies *only* to number *literals*. Trying `stem hair` for multiplication would result in a syntax error, not a product. This way, you'll never accidentally make two names ambiguous.
 
 ## Points
 
-`(x, y)` is a point, and a point doubles as a 2-D vector. Points add and
-subtract, and scale by numbers on either side:
+In chi, a coordinate pair like `(x, y)` represents a point, and it's quite versatile, happily doubling as a 2-D vector. You can easily add and subtract points, and scale them by numbers on either side. It's wonderfully intuitive:
 
 ```chi norender
 q = p + (30, 0);        # displace
@@ -32,14 +24,11 @@ v = b - a;              # the vector from a to b
 m = (a + b) / 2;        # scale by a number; also the midpoint, but see below
 ```
 
-`point + number` is an error — there is no implicit broadcasting, if you
-mean `(p.x + 3, p.y + 3)` you write a point. The fields `p.x` and `p.y`
-read a point's coordinates; `(p.x, 0)` drops it to the baseline.
+Now, a quick heads-up: trying to add `point + number` directly will lead to an error. There's no implicit 'broadcasting' here. If you're aiming for something like `(p.x + 3, p.y + 3)`, you'll need to explicitly construct that point. For peeking at a point's individual coordinates, you can use `p.x` and `p.y`. And a neat trick like `(p.x, 0)` will effectively drop your point straight down to the baseline.
 
 ## Mediation
 
-`t[a, b]` is the value `t` of the way from `a` to `b` — for numbers and
-for points. It is chi's single most-used expression:
+Prepare to meet chi's secret weapon: `t[a, b]`. This wonderful expression calculates a value that's `t` of the way from `a` to `b`. It works beautifully for both numbers and points. Seriously, this is chi's most-used expression. You'll find yourself reaching for it constantly:
 
 ```chi norender
 0.5[a, b]              # the midpoint
@@ -47,10 +36,7 @@ for points. It is chi's single most-used expression:
 (w / (w + v))[a, b]    # t can be any numeric expression
 ```
 
-Read `t[a, b]` aloud as "*t* between *a* and *b*". Because chi has no
-indexing, the postfix bracket is unambiguous. Mediation between points is
-how construction lines stay construction lines — here it rules a ladder
-between two rails without naming a single intermediate coordinate:
+To get a feel for it, try reading `t[a, b]` aloud as "*t* between *a* and *b*". Since chi wisely avoids traditional indexing, this postfix bracket notation is delightfully unambiguous. When you're working with points, mediation truly shines, making sure your construction lines stay tidy. Just imagine it ruling a perfect ladder between two rails, all without you ever needing to name a single intermediate coordinate. It's really quite elegant:
 
 ```chi
 u = 100;
@@ -66,14 +52,9 @@ draw(0.75[a, c] -- 0.75[b, d]);
 
 ## Angles and vectors
 
-All angles in chi are **degrees, counterclockwise, 0° pointing right**,
-everywhere — direction specs, `rotated`, the trigonometric builtins.
-`right`, `up`, `left`, `down` are prelude bindings for 0, 90, 180, 270.
+In chi, angles always follow the same trusty conventions: they're measured in **degrees, counterclockwise, with 0° pointing right**. You'll find this consistent behavior throughout, from direction specifications to `rotated` transformations and all the trigonometric builtins. For your convenience, we've even provided `right`, `up`, `left`, and `down` as helpful prelude bindings for 0, 90, 180, and 270 degrees, respectively.
 
-Two builtins convert between angles and vectors: `unitvec(theta)` is the
-unit vector at angle `theta`, and `angle(v)` is the angle of a vector
-(atan2, in degrees). Together they express "perpendicular to" without
-trigonometry at the use site:
+We've got two lovely builtins ready to help you switch between angles and vectors: `unitvec(theta)` gives you a neat unit vector at a given `theta` angle, while `angle(v)` kindly tells you the angle of any vector (using atan2, naturally, in degrees). When paired together, they make expressing "perpendicular to" wonderfully straightforward, saving you from wrestling with trigonometry right there in your code:
 
 ```chi
 u = 100;
@@ -86,7 +67,7 @@ draw(0.3[a, b] -- 0.3[a, b] + 50n);
 draw(0.7[a, b] -- 0.7[a, b] + 50n);
 ```
 
-`length(v)` and `distance(a, b)` round out the vector kit.
+`length(v)` and `distance(a, b)` are also on hand, perfectly rounding out your vector toolkit.
 
 ## Numeric builtins
 
@@ -97,16 +78,11 @@ sqrt(a)  floor(a)  ceil(a)  round(a)
 sin(a)  cos(a)  tan(a)                    # degrees, like everything else
 ```
 
-These do what they say; the reference part of this book lists every
-builtin with its exact behavior. The path queries — `point`, `direction`,
-`directionpoint`, `intersection` — are builtins too, but they belong to
-the next chapter.
+These handy builtins pretty much do exactly what their names suggest. You'll find a complete rundown, detailing the precise behavior of each and every builtin, in the reference section of this book. Oh, and a little heads-up: builtins like `point`, `direction`, `directionpoint`, and `intersection` are also part of the chi family, but they're so special they get their own spotlight in the very next chapter.
 
 ## Conditional expressions
 
-`a if cond else b` selects between two values. Conditions use
-`< <= > >= == !=` and `and`, `or`, `not`. There is no `if` *statement* —
-a conditional is always an expression with both arms present:
+With `a if cond else b`, you can elegantly choose between two values. For setting up your conditions, you'll use familiar comparison operators like `< <= > >= == !=`, along with logical operators `and`, `or`, and `not`. It's worth noting that chi doesn't have an `if` *statement* in the traditional sense. Instead, a conditional is always an expression, and it *always* requires both arms to be present. This keeps things nicely balanced:
 
 ```chi
 u = 100;
@@ -117,9 +93,4 @@ fill((0, 0) -- (w, 0) -- (w, 30) -- (0, 30) -- cycle);
 fill((0, 60) -- (capped, 60) -- (capped, 90) -- (0, 90) -- cycle);
 ```
 
-Use conditionals sparingly, and only over *numbers*. A conditional that
-changed which points exist — one arm a four-point contour, the other a
-six-point one — would give different instances of the design different
-topology, breaking the interpolation-compatibility rule from the first
-chapter. Clamping a counter's radius is the intended kind of use; swapping
-geometry is not.
+Now, a friendly piece of advice: try to use conditionals with a bit of restraint, and please, stick to using them only with *numbers*. Imagine a conditional that decided which points even existed — one arm creating a four-point contour, the other a six-point one. This kind of flexibility, while tempting, would give different instances of your design completely different topologies, which unfortunately breaks that important interpolation-compatibility rule we talked about back in the first chapter. So, clamping a counter's radius is a perfect, intended use case. But swapping out entire pieces of geometry, well, that's generally not what we're aiming for here.

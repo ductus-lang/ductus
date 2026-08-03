@@ -1,13 +1,10 @@
 # Chi for MetaPost users
 
-Chi descends from METAFONT and MetaPost, and readers fluent in them can
-move fast: path syntax, mediation and the transform operators carry
-over nearly verbatim. What does *not* carry over is the equation
-solver, the pen stroking, and the mutation — chi is single-assignment,
-single-pass, outline-first. This appendix is the translation table and
-the reasoning behind its gaps.
+If you're already comfy with METAFONT and MetaPost, you'll feel right at home with chi. It's got the same familiar path syntax, mediation, and transform operators, practically unchanged. But wait, there are a few things that didn't make the journey: the equation solver, how pens stroke, and the idea of mutation. That's because chi embraces a single-assignment, single-pass, outline-first philosophy. This little appendix will serve as your trusty translation guide, explaining what's different and why those delightful changes came to be.
 
 ## What transfers directly
+
+Good news: many things you love about MetaPost slide right into chi without a hitch, making your transition extra smooth.
 
 | MetaPost | chi | notes |
 |---|---|---|
@@ -23,6 +20,8 @@ the reasoning behind its gaps.
 
 ## What changed shape
 
+Some concepts have taken on a slightly different form in chi, thoughtfully reshaped to align with its unique way of doing things.
+
 | MetaPost | chi | why |
 |---|---|---|
 | `x1 = whatever[z2, z3]; ...` equations | `intersection(p, q)` | no linear solver; the type-design uses of `whatever` are path intersections, which are explicit and exact on lines |
@@ -36,34 +35,16 @@ the reasoning behind its gaps.
 
 ## What is gone on purpose
 
-- **`whatever` and the equation solver.** Chi keeps evaluation
-  single-pass and declarative; where METAFONT solved constraints, chi
-  gives exact derived points (nodes, `intersection`) and expects the
-  rest to be arithmetic.
-- **`tension`.** Considered and dropped: in practice designers adjust
-  points and directions, not tension numbers. Add a point or a
-  direction constraint instead.
-- **`curl`.** Open ends take direction constraints; the default end
-  behavior is the fitter's.
-- **Pens that stroke.** A chi pen is a *measuring* device — it places
-  bank contact points and cap geometry ([pens](pens.md),
-  [caps](terminals-and-caps.md)) — never a brush that paints. The
-  METAFONT problem of uneditable stroked output is the problem chi was
-  shaped to avoid.
-- **Implicit `x0`/`y0` coordinate variables and suffix magic.** A name
-  means something because you bound it.
+A few things have gracefully stepped aside to make room for chi's distinct approach.
+
+-   **`whatever` and the equation solver.** First up, say goodbye to `whatever` and the equation solver. Chi prefers a single-pass, declarative dance, giving you exact derived points (like nodes or `intersection` results) where METAFONT used to wrestle with constraints. Everything else becomes a neat arithmetic calculation.
+-   **`tension`.** We've also bid farewell to `tension`. In our experience, designers naturally gravitate towards tweaking points and directions directly, rather than fiddling with tension numbers. Feel free to add a point or a direction constraint if you need that extra control.
+-   **`curl`.** `curl` has also sailed off. Open ends in chi now happily accept direction constraints, with the default behavior gracefully handled by the fitter.
+-   **Pens that stroke.** And then there are pens. In chi, a pen is less of a brush that paints and more of a precision *measuring* device. It's brilliant at placing bank contact points and defining cap geometry (you can dive deeper into [pens](pens.md) and [caps](terminals-and-caps.md)). The whole idea is to cleverly avoid that METAFONT conundrum of having uneditable stroked output.
+-   **Implicit `x0`/`y0` coordinate variables and suffix magic.** You'll also find that implicit `x0`/`y0` coordinate variables and suffix magic have gracefully stepped aside. In chi, a name gets its meaning because you've lovingly given it one.
 
 ## The habit to unlearn, the habit to learn
 
-Unlearn solving: there is no "state relationships and let the program
-find the numbers". Chi runs strictly top to bottom, and every value is
-defined once, from values above it.
+It's time to gently unlearn the habit of 'solving.' You won't be stating relationships and then letting the program magically discover the numbers. Chi prefers a strict top-to-bottom journey, where every value finds its definition just once, building beautifully upon the values that came before it.
 
-Learn the design-space discipline instead — the one thing chi asks that
-METAFONT never did. Same point count and types at every instance
-([interpolation compatibility](interpolation-compatibility.md)), param
-ranges chosen so every query stays satisfiable, `chi inspect` at the
-corners of the space. METAFONT programs described a shape with knobs;
-a chi file describes the *interpolable region* those knobs sweep. Get
-used to thinking that way, and masters, instances and a variable font
-are all the same file.
+Instead, let's embrace the design-space discipline. This is something rather special that chi asks for, a little different from METAFONT. Think about maintaining the same number of points and types across every instance (that's our [interpolation compatibility](interpolation-compatibility.md)), and carefully selecting parameter ranges so every query always finds a happy solution. You'll get friendly with `chi inspect` to peek at the corners of your design space. Where METAFONT programs used to describe a shape with a few knobs, a chi file paints a picture of the *interpolable region* those knobs elegantly sweep. Once you get comfortable with this way of thinking, you'll find that masters, instances, and even a variable font all live harmoniously in the very same file.

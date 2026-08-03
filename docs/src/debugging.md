@@ -1,11 +1,6 @@
 # Debugging and inspecting
 
-Chi's error messages carry a file, line and column, and its renderer
-refuses nothing silently — but most type-design debugging is not about
-errors. It is about ink that compiled fine and looks wrong. The tools
-for that are the debug view, the probe bindings from the language
-chapters, and the playground's live loop; this chapter is how to read
-them.
+Chi is pretty good about pointing out errors, giving you clear file, line, and column details, and its renderer certainly never stays quiet about problems. But let's be honest, often the real head-scratcher isn't an error message at all. It's when your ink compiles perfectly but just doesn't *look* right. That's where these trusty tools come in: the debug view, the probe bindings you've seen in the language chapters, and the playground's dynamic live loop. This chapter will show you how to make the most of each.
 
 ## Reading the debug view
 
@@ -44,59 +39,30 @@ glyph o : U+006F {
 ```chi glyph=o debug
 ```
 
-Everything `chi build --debug` (or the playground's debug toggle) draws,
-from back to front:
+Here's everything `chi build --debug` (or the playground's debug toggle) will draw for you, laid out from back to front:
 
-- **The grid** — graph paper in font units: fine lines every 10, heavier
-  every 50, heaviest every 100, with a major line pinned to the baseline
-  and to each glyph's origin. Read coordinates straight off it.
-- **Metrics lines** — one horizontal per renderer-meaningful metric
-  (`x`, `cap`, `asc`, `desc`, overshoot), labeled at the margin; the
-  baseline is drawn heavier.
-- **Guides** — gray spines: every `guide` path, unfilled.
-- **Nodes** — a pink marker per skeleton node with an arrow showing
-  `dir`, plus a blue dot for each derived point (`left`, `right`, and
-  `tip`/`tail` where the node has a pen). If a stroke bank looks wrong,
-  compare it against these dots first: the dots are exact, the bank
-  between them is fitted.
-- **On-curve points and handles** — every point the contours pass
-  through, with the fitted control handles as thin gray struts. This is
-  where the fitter's decisions become visible.
-- **Anchors** — labeled mauve markers, like the `top` above the ring.
+- **The grid** — Think of it as your trusty graph paper, marked out in font units. You'll see fine lines every 10 units, heavier ones every 50, and the heaviest lines every 100. There's also a major line neatly pinned to the baseline and to each glyph's origin, making it easy to read coordinates directly.
+- **Metrics lines** — These helpful horizontal lines mark out every renderer-meaningful metric, like `x`, `cap`, `asc`, `desc`, and overshoot. Each is labeled at the margin, and the baseline stands out with a heavier line.
+- **Guides** — Your `guide` paths appear as graceful gray spines, unfilled, tracing the paths you've laid out.
+- **Nodes** — You'll spot a bright pink marker for each skeleton node, complete with an arrow to show its `dir`. Plus, there's a blue dot for every derived point, like `left`, `right`, and `tip`/`tail` when the node has a pen. If a stroke bank looks a bit off, compare it against these dots first. Remember, the dots are exact, while the bank between them is fitted.
+- **On-curve points and handles** — Here's where the rubber meets the road. Every point the contours pass through is shown, along with the fitted control handles as thin gray struts. This is where the fitter's decisions truly become visible.
+- **Anchors** — Anchors pop up as neatly labeled mauve markers, just like the `top` you see above the ring.
 
-The layering answers the standard question — *is the problem my
-skeleton, my derived points, or the fit?* — by letting you check each
-in turn: guide right? node dots right? then look at the handles.
+This careful layering helps you answer that age-old question — *is the problem my skeleton, my derived points, or the fit?* You can check each step in turn: is the guide looking right, are the node dots where they should be, and then, finally, take a close look at those handles.
 
 ## Failure modes and their looks
 
-A short field guide. Everything on it appears somewhere earlier in this
-book — and more than one entry was met the hard way while the book's
-own figures were being drawn:
+Consider this your little field guide to common mishaps. Everything on it appears somewhere earlier in this book — and more than one entry was met the hard way while the book's own figures were being drawn:
 
-- **A fat crossing where a stroke should pinch** — a thin crossing with
-  no witness node. The debug view shows no node dot anywhere near the
-  waist; the pens chapter's `directionpoint` witness is the fix.
-- **An inner bank that folds over itself** — stroke width exceeding the
-  skeleton's radius of curvature, the pressure chapter's trap. The
-  outline crosses itself near the tightest turn; add samples or shed
-  weight there.
-- **A cap that bulges past its stroke** — a traced terminal on a flat
-  pen; switch to `tipcap`/`tailcap`.
-- **A counter that fills solid** — both contours winding the same way.
-  The renderer warns about this one (`nested contours share a winding
-  direction`); the fix is the nodes chapter's rule, reverse the inner
-  traversal.
-- **A curve that ignores its constraint** — usually a direction written
-  on the wrong side of the point: `{theta} p` constrains *entering*,
-  `p {theta}` *leaving*.
+- **A fat crossing where a stroke should pinch** — Oh, that frustrating moment when a stroke should be gracefully pinching, but instead you get a chunky crossing. This often means a thin crossing without a witness node. If the debug view shows no node dot anywhere near the waist, the `directionpoint` witness from the pens chapter is usually the perfect fix.
+- **An inner bank that folds over itself** — Sometimes an inner bank gets a little ambitious and folds right over itself. This typically happens when the stroke width pushes past the skeleton's radius of curvature, a classic trap from the pressure chapter. You'll see the outline crossing itself near the tightest turn. The solution is often to add more samples or reduce the weight in that tricky spot.
+- **A cap that bulges past its stroke** — Ever notice a cap looking a bit too proud, bulging past its stroke? That's usually a traced terminal on a flat pen. The fix is to simply switch to `tipcap`/`tailcap`.
+- **A counter that fills solid** — When a counter decides to go rogue and fill itself solid, it's often because both contours are winding in the same direction. The renderer will actually warn you about this one, saying `nested contours share a winding direction`. The solution, as covered in the nodes chapter, is to reverse the inner traversal.
+- **A curve that ignores its constraint** — If a curve seems to be having a mind of its own and ignoring a constraint, it's often a simple matter of a direction being placed on the wrong side of the point. Remember, `{theta} p` constrains *entering* the point, while `p {theta}` constrains *leaving* it.
 
 ## Probing numbers
 
-The debug view answers "where is it"; probe bindings answer "how big is
-it". Any measurement worth checking is worth a binding — it costs one
-line, it shows up in `chi inspect` and the playground inspector, and it
-tracks the sliders:
+While the debug view helps you spot *where* things are, probe bindings are your go-to for figuring out *how big* they are. Any measurement worth checking is certainly worth a binding. It costs just one line of code, shows up neatly in `chi inspect` and the playground inspector, and even tracks along with your sliders:
 
 ```chi norender
 glyph o {
@@ -106,20 +72,10 @@ glyph o {
 }
 ```
 
-(Note the `225`: the inner contour travels the other way, so the point
-opposite the outer's 45° tangent carries the reversed tangent.)
+(A quick heads-up on that `225`: because the inner contour travels the other way, the point opposite the outer's 45° tangent will carry the reversed tangent.)
 
-`chi inspect file.chi --set weight=900` then reads the design measuring
-itself at that instance. The playground shows the same numbers live —
-drag `weight` and watch `waist` move — which turns a suspicion
-("doesn't the stroke get too thin in the black?") into a graph you can
-scrub.
+With `chi inspect file.chi --set weight=900`, you can get a precise readout of your design's measurements at a specific instance. Even better, the playground brings these numbers to life, letting you drag `weight` and watch `waist` respond in real-time. This transforms a vague suspicion like "doesn't the stroke get too thin in the black?" into a clear graph you can explore.
 
 ## The loop
 
-The workflow the tools want, in order: `chi check` for syntax on save;
-the playground (or `chi build --debug` and an SVG viewer that reloads)
-while shaping; probes plus `chi inspect --set …` at the corners of the
-design space before calling a glyph done — the previous chapter's
-existence failures surface exactly there. The case studies that follow
-practice all of it on real letters.
+So, what's the recommended workflow for putting all these tools to good use? It goes something like this: first, run `chi check` for syntax every time you save your work. Then, you'll spend most of your time shaping in the playground (or using `chi build --debug` with an SVG viewer that reloads). Finally, before you call a glyph done, you'll use probes alongside `chi inspect --set …` to thoroughly test the corners of your design space. This is exactly where those existence failures from the previous chapter tend to surface. The case studies that follow will put all these practices into action on real letters.

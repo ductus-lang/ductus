@@ -1,10 +1,6 @@
 # A broad-nib o
 
-The tool-first study: an `o` whose entire character comes from one pen.
-No per-node widths, no contrast expressions — an ellipse held at an
-angle decides where the stroke is thick, where it is thin, and how thin
-"thin" gets. This is the pens chapter's machinery in production:
-a closed skeleton, two witness nodes, two contours.
+This is a tool-first study, a charming `o` where its whole personality flows from a single pen. Forget fiddling with per-node widths or complex contrast expressions. Here, an ellipse, simply held at an angle, elegantly dictates where the stroke grows thick, where it tapers to thin, and precisely how slender 'thin' gets. It's a wonderful demonstration of the pens chapter's core ideas in action: a closed skeleton, two witness nodes, and two contours, all working in harmony.
 
 ## Pen and skeleton
 
@@ -26,9 +22,7 @@ pen nib {
 }
 ```
 
-All three axes belong to the *pen*: its angle, its breadth, and how far
-it is from a razor. The glyph itself has almost nothing to say —
-four nodes on a counterclockwise skeleton, all holding the same pen:
+It's all about the *pen* here. Its three defining axes — the angle it's held at, its generous breadth, and how distinct it is from a mere razor-thin line — truly steer the show. The glyph itself, you'll find, is quite content to let the pen do most of the talking. It's a simple setup: just four nodes gracefully arranged on a counterclockwise skeleton, each one holding onto that very same pen.
 
 ```chi acc glyph=o debug
 glyph o : U+006F {
@@ -60,15 +54,7 @@ glyph o : U+006F {
 }
 ```
 
-Everything in this study is in those two `directionpoint` lines and the
-two contours. The witnesses sit where the skeleton's tangent equals the
-pen's axis — the debug view shows them as the two extra nodes between
-the compass points — and their banks are exactly `pen_height` apart, so
-the ring pinches to the pen's true minimum there and nowhere else. The
-contours follow the nodes chapter's winding rule: `right` points in
-skeleton order for the counterclockwise outer, `left` points in reverse
-order (witnesses included, constraints reversed) for the clockwise
-counter.
+The real magic of this whole exploration truly blossoms within those two clever `directionpoint` lines and the graceful pair of contours. Our witness nodes are beautifully positioned right where the skeleton's tangent perfectly aligns with the pen's axis. If you peek at the debug view, you'll spot them as those two helpful extra nodes nestled between the main compass points. Their banks are precisely `pen_height` apart, ensuring the ring gently pinches down to the pen's absolute minimum thickness at just these specific spots, and nowhere else. As for the contours, they charmingly adhere to the winding rule we learned in the nodes chapter: `right` points follow the skeleton's order for our counterclockwise outer contour, while `left` points, with our witnesses included and constraints reversed, gracefully trace the clockwise inner counter.
 
 The result, plain:
 
@@ -77,10 +63,7 @@ The result, plain:
 
 ## Working the axes
 
-Because the witnesses are *queries*, not coordinates, they track every
-axis. Steepen the pen and the thin spots migrate around the ring;
-plump the pen toward a stub and the pinch relaxes — same source, no
-edits:
+Ah, but here's where the witnesses truly shine: because they operate as *queries* rather than fixed coordinates, they beautifully adapt to every single axis. Want to steepen the pen's angle? Watch as those delicate thin spots gracefully migrate around the ring. Or perhaps you'd prefer to plump the pen towards a stubbier shape? Then you'll see the pinch simply relax. The best part? It's all from the very same source code, without a single manual edit.
 
 ```chi glyph=o set="pen_angle=60"
 ```
@@ -90,22 +73,6 @@ edits:
 
 ## The range is part of the design
 
-Two constraints hide in that `params` block, and both are the
-interpolation chapter's lessons in the field. The first is existence:
-a witness lives only while the skeleton's tangent sweep covers the pen
-angle — on this closed skeleton the sweep is the full circle, so every
-`pen_angle` satisfies both queries. Cut the skeleton open (a `c`, say)
-and that stops being free; `latin_set.chi` documents exactly this
-negotiation in its header.
+You'll find two intriguing constraints tucked away in that `params` block, both offering wonderful real-world insights from the interpolation chapter. Let's look at the first one: it's all about *existence*. A witness node can only truly come to life when the skeleton's tangent sweep gracefully covers the pen angle. Happily, with our closed skeleton here, the sweep spans a full circle, meaning every `pen_angle` effortlessly satisfies both queries. But if you were to cut the skeleton open — imagine an 'c', for example — that freedom vanishes, and a careful balance is needed. The `latin_set.chi` documentation thoughtfully details this precise negotiation right in its header.
 
-The second was found the honest way, by building the instances. Below
-`pen_angle = 45`, the upper crossing lands close enough to the top node
-that the inner bank's fitted curve folds over itself — a black teardrop
-hangs into the counter, with no error anywhere, because nothing is
-wrong except the shape. (The debugging chapter's field guide calls this
-one out.) More skeleton samples around the crossing would widen the
-safe range; narrowing the *declared* range to `45..60` is the cheaper
-fix, and it keeps the constraint written down where the axis is
-declared. Either way the range ends up meaning something specific:
-this is where the construction is known to hold, because someone
-looked.
+The second constraint revealed itself in the most honest way, simply by building out the instances and seeing what happened. We discovered that below `pen_angle = 45`, the upper crossing drifts a bit too close to the top node. This causes the inner bank's fitted curve to fold right over itself, resulting in a rather unexpected black teardrop hanging into the counter. Curiously, the system reports no error whatsoever, because technically, nothing is 'wrong' except for the visual shape itself. (Incidentally, our debugging chapter's field guide points out this very scenario.) While adding more skeleton samples around the crossing would certainly expand the safe range, narrowing the *declared* range to `45..60` offered a much simpler and more direct fix. Plus, it has the lovely benefit of keeping that crucial constraint clearly noted right alongside where the axis is declared. Regardless of the approach, the range always comes to mean something quite specific: it marks precisely where this thoughtful construction is known to hold true, because, well, someone took the time to truly look.

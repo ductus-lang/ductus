@@ -1,17 +1,10 @@
 # A slab-serifed stem
 
-The simplest study first, and the only one with no skeleton at all: a
-capital stem with a bracketed slab serif, written as one direct outline.
-It shows how far plain paths and the automatic line/curve corners go
-before nodes are needed at all — and how serif proportions stay
-parametric when they are ordinary expressions of the stem.
+Let's kick things off with our simplest exploration – a capital stem boasting a bracketed slab serif, crafted as a single, uninterrupted outline. It's the only one that doesn't even need a skeleton. This example beautifully illustrates just how much you can achieve with simple paths and automatic line/curve corners before you even think about placing a node. Plus, it highlights how elegantly serif proportions remain fully parametric when they're simply derived from the stem itself.
 
 ## The design
 
-A slab serif is a rectangle under the stem; the *bracket* is the small
-curve easing the serif into the stem so the joint doesn't read as a
-right angle. Four numbers describe it, all derived from `stem` so the
-serif keeps its proportions as weight moves:
+Think of a slab serif as a neat rectangle nestled right beneath the stem. Now, the *bracket* is that lovely little curve that gently coaxes the serif into the stem, ensuring the joint feels smooth and never abruptly angular. We describe it using just four key numbers. The clever part is that they all spring from `stem`, which means your serif gracefully holds onto its perfect proportions no matter how the weight changes:
 
 ```chi norender acc
 params { weight = 400 in 100..900; }
@@ -27,11 +20,7 @@ br = 26 + 0.30 * stem;    # bracket size
 
 ## The outline
 
-Counterclockwise from the serif's bottom-left corner. Every corner
-along the slab is a line/line corner and needs no annotation; the two
-brackets are smooth *because* their entry and exit directions are
-constrained — `{left} .. {up}` carries the curve from horizontal into
-vertical:
+We'll trace this delightful shape counterclockwise, starting from the serif's bottom-left corner. You'll notice that every corner along the slab is a simple line-to-line transition, so there's no need for any special annotations. The two brackets, though, achieve their lovely smoothness precisely *because* their entry and exit directions are so thoughtfully constrained. For instance, `{left} .. {up}` effortlessly guides the curve from a horizontal path right into a vertical one:
 
 ```chi acc glyph=stem
 glyph stem {
@@ -48,23 +37,16 @@ glyph stem {
 }
 ```
 
-Read the right bracket: the path arrives along the serif's top heading
-`{left}`, curves, and leaves heading `{up}` into the stem — one segment,
-two constraints, and the fitter finds the ease. Where the bracket's
-curve meets the straight lines on either side, the meeting points became
-line/curve corners automatically.
+Let's take a closer look at that right bracket. The path makes a graceful entrance along the serif's top, heading `{left}`, then gently curves, and finally departs heading `{up}` right into the stem. It's truly amazing: just one segment and two constraints, and chi's fitter somehow magically figures out the perfect, smooth ease. What's more, those points where the bracket's curve meets the straight lines on either side? They seamlessly become line/curve corners all on their own.
 
-The debug view shows the whole structure — note the on-curve points
-clustered at the brackets, and nowhere else:
+The debug view gives us a wonderful look at the entire structure – do note how the on-curve points beautifully cluster just at the brackets, and nowhere else:
 
 ```chi glyph=stem debug
 ```
 
 ## Across the space
 
-Because `sl`, `sh` and `br` grow with `stem` (but not proportionally —
-each has a constant floor), the serif gets sturdier in the black without
-becoming a brick, and stays present in the light without vanishing:
+Here's where the magic really happens: because `sl`, `sh`, and `br` all grow alongside the `stem` (though not purely proportionally, as each has a constant floor), our serif builds a wonderful sturdiness in the heavier weights without ever turning into a clunky brick. And in the lighter weights, it remains beautifully present and refuses to simply disappear:
 
 ```chi glyph=stem set="weight=120"
 ```
@@ -72,7 +54,4 @@ becoming a brick, and stays present in the light without vanishing:
 ```chi glyph=stem set="weight=880"
 ```
 
-Ten points at every instance. The one design decision worth stealing is
-in the derivations, not the path: a serif proportioned as
-`floor + k · stem` interpolates *sensibly*, which no amount of clever
-outline can rescue if the numbers underneath are wrong.
+Imagine, just ten points at every single instance. Now, if there's one design decision here truly worth borrowing, it's all about these derivations, not just the path itself. Crafting a serif proportioned as `floor + k · stem` ensures that it interpolates *sensibly* across all weights. And believe me, no amount of clever outline trickery can ever save a design if the fundamental numbers underneath aren't quite right.

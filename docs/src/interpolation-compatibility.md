@@ -1,30 +1,16 @@
 # Interpolation compatibility
 
-The first chapter stated the rule; this one makes it operational. For
-any two instances in the parameter space, **every contour must yield
-the same number of Bézier segments with the same point types**. That is
-what interpolation between masters requires — point 3 of the light `o`
-must correspond to point 3 of the black `o` — and it is the promise the
-future designspace sampler will rely on when it cuts masters from one
-chi source.
+We talked about the rule before, and now it's time to put it to work. For any two instances within your parameter space, it's essential that **every contour yields the same number of Bézier segments with the same point types**. This consistent structure is precisely what interpolation between masters requires—think of point 3 of a light `o` needing to correspond perfectly to point 3 of a black `o`. It's also the fundamental promise that our future designspace sampler will rely on when it's ready to cut masters from a single chi source.
 
 ## Why you mostly can't break it
 
-Chi's core design makes the rule hold *by construction*: the number and
-type of on-curve points in a contour is fixed by the source text, not by
-parameter values. Moving a param moves coordinates, never topology.
-Every construct that could threaten the rule was shaped around it:
+Good news: Chi is designed to prevent you from breaking this rule almost entirely. It's baked right into the core design of the language itself. The number and type of on-curve points in a contour are determined by your source text, not by the values of your parameters. When you adjust a parameter, you're moving coordinates, never changing the underlying topology. We've thoughtfully shaped every construct that could potentially threaten this rule to keep it safe:
 
-- Shape constructors have fixed point counts — `ellipse()` is always
-  eight points, which is why `ellipse(c, r, r)` is not `circle(c, r)`.
-- There is no boolean geometry, no "remove this point if", no
-  conditional statement — only conditional *expressions*, which select
-  values, not structure.
-- A witness node from `directionpoint` is one point at every instance,
-  wherever the crossing moves to.
+- Shape constructors inherently have fixed point counts. For instance, an `ellipse()` will always result in eight points. That's why you'll find `ellipse(c, r, r)` rather than a separate `circle(c, r)` function.
+- You won't find boolean geometry or "remove this point if" conditions here. We also don't use conditional *statements* that alter structure. Instead, Chi offers conditional *expressions*, which simply select between different values.
+- A witness node, like one created by `directionpoint`, will consistently be a single point at every instance, no matter where its crossing point happens to move.
 
-Check it the same way the tooling does — point counts are in
-`chi inspect`:
+Want to double-check yourself, or see how the tooling thinks about it? Point counts are readily available in `chi inspect`:
 
 ```text
 glyph o
@@ -33,52 +19,27 @@ glyph o
   contour inner       4 points
 ```
 
-Same counts at `--set weight=100` and at `--set weight=900`: compatible.
+If you see the same counts when you run `chi inspect` with `--set weight=100` and again with `--set weight=900`, you know your masters are compatible.
 
 ## The trapdoors
 
-Three constructs can still express topology change, and all three were
-flagged when the language chapters introduced them:
+Even with Chi's protective design, there are still three specific constructs where you might accidentally introduce a topology change. We made sure to flag all of these when we introduced them in earlier language chapters:
 
-- **Conditionals over geometry choices.** `r if weight < 500 else 0` is
-  fine — a number. Using a conditional to swap which *construction* a
-  contour follows is fine too, so long as both arms pass through the
-  same number of points. What must not happen is arms with different
-  point counts; the conditional chapter called this the intended-use
-  boundary.
-- **`for` bounds that depend on a param.** One decorative element per
-  100 units of weight means the light and the black have different
-  contours entirely.
-- **Count arguments.** `superellipse(c, rx, ry, n, count)` takes its
-  point count as an argument precisely because it must not vary; passing
-  a param-derived `count` reintroduces the problem the constructors were
-  designed to avoid.
+-   **Conditionals over geometry choices.** Something like `r if weight < 500 else 0` is perfectly fine, as it simply chooses a number. It's also fine to use a conditional to swap between different *constructions* for a contour, provided that both options result in the exact same number of points. What you absolutely must avoid is creating arms with different point counts. We refer to this specific limitation as the intended-use boundary in the conditional chapter.
+-   **`for` bounds that depend on a parameter.** Imagine wanting one decorative element per 100 units of weight. This approach would mean your light master and your black master end up with entirely different contours, which is a no-go for interpolation.
+-   **Count arguments.** When `superellipse(c, rx, ry, n, count)` asks for its point count as an argument, it's precisely because that count needs to stay constant. If you pass in a `count` that's derived from a parameter, you're reintroducing the very problem that these constructors were designed to avoid.
 
-The evaluator does not police any of this in v0.1. Until the sampler
-exists, keeping the rule is on you — the good news is that
-`chi inspect` at the corners of the design space is a thirty-second
-audit.
+The evaluator doesn't currently police any of these situations in v0.1. Until the sampler arrives, keeping the rule solid is on you. The good news is that running `chi inspect` at the corners of your design space offers a super quick audit.
 
 ## The other failure mode: existence
 
-Topology can be fixed and an instance can still *fail to evaluate*.
-The path queries error when what they ask for is not there — and
-whether it is there can depend on params:
+Even if your topology is perfectly stable, there's another kind of hiccup that can occur: an instance might still *fail to evaluate*. Think of it this way: sometimes your design asks for something that simply isn't there in a particular instance. Whether something exists can, in turn, depend on your parameters:
 
-- A `directionpoint(skel, pen_angle)` witness exists only while the
-  skeleton's tangent actually sweeps through `pen_angle`. Rotate the pen
-  axis past the sweep of some leg and that instance errors.
-- An `intersection()` of a serif line and a diagonal exists only while
-  the diagonal reaches far enough.
-- `clamp(x, lo, hi)` errors when a param-derived `lo` overtakes `hi`.
+-   A `directionpoint(skel, pen_angle)` witness only comes into existence while the skeleton's tangent actually sweeps through that `pen_angle`. If you rotate the pen axis past the sweep of a leg, that specific instance will lead to an error.
+-   An `intersection()` between a serif line and a diagonal will only exist if the diagonal reaches far enough to actually cross the serif.
+-   `clamp(x, lo, hi)` will signal an error if a parameter-derived `lo` value ever manages to overtake `hi`.
 
-The playground's `latin_set.chi` documents a real case in its header:
-its `pen_angle` range is deliberately narrowed so that a witness node on
-one leg of the `a` exists across the whole space. That is the right
-mitigation today — **choose param ranges so every query stays
-satisfiable**, and state the constraint in a comment where the range is
-declared. A build at each corner of the design space is the cheap
-regression test:
+A great example of this in action lives in `latin_set.chi` from the playground. Its header carefully documents a real-world case: the `pen_angle` range is intentionally narrowed to ensure that a specific witness node on one leg of the `a` is present across the entire design space. For now, the best strategy is to **choose parameter ranges so every query stays satisfiable**, and then make sure to note this constraint in a comment where you declare the range. Want a quick way to check this yourself? Building at each corner of your design space offers a straightforward regression test:
 
 ```sh
 chi check family.chi
@@ -86,5 +47,4 @@ chi build family.chi --set weight=100 -o /dev/null
 chi build family.chi --set weight=900 -o /dev/null
 ```
 
-When the designspace sampler arrives, walking the space and reporting
-both incompatibility and unsatisfiable queries is exactly its job.
+When our designspace sampler eventually joins the party, it will take on the important task of exploring the entire space and reporting both incompatibilities and unsatisfiable queries.

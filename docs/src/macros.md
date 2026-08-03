@@ -1,8 +1,6 @@
 # Macros
 
-`def` names a piece of construction. A macro's body is declarative like
-everything else in chi — bindings, no `return` statement — and an arrow
-names which of those bindings the caller receives:
+When you use `def`, you're essentially giving a name to a building block of your design. Just like everything else in chi, a macro's body is declarative—we're talking about bindings here, no `return` statements in sight. And that neat little arrow, well, it's there to tell us exactly which of those bindings the caller will get back:
 
 ```chi
 u = 100;
@@ -16,15 +14,13 @@ fill(diamond((3u, u), 55));
 fill(diamond((4.2u, u), 30));
 ```
 
-Parameters are untyped names, arguments pass by value, and any value
-can travel: numbers, points, paths, pens — and nodes, which Part III's
-constructions are built on.
+Parameters are simply names without a specific type, and arguments are always passed by value. What's really cool is how versatile chi is: almost any value can travel through your macros. Think numbers, points, paths, and pens—even the nodes that form the backbone of the constructions we'll explore in Part III.
 
 ## Returning several things
 
-`-> (a, b, c)` exports a tuple, destructured at the call site. The tuple
-is not a general value — it exists only across the call boundary — so
-the destructuring pattern is the whole protocol:
+If you need to send back more than one thing, simply use `-> (a, b, c)` to return a tuple. Chi handles the destructuring right at the spot where you call your macro.
+
+Now, this tuple isn't a general-purpose value you can pass around freely; its existence is quite special, spanning just that bridge between the macro and its caller. Because of this, the destructuring pattern you define becomes the entire handshake protocol for those returned values.
 
 ```chi
 u = 100;
@@ -42,34 +38,20 @@ draw(l1 {up} .. t1 .. {down} r1);
 draw(l2 {up} .. t2 .. {down} r2);
 ```
 
-Two arches, one definition, different proportions — and the caller wrote
-the path itself, through the returned points.
+Just like that, you have two arches, born from a single definition but sporting different proportions. And notice this: the caller takes the reins, crafting the path itself using those handy returned points.
 
 ## Why macros return geometry, not path pieces
 
-That last example is worth staring at for a moment, because it answers
-the question every MetaPost user asks sooner or later: where is `&`,
-the path concatenation operator? Chi doesn't have one. A contour is **one path expression**, and
-a macro contributes by returning the points (or nodes) the contour passes
-through — not by returning path fragments to be glued.
+Let's take a moment to really look at that last example, shall we? It elegantly answers a question that every MetaPost user eventually bumps into: where exactly is the `&` path concatenation operator in chi? The short answer is: you won't find one in chi.
 
-The trade is deliberate. Concatenation needs rules for merging the seam —
-whose direction constraint wins, is the junction smooth or a corner —
-and those rules would live invisibly at every joint. In chi the caller
-writes the junction explicitly, because the caller is writing the whole
-path; what a macro computed and what the contour does with it stay
-separable. The macros in Part III return *nodes* for the same reason: the
-`bowl()` macro hands back four skeleton points, and the glyph decides how
-its contours travel through them.
+In chi, a contour is fundamentally defined as **one path expression**. This means that instead of giving you little path fragments to glue together, a macro helps out by returning the precise points (or nodes) that your contour will journey through.
 
-Macros may call macros — build a serif from corner pieces, a letter part
-from serifs. Recursion is not allowed, and macro definitions are top-level
-only, like `params` and `pen` blocks.
+This design choice isn't accidental; it's quite deliberate. Think about it: path concatenation often requires a whole set of rules for merging the 'seam.' You'd need to decide whose direction constraint wins, whether a junction should be smooth or a sharp corner, and all those rules would silently operate, invisible at every single joint. Chi takes a different route. Here, the caller explicitly defines each junction because, after all, they are crafting the entire path themselves. This keeps what a macro computes wonderfully separate from how the contour ultimately uses those values.
+
+You'll see this principle again in Part III, where macros return *nodes* for precisely the same reason. Take the `bowl()` macro, for instance: it hands you four key 'skeleton' points, and then the glyph itself gets to decide exactly how its contours gracefully travel through them.
+
+Macros can absolutely call other macros. Imagine building a fancy serif from smaller corner pieces, or crafting an entire letter part out of those serifs. However, there are a couple of ground rules: recursion is not allowed, and just like `params` and `pen` blocks, macro definitions must live at the top level of your code.
 
 ## Scope
 
-A macro body is an ordinary scope: it sees every top-level binding
-(params, metrics, and anything defined above), its parameters shadow
-outer names, and its locals — everything not exported — vanish at the
-closing brace. Nothing leaks; what you don't export doesn't exist
-outside the braces.
+A macro body operates within its own ordinary scope. This means it comfortably sees all top-level bindings—like your `params`, `metrics`, and anything else defined earlier on. Its own parameters will gracefully shadow any outer names, and any local variables within—that's everything you don't explicitly export—will simply vanish once you hit that closing brace. It's a tidy system: nothing leaks out. What you don't choose to export simply ceases to exist once you step beyond those protective braces.
