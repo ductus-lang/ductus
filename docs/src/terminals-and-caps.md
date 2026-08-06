@@ -75,6 +75,28 @@ fill(a.tailcap .. b.tipcap .. cycle);
 
 — a straightforward combination of two caps and the two bank curves that the fitter smoothly connects between them. Just a quick note: you can only splice open paths, not closed ones. While caps are a prime example and a common use case, any open path value will splice in the very same fashion.
 
+## Joints
+
+A joint is a terminal's close relative. Where two strokes meet at a corner, the pen pivots: it stands on the shared point while the direction of travel rotates from the first stroke's to the second's. On the outer side of the turn, its boundary sweeps an arc between the two bank contacts — the same silhouette a cap traces, only spanning the turn of the joint instead of a half turn. You could trace that arc with direction constraints, and for a plump pen it works just as well as it did for caps. It also breaks in exactly the same place: a flat pen turns almost all of its corner within a fraction of a degree of pivot, and the fitted curve bulges far off the metal. So joints get the analytic treatment too. **`jointcap(a, b)`** takes two nodes declared at the same position with the same pen — `a` arriving at the corner, `b` leaving it — and returns the exact arc as fixed curve segments, ready to splice.
+
+The arc comes oriented for the traversal we've used throughout: out along the right bank, back along the left. On a left turn the outer corner lies on the right bank, and the arc runs from `a`'s right contact to `b`'s. On a right turn it lies on the left bank, and the arc runs from `b`'s left contact back to `a`'s. Either way, it drops in right where the outer banks end. The inner side of a joint needs no arc at all: the two banks simply cross there, and `intersection()` pins the corner. Here is a peaked stroke pair written with the same flat pen that defeated the traced cap earlier — note how the joint carries the pen's true silhouette, in tune with both terminals:
+
+```chi
+d1 = 72; d2 = -55;                       # a 127-degree turn at the apex
+apex = (2.6u, 2.35u);
+
+node s1 = apex - 2.3u * unitvec(d1) dir d1 pen flat;
+node e1 = apex dir d1 pen flat;
+node s2 = apex dir d2 pen flat;
+node e2 = apex + 2.3u * unitvec(d2) dir d2 pen flat;
+
+inner = intersection(s1.right -- e1.right, s2.right -- e2.right);
+
+fill(s1.tailcap -- inner -- e2.tipcap -- jointcap(e1, s2) -- cycle);
+```
+
+Two caps, one joint arc, one inner corner, four straight banks: the entire two-stroke figure is a single expression. The `N-caps-joints.chi` playground example scales this up to an English N — two terminals and two joints, neither of them perpendicular. And to be clear about the boundaries: `jointcap` wants a genuine corner. Equal directions have no turn to round, and a full 180-degree reversal has no outer side — that one is simply a cap, which you already know how to write.
+
 ## Teardrops, torn ends, traps
 
 Anything else you can imagine a terminal to be will simply be a creative combination of moves we've already explored in this book. And that's exactly the beauty of not having rigid cap machinery. For example, a sharp break between two curves comes to life with `{corner}` from the first-strokes chapter. If you're envisioning a teardrop terminal, that's just a swell traced gracefully around a corner point. An ink trap can be fashioned by pulling an inner corner open—perhaps by nudging an `intersection()` point into the joint. These are all straightforward edits that remain completely parametric. Our catalogue comes to a close here, and we're intentionally stopping short. Past this point, terminals evolve into exciting design decisions that are entirely yours to make, rather than being dictated by fixed language features.
