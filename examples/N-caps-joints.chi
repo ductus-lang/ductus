@@ -1,0 +1,60 @@
+# An English 'N' written as one broad-nib stroke path: up, diagonally
+# down, up again. The two terminals trace the pen analytically with
+# .tailcap / .tipcap; the two corners use jointcap(), the outer arc of
+# the pen pivoting at a joint. Neither corner is perpendicular, and the
+# nib angle keeps the uprights thin against a thick diagonal.
+# Shows: jointcap() at both turn directions, caps, inner corners
+# through intersection().
+
+params {
+  pen_width  = 90 in 10..160;
+  pen_height = 14 in 2..80;
+  pen_angle  = 70 in 0..180;
+}
+
+metrics {
+  u = 100;
+}
+
+pen nib {
+  width  = pen_width;
+  height = pen_height;
+  angle  = pen_angle;
+}
+
+glyph N : U+004E {
+  advance = 7u;
+
+  p1 = (2u, 0);   # bottom of the left stem
+  p2 = (2u, 7u);  # apex: left stem meets the diagonal
+  p3 = (5u, 0);   # foot: diagonal meets the right stem
+  p4 = (5u, 7u);  # top of the right stem
+
+  d = angle(p3 - p2);  # diagonal direction, about -67 degrees
+
+  node s1 = p1 dir up pen nib;
+  node e1 = p2 dir up pen nib;
+  node s2 = p2 dir d  pen nib;
+  node e2 = p3 dir d  pen nib;
+  node s3 = p3 dir up pen nib;
+  node e3 = p4 dir up pen nib;
+
+  guide skeleton = p1 -- p2 -- p3 -- p4;
+
+  # Inner corners: the banks of the meeting strokes simply cross.
+  inner2 = intersection(s1.right -- e1.right, s2.right -- e2.right);
+  inner3 = intersection(s2.left -- e2.left, s3.left -- e3.left);
+
+  # One closed band: out along the right banks, back along the left.
+  # jointcap(e2, s3) turns left at the foot, so its arc lies on the
+  # right bank; jointcap(e1, s2) turns right at the apex, so its arc
+  # lies on the left bank, traversed on the way back.
+  contour n =
+      s1.tailcap
+      -- inner2
+      -- jointcap(e2, s3)
+      -- e3.tipcap
+      -- inner3
+      -- jointcap(e1, s2)
+      -- cycle;
+}
