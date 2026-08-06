@@ -65,6 +65,13 @@ impl PenValue {
             rot_sin * local.x + rot_cos * local.y,
         )
     }
+
+    /// Ellipse parameter of the contact point `support(theta)`: the
+    /// support formula's local coordinates are (a·cos φ, b·sin φ).
+    fn contact(&self, theta: f64) -> f64 {
+        let psi = (theta - self.angle).to_radians();
+        (self.b * psi.sin()).atan2(self.a * psi.cos())
+    }
 }
 
 /// A skeleton node: position, direction of travel, stroke width.
@@ -139,17 +146,11 @@ impl NodeValue {
             return None;
         }
 
-        // Ellipse parameter of the contact point `support(theta)`: the
-        // support formula's local coordinates are (a·cos φ, b·sin φ).
-        let contact = |theta: f64| -> f64 {
-            let psi = (theta - pen.angle).to_radians();
-            (pen.b * psi.sin()).atan2(pen.a * psi.cos())
-        };
-        let start = contact(center - 90.0);
+        let start = pen.contact(center - 90.0);
         // Antipodal normals have antipodal parameters, so the cap spans
         // exactly half a turn; the center contact lands strictly inside.
         let end = start + PI;
-        let mid = start + (contact(center) - start).rem_euclid(TAU);
+        let mid = start + (pen.contact(center) - start).rem_euclid(TAU);
 
         // On-curve parameters: both bank contacts, the center contact
         // (so `.tip`/`.tail` stay on the outline), and a split wherever a
@@ -163,6 +164,72 @@ impl NodeValue {
             params.push(target);
         }
 
+        Some(self.boundary_arc(pen, &params))
+    }
+
+    /// The outer arc of a joint: the pen's boundary swept while the
+    /// stroke pivots at a corner, turning from this node's direction to
+    /// `leaving`'s. The sweep is the turn angle of the joint — a cap is
+    /// the half-turn special case. The arc is oriented for the standard
+    /// traversal (right bank with the stroke, left bank against it): a
+    /// left turn runs from this node's right contact to `leaving`'s; a
+    /// right turn runs from `leaving`'s left contact back to this
+    /// node's.
+    pub fn joint_cap(&self, leaving: &NodeValue) -> Result<PathValue, String> {
+        let (Some(pen), Some(other)) = (self.pen, leaving.pen) else {
+            return Err("jointcap() needs two pen nodes".to_string());
+        };
+        if pen.b <= 0.0 {
+            return Err(
+                "jointcap() needs a pen with height > 0; \
+                 a razor's joint is not a curve"
+                    .to_string(),
+            );
+        }
+        if pen.a != other.a || pen.b != other.b || pen.angle != other.angle {
+            return Err("jointcap() needs both nodes to hold the same pen".to_string());
+        }
+        if (self.pos - leaving.pos).length() > 1e-9 {
+            return Err(
+                "jointcap() needs both nodes at the same position — \
+                 the corner the pen pivots on"
+                    .to_string(),
+            );
+        }
+        let turn = (leaving.dir - self.dir).rem_euclid(360.0);
+        if turn == 0.0 {
+            return Err("jointcap() needs a turn; the directions are equal".to_string());
+        }
+        if turn == 180.0 {
+            return Err(
+                "a 180-degree turn has no outer side; use .tipcap or .tailcap".to_string(),
+            );
+        }
+
+        // Contact normals of the outer bank, in counterclockwise order.
+        let (from, to) = if turn < 180.0 {
+            (self.dir - 90.0, leaving.dir - 90.0)
+        } else {
+            (leaving.dir + 90.0, self.dir + 90.0)
+        };
+        // Under half a turn of normals maps to under half a turn of
+        // ellipse parameter (contact is monotone with antipodal
+        // symmetry), so one split keeps every piece within a quarter
+        // turn.
+        let start = pen.contact(from);
+        let end = start + (pen.contact(to) - start).rem_euclid(TAU);
+        let mut params = vec![start];
+        if end - start > FRAC_PI_2 {
+            params.push((start + end) / 2.0);
+        }
+        params.push(end);
+        Ok(self.boundary_arc(pen, &params))
+    }
+
+    /// Fixed cubics along the pen's boundary through the given ellipse
+    /// parameters, counterclockwise, with the traversal tangents pinned
+    /// at every on-curve point.
+    fn boundary_arc(&self, pen: PenValue, params: &[f64]) -> PathValue {
         // The pen's affine: unit circle -> scale(a, b) -> rotate -> pos.
         let (rot_sin, rot_cos) = pen.angle.to_radians().sin_cos();
         let linear = |v: Vec2| -> Vec2 {
@@ -207,11 +274,11 @@ impl NodeValue {
             })
             .collect();
 
-        Some(PathValue {
+        PathValue {
             points,
             joints,
             closed: false,
-        })
+        }
     }
 }
 

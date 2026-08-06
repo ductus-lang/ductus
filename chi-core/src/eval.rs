@@ -28,6 +28,7 @@ const BUILTIN_FUNCTIONS: &[&str] = &[
     "point",
     "direction",
     "directionpoint",
+    "jointcap",
     "circle",
     "ellipse",
     "roundrect",
@@ -1268,6 +1269,23 @@ impl Evaluator {
                     .map(Value::Point)
                     .map_err(|error| err(span, error.message))
             }
+            // The outer arc of a stroke joint; the geometry lives in
+            // value.rs next to the caps it generalizes.
+            "jointcap" => {
+                expect_arity(2)?;
+                let (Value::Node(arriving), Value::Node(leaving)) = (&values[0], &values[1])
+                else {
+                    return Err(err(
+                        span,
+                        "jointcap() expects two nodes: one arriving at the \
+                         corner, one leaving it",
+                    ));
+                };
+                arriving
+                    .joint_cap(leaving)
+                    .map(Value::Path)
+                    .map_err(|message| err(span, message))
+            }
             // Shape constructors; the geometry lives in shapes.rs, which
             // documents the rules they share.
             "circle" => {
@@ -2361,6 +2379,109 @@ mod tests {
     fn cap_needs_a_pen_with_height() {
         let error = eval_err("node m = (0, 0) dir up width 10;\ncap = m.tipcap;\n");
         assert!(error.message.contains("pen"), "{}", error.message);
+    }
+
+    // ---- Joints --------------------------------------------------------
+
+    const JOINT_PEN: &str = "pen main { width = 100; height = 30; angle = 20; }\n\
+         node a = (10, 5) dir -55 pen main;\n\
+         node b = (10, 5) dir 70 pen main;\n\
+         ra = a.right;\nrb = b.right;\nla = a.left;\nlb = b.left;\n";
+
+    #[test]
+    fn joint_cap_left_turn_runs_between_right_contacts() {
+        // -55 to 70 degrees: a 125-degree left turn; the outer corner is
+        // on the right bank, traversed with the stroke.
+        let evaluator = eval_ok(&format!("{JOINT_PEN}arc = jointcap(a, b);\n"));
+        let arc = path(&evaluator, "arc");
+        let first = arc.points.first().expect("has points");
+        let last = arc.points.last().expect("has points");
+        assert!((first.pos - point(&evaluator, "ra")).length() < 1e-9, "start");
+        assert!((last.pos - point(&evaluator, "rb")).length() < 1e-9, "end");
+        let normalize = |angle: f64| angle.rem_euclid(360.0);
+        assert_close(normalize(first.enter.expect("pinned")), 305.0);
+        assert_close(normalize(last.leave.expect("pinned")), 70.0);
+        assert!(!arc.closed);
+        assert!(
+            arc.joints
+                .iter()
+                .all(|joint| matches!(joint, PathJoint::Fixed { .. })),
+            "fixed geometry"
+        );
+    }
+
+    #[test]
+    fn joint_cap_right_turn_runs_between_left_contacts_in_outline_order() {
+        // 70 to -55 degrees: a right turn; the outer corner is on the
+        // left bank, traversed against the stroke — from the leaving
+        // node's contact back to the arriving node's.
+        let evaluator = eval_ok(&format!("{JOINT_PEN}arc = jointcap(b, a);\n"));
+        let arc = path(&evaluator, "arc");
+        let first = arc.points.first().expect("has points");
+        let last = arc.points.last().expect("has points");
+        assert!((first.pos - point(&evaluator, "la")).length() < 1e-9, "start");
+        assert!((last.pos - point(&evaluator, "lb")).length() < 1e-9, "end");
+        let normalize = |angle: f64| angle.rem_euclid(360.0);
+        assert_close(normalize(first.enter.expect("pinned")), 125.0);
+        assert_close(normalize(last.leave.expect("pinned")), 250.0);
+    }
+
+    #[test]
+    fn joint_cap_cubics_stay_on_the_pen_boundary_at_high_eccentricity() {
+        // Same check as the cap version: the analytic arc must hold at
+        // eccentricities where a spline fit collapses.
+        let evaluator = eval_ok(
+            "pen blade { width = 150; height = 2; angle = 9; }\n\
+             node a = (0, 0) dir 50 pen blade;\n\
+             node b = (0, 0) dir 155 pen blade;\n\
+             arc = jointcap(a, b);\n",
+        );
+        use kurbo::ParamCurve;
+        let arc = path(&evaluator, "arc");
+        let (sin, cos) = 9.0_f64.to_radians().sin_cos();
+        let unmap = |p: Point| {
+            let local = Vec2::new(cos * p.x + sin * p.y, -sin * p.x + cos * p.y);
+            Vec2::new(local.x / 75.0, local.y / 1.0)
+        };
+        for (index, joint) in arc.joints.iter().enumerate() {
+            let PathJoint::Fixed { c1, c2 } = joint else {
+                panic!("arc joint is fixed");
+            };
+            let cubic = kurbo::CubicBez::new(
+                arc.points[index].pos,
+                *c1,
+                *c2,
+                arc.points[index + 1].pos,
+            );
+            for step in 0..=20 {
+                let sample = cubic.eval(step as f64 / 20.0);
+                let radius = unmap(sample).length();
+                assert!(
+                    (radius - 1.0).abs() < 1e-3,
+                    "segment {index} leaves the ellipse: radius {radius}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn joint_cap_rejects_degenerate_pairs() {
+        let head = "pen main { width = 100; height = 30; }\n\
+             node a = (0, 0) dir up pen main;\n";
+        for (tail, expected) in [
+            ("node b = (0, 0) dir up pen main;\n", "needs a turn"),
+            ("node b = (0, 0) dir down pen main;\n", "180"),
+            ("node b = (5, 0) dir right pen main;\n", "same position"),
+            (
+                "pen other { width = 60; height = 20; }\n\
+                 node b = (0, 0) dir right pen other;\n",
+                "same pen",
+            ),
+            ("node b = (0, 0) dir right width 10;\n", "pen nodes"),
+        ] {
+            let error = eval_err(&format!("{head}{tail}arc = jointcap(a, b);\n"));
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
     }
 
     #[test]
