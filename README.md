@@ -6,6 +6,7 @@ over named design parameters; a two-parameter spline solver places the curve
 handles. The language is specified in the
 [tree-sitter-ductus](../tree-sitter-ductus) repository's `Spec.md`.
 
+- `curve-fitter` — the two-parameter spline solver (Raph Levien's method).
 - `ductus-core` — library: parsing (tree-sitter), AST lowering, evaluation,
   curve fitting and SVG rendering. No CLI dependencies, so it can target
   WebAssembly for the playground.
