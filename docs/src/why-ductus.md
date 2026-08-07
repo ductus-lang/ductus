@@ -13,7 +13,7 @@ Let's take a peek at a rendered ductus glyph. Here, for example, is the letter `
 ```ductus hide
 params {
   weight   = 400 in 100..900;
-  contrast = 0.85 in 0.6..1.0;
+  contrast = 0.5 in 0.5..1.0;
 }
 metrics {
   upm = 1000; x = 500; cap = 700; asc = 750; desc = -220;
