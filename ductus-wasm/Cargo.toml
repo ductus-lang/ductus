@@ -1,5 +1,5 @@
 [package]
-name = "chi-wasm"
+name = "ductus-wasm"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,9 +7,9 @@ edition = "2024"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-chi-core = { path = "../chi-core" }
+ductus-core = { path = "../ductus-core" }
 tree-sitter = { workspace = true }
-tree-sitter-chi = { path = "../../tree-sitter-chi" }
+tree-sitter-ductus = { path = "../../tree-sitter-ductus" }
 wasm-bindgen = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

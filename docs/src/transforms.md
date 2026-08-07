@@ -2,7 +2,7 @@
 
 Transforms are like little helpers that come *after* the thing they're transforming. They're postfix operators, meaning they read left to right, and you can string them together to create a whole sequence of changes:
 
-```chi norender
+```ductus norender
 p shifted (dx, dy)
 p scaled k            # uniform, about the origin
 p xscaled k
@@ -15,7 +15,7 @@ p rotated 10 shifted (50, 0)    # first rotate, then shift
 
 These handy operations work their magic on points, paths, and even nodes – we'll get to those in Part III. To give you a taste, let's watch one shape go through a little transformation journey:
 
-```chi
+```ductus
 u = 100;
 f = (0, 0) -- (1.5u, 0) .. (2u, u) .. (1.5u, 2u) -- (0, 2u) -- cycle;
 
@@ -37,7 +37,7 @@ When you transform a path, you're actually transforming its underlying *points a
 
 ## reversed
 
-`reversed` offers a neat trick: it simply flips a path's direction of travel. This means the points are reordered in reverse, and any entering and leaving constraints get swapped around. If you just draw a spine, you won't see any immediate difference – the direction really comes into play when the path is *filled*. Chi uses the nonzero winding rule for filling, which requires a 'counter' path to run in the opposite direction to the contour surrounding it. Later on, when we explore nodes and derive both sides of a stroke from a single skeleton, `reversed` will be the key to ensuring the inner bank forms a perfectly proper counter. For now, you can tuck this little tidbit away: it's the same beautiful ink, just heading in the opposite direction.
+`reversed` offers a neat trick: it simply flips a path's direction of travel. This means the points are reordered in reverse, and any entering and leaving constraints get swapped around. If you just draw a spine, you won't see any immediate difference – the direction really comes into play when the path is *filled*. Ductus uses the nonzero winding rule for filling, which requires a 'counter' path to run in the opposite direction to the contour surrounding it. Later on, when we explore nodes and derive both sides of a stroke from a single skeleton, `reversed` will be the key to ensuring the inner bank forms a perfectly proper counter. For now, you can tuck this little tidbit away: it's the same beautiful ink, just heading in the opposite direction.
 
 ## What transforms cost
 

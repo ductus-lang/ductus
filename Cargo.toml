@@ -1,10 +1,10 @@
 [workspace]
 resolver = "3"
 members = [
-  "chi-core",
-  "chi-cli",
-  "chi-wasm",
-  "chi-docs",
+  "ductus-core",
+  "ductus-cli",
+  "ductus-wasm",
+  "ductus-docs",
 ]
 
 [workspace.dependencies]

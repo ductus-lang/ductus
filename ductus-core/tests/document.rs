@@ -1,9 +1,9 @@
 //! Document-level integration tests: parse -> lower -> evaluate.
 
-use chi_core::doc::Document;
-use chi_core::eval::{EvalError, Importer, NoImporter, evaluate};
-use chi_core::lower::lower;
-use chi_core::parse::parse;
+use ductus_core::doc::Document;
+use ductus_core::eval::{EvalError, Importer, NoImporter, evaluate};
+use ductus_core::lower::lower;
+use ductus_core::parse::parse;
 use std::collections::HashMap;
 
 fn build(source: &str) -> Document {
@@ -210,9 +210,9 @@ fn build_with_files(
 #[test]
 fn import_shares_measures_params_and_defs() {
     let document = build_with_files(
-        "import \"measures.chi\";\nglyph g { advance = stem + pad(10); }\n",
+        "import \"measures.ductus\";\nglyph g { advance = stem + pad(10); }\n",
         &[(
-            "measures.chi",
+            "measures.ductus",
             "params { weight = 400 in 100..900; }\nstem = weight / 4;\ndef pad(k) -> r { r = 2 k; }\n",
         )],
     )
@@ -225,14 +225,14 @@ fn import_shares_measures_params_and_defs() {
 
 #[test]
 fn import_is_include_once() {
-    // Diamond: both imports pull in measures.chi; the second is a no-op
+    // Diamond: both imports pull in measures.ductus; the second is a no-op
     // rather than an immutable-rebinding error.
     let document = build_with_files(
-        "import \"a.chi\";\nimport \"b.chi\";\nglyph g { advance = stem + a_pad + b_pad; }\n",
+        "import \"a.ductus\";\nimport \"b.ductus\";\nglyph g { advance = stem + a_pad + b_pad; }\n",
         &[
-            ("a.chi", "import \"measures.chi\";\na_pad = stem;\n"),
-            ("b.chi", "import \"measures.chi\";\nb_pad = 2 stem;\n"),
-            ("measures.chi", "stem = 100;\n"),
+            ("a.ductus", "import \"measures.ductus\";\na_pad = stem;\n"),
+            ("b.ductus", "import \"measures.ductus\";\nb_pad = 2 stem;\n"),
+            ("measures.ductus", "stem = 100;\n"),
         ],
     )
     .expect("evaluates");
@@ -242,31 +242,31 @@ fn import_is_include_once() {
 #[test]
 fn import_cycle_is_an_error() {
     let error = build_with_files(
-        "import \"a.chi\";\n",
+        "import \"a.ductus\";\n",
         &[
-            ("a.chi", "import \"b.chi\";\n"),
-            ("b.chi", "import \"a.chi\";\n"),
+            ("a.ductus", "import \"b.ductus\";\n"),
+            ("b.ductus", "import \"a.ductus\";\n"),
         ],
     )
     .expect_err("cycle should fail");
     assert!(error.message.contains("cycle"), "{}", error.message);
-    assert!(error.message.contains("a.chi"), "{}", error.message);
+    assert!(error.message.contains("a.ductus"), "{}", error.message);
 }
 
 #[test]
 fn error_in_imported_file_carries_the_file_name() {
     let error = build_with_files(
-        "import \"broken.chi\";\n",
-        &[("broken.chi", "x = missing;\n")],
+        "import \"broken.ductus\";\n",
+        &[("broken.ductus", "x = missing;\n")],
     )
     .expect_err("should fail");
-    assert!(error.message.contains("broken.chi"), "{}", error.message);
+    assert!(error.message.contains("broken.ductus"), "{}", error.message);
     assert!(error.message.contains("missing"), "{}", error.message);
 }
 
 #[test]
 fn import_without_an_importer_is_an_error() {
-    let error = build_err("import \"other.chi\";\n");
+    let error = build_err("import \"other.ductus\";\n");
     assert!(error.message.contains("not supported"), "{}", error.message);
 }
 

@@ -1,11 +1,11 @@
-use chi_core::doc::Document;
+use ductus_core::doc::Document;
 use clap::{Parser, Subcommand};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 #[derive(Parser)]
-#[command(name = "chi", about = "Chi — parametric type design language")]
+#[command(name = "ductus", about = "Ductus — parametric type design language")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -15,12 +15,12 @@ struct Cli {
 enum Command {
     /// Check a source file for syntax errors.
     Check {
-        /// Path to the .chi file
+        /// Path to the .ductus file
         file: PathBuf,
     },
     /// Evaluate a source file and render it to SVG.
     Build {
-        /// Path to the .chi file
+        /// Path to the .ductus file
         file: PathBuf,
         /// Render only this glyph
         #[arg(long)]
@@ -38,7 +38,7 @@ enum Command {
     /// Evaluate a source file and print its numbers: params, metrics,
     /// derived bindings, and each glyph's advance, bindings and geometry.
     Inspect {
-        /// Path to the .chi file
+        /// Path to the .ductus file
         file: PathBuf,
         /// Override a param, e.g. --set weight=700 (repeatable)
         #[arg(long = "set", value_name = "PARAM=VALUE")]
@@ -66,7 +66,7 @@ fn run(cli: Cli) -> Result<String, String> {
     match cli.command {
         Command::Check { file } => {
             let source = read(&file)?;
-            chi_core::parse::parse(&source)
+            ductus_core::parse::parse(&source)
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
             Ok(format!("{}: OK", file.display()))
         }
@@ -83,8 +83,8 @@ fn run(cli: Cli) -> Result<String, String> {
         } => {
             let document = evaluate(&file, &set)?;
 
-            let options = chi_core::render::RenderOptions { glyph, debug };
-            let svg = chi_core::render::render(&document, &options)
+            let options = ductus_core::render::RenderOptions { glyph, debug };
+            let svg = ductus_core::render::render(&document, &options)
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
 
             std::fs::write(&output, svg)
@@ -100,13 +100,13 @@ fn evaluate(file: &Path, set: &[String]) -> Result<Document, String> {
     let overrides = parse_overrides(set)?;
     let named = |error: String| format!("{}: {error}", file.display());
 
-    let tree = chi_core::parse::parse(&source).map_err(|error| named(error.to_string()))?;
+    let tree = ductus_core::parse::parse(&source).map_err(|error| named(error.to_string()))?;
     let program =
-        chi_core::lower::lower(&tree, &source).map_err(|error| named(error.to_string()))?;
+        ductus_core::lower::lower(&tree, &source).map_err(|error| named(error.to_string()))?;
     let importer = FsImporter {
         root: file.parent().unwrap_or(Path::new(".")).to_path_buf(),
     };
-    chi_core::eval::evaluate(&program, &overrides, &importer)
+    ductus_core::eval::evaluate(&program, &overrides, &importer)
         .map_err(|error| named(error.to_string()))
 }
 
@@ -203,7 +203,7 @@ struct FsImporter {
     root: PathBuf,
 }
 
-impl chi_core::eval::Importer for FsImporter {
+impl ductus_core::eval::Importer for FsImporter {
     fn load(&self, path: &str, from: Option<&str>) -> Result<(String, String), String> {
         let base = match from {
             Some(from) => PathBuf::from(from)

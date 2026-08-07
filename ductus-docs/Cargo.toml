@@ -1,0 +1,10 @@
+[package]
+name = "ductus-docs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ductus-core = { path = "../ductus-core" }
+tree-sitter = { workspace = true }
+tree-sitter-ductus = { path = "../../tree-sitter-ductus" }
+serde_json = "1"

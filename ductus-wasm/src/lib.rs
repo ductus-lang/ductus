@@ -51,7 +51,7 @@ struct ErrorInfo {
     message: String,
 }
 
-/// Compile chi source to SVG.
+/// Compile ductus source to SVG.
 ///
 /// `overrides_json`: JSON object of param overrides, e.g. `{"weight": 700}`.
 /// `glyph`: render only this glyph (empty string = all).
@@ -82,31 +82,31 @@ fn compile_inner(
         })?
     };
 
-    let tree = chi_core::parse::parse(source).map_err(|error| ErrorInfo {
+    let tree = ductus_core::parse::parse(source).map_err(|error| ErrorInfo {
         line: error.line,
         column: error.column,
         message: error.message,
     })?;
 
-    let program = chi_core::lower::lower(&tree, source).map_err(|error| ErrorInfo {
+    let program = ductus_core::lower::lower(&tree, source).map_err(|error| ErrorInfo {
         line: error.span.line,
         column: error.span.column,
         message: error.message,
     })?;
 
     // The playground has no filesystem; imports report a clear error.
-    let document = chi_core::eval::evaluate(&program, &overrides, &chi_core::eval::NoImporter)
+    let document = ductus_core::eval::evaluate(&program, &overrides, &ductus_core::eval::NoImporter)
         .map_err(|error| ErrorInfo {
         line: error.span.line,
         column: error.span.column,
         message: error.message,
     })?;
 
-    let options = chi_core::render::RenderOptions {
+    let options = ductus_core::render::RenderOptions {
         glyph: (!glyph.is_empty()).then(|| glyph.to_string()),
         debug,
     };
-    let svg = chi_core::render::render(&document, &options).map_err(|error| ErrorInfo {
+    let svg = ductus_core::render::render(&document, &options).map_err(|error| ErrorInfo {
         line: 0,
         column: 0,
         message: error.message,
@@ -162,12 +162,12 @@ fn compile_inner(
 ///
 /// Editing `highlights.scm` requires `bun run sync-wasm` in the playground for
 /// the change to take effect.
-const HIGHLIGHTS_QUERY: &str = include_str!("../../../tree-sitter-chi/queries/highlights.scm");
+const HIGHLIGHTS_QUERY: &str = include_str!("../../../tree-sitter-ductus/queries/highlights.scm");
 
 fn highlight_query() -> &'static Query {
     static QUERY: OnceLock<Query> = OnceLock::new();
     QUERY.get_or_init(|| {
-        Query::new(&tree_sitter_chi::LANGUAGE.into(), HIGHLIGHTS_QUERY)
+        Query::new(&tree_sitter_ductus::LANGUAGE.into(), HIGHLIGHTS_QUERY)
             .expect("highlights.scm is a valid query")
     })
 }
@@ -207,9 +207,9 @@ pub fn analyze(source: &str) -> String {
 }
 
 fn analyze_inner(source: &str) -> Analysis {
-    let tree = chi_core::parse::parse_lenient(source);
+    let tree = ductus_core::parse::parse_lenient(source);
     let spans = highlight_spans(&tree, source);
-    let errors = chi_core::parse::syntax_errors(&tree, source);
+    let errors = ductus_core::parse::syntax_errors(&tree, source);
 
     // One pass converts every byte offset (highlights and errors) to UTF-16.
     let mut targets = BTreeSet::new();

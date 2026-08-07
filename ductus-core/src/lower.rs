@@ -770,11 +770,11 @@ def bowl(c, r) -> (n, s) {
     #[test]
     fn lowers_for_and_import() {
         let source = "\
-import \"measures.chi\";
+import \"measures.ductus\";
 for i in 0..3 { draw(p); }
 ";
         let program = lower_source(source);
-        assert!(matches!(&program.items[0], Item::Import { path, .. } if path == "measures.chi"));
+        assert!(matches!(&program.items[0], Item::Import { path, .. } if path == "measures.ductus"));
         let Item::Stmt(Stmt::For { iterable, body, .. }) = &program.items[1] else {
             panic!()
         };

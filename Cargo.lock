@@ -96,47 +96,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
-name = "chi-cli"
-version = "0.1.0"
-dependencies = [
- "chi-core",
- "clap",
-]
-
-[[package]]
-name = "chi-core"
-version = "0.1.0"
-dependencies = [
- "curve_fitter",
- "kurbo",
- "tree-sitter",
- "tree-sitter-chi",
-]
-
-[[package]]
-name = "chi-docs"
-version = "0.1.0"
-dependencies = [
- "chi-core",
- "serde_json",
- "tree-sitter",
- "tree-sitter-chi",
-]
-
-[[package]]
-name = "chi-wasm"
-version = "0.1.0"
-dependencies = [
- "chi-core",
- "console_error_panic_hook",
- "serde",
- "serde_json",
- "tree-sitter",
- "tree-sitter-chi",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "clap"
 version = "4.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -200,6 +159,47 @@ dependencies = [
  "kurbo",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ductus-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "ductus-core",
+]
+
+[[package]]
+name = "ductus-core"
+version = "0.1.0"
+dependencies = [
+ "curve_fitter",
+ "kurbo",
+ "tree-sitter",
+ "tree-sitter-ductus",
+]
+
+[[package]]
+name = "ductus-docs"
+version = "0.1.0"
+dependencies = [
+ "ductus-core",
+ "serde_json",
+ "tree-sitter",
+ "tree-sitter-ductus",
+]
+
+[[package]]
+name = "ductus-wasm"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "ductus-core",
+ "serde",
+ "serde_json",
+ "tree-sitter",
+ "tree-sitter-ductus",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -456,7 +456,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter-chi"
+name = "tree-sitter-ductus"
 version = "0.1.0"
 dependencies = [
  "cc",

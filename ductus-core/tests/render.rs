@@ -1,10 +1,10 @@
 //! End-to-end rendering tests: source -> document -> SVG.
 
-use chi_core::doc::Document;
-use chi_core::eval::{NoImporter, evaluate};
-use chi_core::lower::lower;
-use chi_core::parse::parse;
-use chi_core::render::{RenderOptions, render};
+use ductus_core::doc::Document;
+use ductus_core::eval::{NoImporter, evaluate};
+use ductus_core::lower::lower;
+use ductus_core::parse::parse;
+use ductus_core::render::{RenderOptions, render};
 use std::collections::HashMap;
 
 fn build(source: &str) -> Document {

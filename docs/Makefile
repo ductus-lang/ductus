@@ -1,5 +1,5 @@
-# Building The Chi Book. Requires mdbook (cargo install mdbook); the
-# chi-docs preprocessor is built from this workspace on demand.
+# Building The Ductus Book. Requires mdbook (cargo install mdbook); the
+# ductus-docs preprocessor is built from this workspace on demand.
 
 MDBOOK ?= mdbook
 

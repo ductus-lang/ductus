@@ -1,12 +1,12 @@
 [package]
-name = "chi-cli"
+name = "ductus-cli"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "chi"
+name = "ductus"
 path = "src/main.rs"
 
 [dependencies]
-chi-core = { path = "../chi-core" }
+ductus-core = { path = "../ductus-core" }
 clap = { workspace = true }

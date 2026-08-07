@@ -1,8 +1,8 @@
 # Pens
 
-Remember how the nodes chapter wrapped up, showing off a broad pen that was actually just a fixed `nib` axis? We also noted something interesting: if your travel path ran right along that axis, the stroke would just… disappear. Well, a proper pen, the kind you hold, has a distinct body. You can turn it on its own axis, and it will still leave a mark as wide as its nib is *thick*. Chi's `pen` captures that idea beautifully — it's essentially an ellipse:
+Remember how the nodes chapter wrapped up, showing off a broad pen that was actually just a fixed `nib` axis? We also noted something interesting: if your travel path ran right along that axis, the stroke would just… disappear. Well, a proper pen, the kind you hold, has a distinct body. You can turn it on its own axis, and it will still leave a mark as wide as its nib is *thick*. Ductus's `pen` captures that idea beautifully — it's essentially an ellipse:
 
-```chi norender
+```ductus norender
 pen italic {
   width  = 120;   # full major axis; required
   height = 12;    # full minor axis; optional, default 0
@@ -14,7 +14,7 @@ node m = (x, y) dir theta pen italic;
 
 You'll find pen blocks hanging out at the top level, much like `params`. The values you set for a pen's fields are just regular expressions. This means they can even reference `params`, allowing your pen to gracefully interpolate and adapt across your entire design space. And here's a neat trick: the pen's name itself is a first-class value, ready to be passed around to macros. Just a quick heads-up: when you're defining a node, you can specify **either** its `width` (perhaps with an optional `nib`) **or** a `pen` — but never both at the same time.
 
-Now, it's important to understand that a pen isn't some magical stroke expansion tool. Instead, think of it as a clever rule for figuring out a node's precise edge points. Specifically, `n.left` and `n.right` transform into the exact contact points where our ellipse touches the stroke's two banks. This means you're still drawing contours through those very points, outline-first, just like you do with everything else in chi.
+Now, it's important to understand that a pen isn't some magical stroke expansion tool. Instead, think of it as a clever rule for figuring out a node's precise edge points. Specifically, `n.left` and `n.right` transform into the exact contact points where our ellipse touches the stroke's two banks. This means you're still drawing contours through those very points, outline-first, just like you do with everything else in ductus.
 
 ## The family
 
@@ -26,7 +26,7 @@ While the ellipse is quite versatile, three special, or "degenerate," cases actu
 
 Let's see how the same C-stroke looks when we apply all three of these:
 
-```chi
+```ductus
 u = 100;
 
 pen razor { width = 80; angle = 25; }
@@ -53,9 +53,9 @@ Take a look at the razor stroke on the left: you'll see it gracefully pinches do
 
 Here's what happens: when your travel direction sweeps across the pen's major axis, those true edge points actually swing rather dramatically to the ellipse's opposite end. This swing happens within just a few degrees of travel, defining what we call the "swing zone," which is roughly `atan(height / width)` wide. The issue is that the fitter, bless its heart, only sees the on-curve points that you provide in your source. So, if your banks are being fitted between two nodes that simply *bracket* this crucial crossing point, they'll just cut straight across at full width. The subtle pinch is happening right there, in between your samples, completely unwitnessed.
 
-The good news is the cure follows a familiar chi pattern: any feature that's narrower than your sampling needs a point to witness it. And happily, the pens machinery makes placing that witness remarkably straightforward. The crossing itself occurs precisely where the skeleton's tangent matches the pen's angle. Conveniently, `directionpoint` is designed to find this exact spot, tracking it faithfully across your entire design space.
+The good news is the cure follows a familiar ductus pattern: any feature that's narrower than your sampling needs a point to witness it. And happily, the pens machinery makes placing that witness remarkably straightforward. The crossing itself occurs precisely where the skeleton's tangent matches the pen's angle. Conveniently, `directionpoint` is designed to find this exact spot, tracking it faithfully across your entire design space.
 
-```chi
+```ductus
 u = 100;
 
 pen soft { width = 80; height = 14; angle = 25; }
@@ -86,13 +86,13 @@ n.left  = n.pos + x*
 n.right = n.pos − x*
 ```
 
-When `height` is greater than zero, `n.left` consistently represents the true left bank of travel. This is the precise contact point of our rolling ellipse, which means the banks you draw through these points are authentic envelope edges, not mere approximations. You can find the full derivation in the chi specification, should you wish to explore it further.
+When `height` is greater than zero, `n.left` consistently represents the true left bank of travel. This is the precise contact point of our rolling ellipse, which means the banks you draw through these points are authentic envelope edges, not mere approximations. You can find the full derivation in the ductus specification, should you wish to explore it further.
 
 ## Joints
 
 When two strokes come together at an angle, they form a joint, and it's quite neat how both sides of this joint are handled by tools you're already familiar with. The *outer* shoulder is gracefully formed by the pen itself, tracing a path between your two travel directions. You achieve this by placing extra nodes at the same position, but giving them intermediate directions, and then simply writing through them. Meanwhile, the *inner* corner is elegantly found right where the two inner banks intersect — a perfect job for `intersection()`.
 
-```chi
+```ductus
 u = 100;
 
 pen main { width = 80; height = 16; angle = 30; }

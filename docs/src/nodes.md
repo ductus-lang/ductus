@@ -1,14 +1,14 @@
 # Nodes and derived points
 
-Up until now, we've been crafting outlines point by point. But here's the thing: type is fundamentally about *strokes*. Think of an `o` as a lovely round stroke, or an `l` as a crisp straight one. Each stroke carries its own direction and thickness, long before it takes on its final outline. And in chi, a **node** is how we elegantly capture all of that information:
+Up until now, we've been crafting outlines point by point. But here's the thing: type is fundamentally about *strokes*. Think of an `o` as a lovely round stroke, or an `l` as a crisp straight one. Each stroke carries its own direction and thickness, long before it takes on its final outline. And in ductus, a **node** is how we elegantly capture all of that information:
 
-```chi norender
+```ductus norender
 node n = (x, y) dir theta width w;
 ```
 
 Essentially, a node is a special skeleton point that holds vital information about an imaginary stroke. It knows the local direction of travel (`dir`, measured in degrees) and the stroke's total thickness (`width`). It's a foundational concept, but it never actually appears on its own. Instead, its true power comes from its ability to *derive* other points, like so:
 
-```chi norender
+```ductus norender
 n.pos      # the point itself
 n.dir      # the direction, a number
 n.left     # n.pos + (w/2) * unitvec(n.dir + 90)
@@ -21,7 +21,7 @@ Think of *left* and *right* like the banks of a river, always relative to your d
 
 So, how do we actually create outlines with these clever points? We write them *through* the derived points. Just two nodes are enough to define a beautiful tapered stroke. Imagine a skeleton running down the middle, with one bank stretching out, and the other coming back.
 
-```chi
+```ductus
 u = 100;
 node a = (u, u)      dir 55 width 90;
 node b = (5u, 2.5u)  dir 10 width 30;
@@ -33,7 +33,7 @@ draw(a.right {a.dir} .. {b.dir} b.right);
 
 These banks are simply ordinary curves, passing through ordinary points. The neat trick is that they intelligently reuse the node's direction as their own constraint, which is precisely what makes them glide so gracefully parallel to the skeleton. Now, let's close off those ends, and voilà, we have a complete contour:
 
-```chi
+```ductus
 u = 100;
 node a = (u, u)      dir 55 width 90;
 node b = (5u, 2.5u)  dir 10 width 30;
@@ -44,13 +44,13 @@ fill(a.right {a.dir} .. {b.dir} b.right
 
 Picture this path: we journey out along the right bank, then take a straight shot across the far end, cruise back along the left bank (notice how every direction is cleverly reversed with `+ 180`), and finally, complete the loop by crossing the near end with `cycle`. Those two neat, straight crossings are what we call *cut terminals*. They're the most straightforward way a stroke can end, and we'll dive much deeper into them in a dedicated chapter later on.
 
-It's important to notice what chi *didn't* do here. It didn't perform any complex curve offsetting. Instead, it precisely offset four *points* and then skillfully fitted curves right through them. If a truly parallel curve and our fitted bank ever have a minor disagreement, the solution is delightfully simple, just like many other things in chi: we simply add a witness point. The pens chapter will explain this in fine detail.
+It's important to notice what ductus *didn't* do here. It didn't perform any complex curve offsetting. Instead, it precisely offset four *points* and then skillfully fitted curves right through them. If a truly parallel curve and our fitted bank ever have a minor disagreement, the solution is delightfully simple, just like many other things in ductus: we simply add a witness point. The pens chapter will explain this in fine detail.
 
 ## Asymmetric width
 
 By default, `width w` beautifully distributes the stroke evenly, assigning `w/2` to each bank. But what if you need more control? `width (wl, wr)` lets you specify the banks separately. In fact, `width w` is just a neat shorthand for `width (w/2, w/2)`. This lovely asymmetry is precisely how we articulate off-axis stress in our designs. Let's observe the same elegant C-shaped stroke, first with its weight perfectly centered, and then with that weight playfully pushed towards the outer bank:
 
-```chi
+```ductus
 u = 100;
 
 def bowl(cx, wl, wr) -> outline {
@@ -72,14 +72,14 @@ Notice that both of these strokes maintain a thickness of 60 units, and their un
 
 Now, let's explore one more intriguing clause. Normally, width spreads out perpendicular to the direction of travel, as shown by `unitvec(dir + 90)` in our earlier formulas. But with `nib phi`, you gain the delightful ability to override that default axis:
 
-```chi norender
+```ductus norender
 node k = (x, y) dir theta width w nib phi;
 # k.left = k.pos + wl * unitvec(phi)  — phi, not theta + 90
 ```
 
 Imagine a *fixed* nib axis, one that remains steadfast regardless of the stroke's travel direction. This effectively simulates a broad pen: the stroke becomes wonderfully thick when it travels across the axis, and elegantly thin when it glides along it. No complex pen machinery needed here, just the same familiar bowl, but this time with every node's nib axis gracefully pinned to 30°:
 
-```chi
+```ductus
 u = 100;
 
 def bowl(cx) -> outline {
@@ -104,7 +104,7 @@ Take a look at the upright stroke nestled next to our bowl. It beautifully showc
 
 Let's finally build the 'o' glyph that greeted us at the very beginning of this book, starting from scratch. First, we lay down the essential scaffolding: our parameters, metrics, and the definitions for the two key stroke weights:
 
-```chi norender acc
+```ductus norender acc
 params {
   weight   = 400 in 100..900;
   contrast = 0.85 in 0.6..1.0;
@@ -122,7 +122,7 @@ hair = contrast * stem;
 
 Our skeleton is beautifully formed by four nodes arranged on an ellipse, gracefully traveling counterclockwise. It moves across the top going leftward, sweeps down the left side, glides along the bottom heading rightward, and finally rises up the right side. Horizontal movements are assigned the `hair` thickness, while vertical movements take on the `stem` thickness. This simple distinction is the secret to all the delightful contrast in our design.
 
-```chi glyph=o debug
+```ductus glyph=o debug
 glyph o : U+006F {
   advance = 2 stem + 380;
   center = (advance / 2, x / 2);
@@ -144,7 +144,7 @@ The debug view gives us a clear peek at what we've crafted so far: four nodes, e
 
 Now, with just two elegant path expressions, we transform our scaffolding into beautiful ink:
 
-```chi acc glyph=o debug
+```ductus acc glyph=o debug
 glyph o : U+006F {
   advance = 2 stem + 380;
   center = (advance / 2, x / 2);
@@ -167,17 +167,17 @@ glyph o : U+006F {
 
 Without the debug overlay:
 
-```chi glyph=o
+```ductus glyph=o
 ```
 
 And here's the magic: because every single number in our design gracefully traces back to our initial parameters, the entire design space comes along for the ride, absolutely free. For example, setting `weight = 850` gives us:
 
-```chi glyph=o set="weight=850"
+```ductus glyph=o set="weight=850"
 ```
 
 Or perhaps a low contrast look at `contrast = 1.0`, where `hair` and `stem` charmingly become equal:
 
-```chi glyph=o set="weight=850 contrast=1.0"
+```ductus glyph=o set="weight=850 contrast=1.0"
 ```
 
 We've created eight distinct points and two flowing contours, all dynamically at every instance. This truly embodies the 'skeleton-as-scaffolding' principle introduced in our first chapter, bringing it vividly to life. You defined just four positions and four widths, and the nodes, in their wisdom, effortlessly positioned everything else.
@@ -188,7 +188,7 @@ We've created eight distinct points and two flowing contours, all dynamically at
 
 Let's take a closer look at our two contours, shall we:
 
-```chi norender
+```ductus norender
 contour outer = n.right .. w.right .. s.right .. e.right .. cycle;
 contour inner = n.left  .. e.left  .. s.left  .. w.left  .. cycle;
 ```
@@ -203,9 +203,9 @@ Our skeleton journeys along in a pleasing counterclockwise direction. This means
 
 ## The designer owns every point
 
-Here's a liberating thought: derived points are, at heart, just ordinary points. This means you can do wonderful things: `w.right + (3, 0)` will gently nudge the left flank of the `o` three units to the right, all without disturbing the original node. You could even entirely replace `s.right` with a carefully hand-placed point, which is a perfectly normal edit. And because a nudge is itself an expression, it can be beautifully parametric, just like everything else in chi:
+Here's a liberating thought: derived points are, at heart, just ordinary points. This means you can do wonderful things: `w.right + (3, 0)` will gently nudge the left flank of the `o` three units to the right, all without disturbing the original node. You could even entirely replace `s.right` with a carefully hand-placed point, which is a perfectly normal edit. And because a nudge is itself an expression, it can be beautifully parametric, just like everything else in ductus:
 
-```chi norender
+```ductus norender
 contour outer = n.right .. w.right + (3, 0) .. s.right .. e.right .. cycle;
 ```
 

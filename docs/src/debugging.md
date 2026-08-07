@@ -1,10 +1,10 @@
 # Debugging and inspecting
 
-Chi is pretty good about pointing out errors, giving you clear file, line, and column details, and its renderer certainly never stays quiet about problems. But let's be honest, often the real head-scratcher isn't an error message at all. It's when your ink compiles perfectly but just doesn't *look* right. That's where these trusty tools come in: the debug view, the probe bindings you've seen in the language chapters, and the playground's dynamic live loop. This chapter will show you how to make the most of each.
+Ductus is pretty good about pointing out errors, giving you clear file, line, and column details, and its renderer certainly never stays quiet about problems. But let's be honest, often the real head-scratcher isn't an error message at all. It's when your ink compiles perfectly but just doesn't *look* right. That's where these trusty tools come in: the debug view, the probe bindings you've seen in the language chapters, and the playground's dynamic live loop. This chapter will show you how to make the most of each.
 
 ## Reading the debug view
 
-```chi hide
+```ductus hide
 params { weight = 400 in 100..900; }
 metrics {
   upm = 1000; x = 500; cap = 700; asc = 750; desc = -220;
@@ -36,10 +36,10 @@ glyph o : U+006F {
 }
 ```
 
-```chi glyph=o debug
+```ductus glyph=o debug
 ```
 
-Here's everything `chi build --debug` (or the playground's debug toggle) will draw for you, laid out from back to front:
+Here's everything `ductus build --debug` (or the playground's debug toggle) will draw for you, laid out from back to front:
 
 - **The grid** — Think of it as your trusty graph paper, marked out in font units. You'll see fine lines every 10 units, heavier ones every 50, and the heaviest lines every 100. There's also a major line neatly pinned to the baseline and to each glyph's origin, making it easy to read coordinates directly.
 - **Metrics lines** — These helpful horizontal lines mark out every renderer-meaningful metric, like `x`, `cap`, `asc`, `desc`, and overshoot. Each is labeled at the margin, and the baseline stands out with a heavier line.
@@ -62,9 +62,9 @@ Consider this your little field guide to common mishaps. Everything on it appear
 
 ## Probing numbers
 
-While the debug view helps you spot *where* things are, probe bindings are your go-to for figuring out *how big* they are. Any measurement worth checking is certainly worth a binding. It costs just one line of code, shows up neatly in `chi inspect` and the playground inspector, and even tracks along with your sliders:
+While the debug view helps you spot *where* things are, probe bindings are your go-to for figuring out *how big* they are. Any measurement worth checking is certainly worth a binding. It costs just one line of code, shows up neatly in `ductus inspect` and the playground inspector, and even tracks along with your sliders:
 
-```chi norender
+```ductus norender
 glyph o {
   ...
   waist = distance(directionpoint(outer, 45),
@@ -74,8 +74,8 @@ glyph o {
 
 (A quick heads-up on that `225`: because the inner contour travels the other way, the point opposite the outer's 45° tangent will carry the reversed tangent.)
 
-With `chi inspect file.chi --set weight=900`, you can get a precise readout of your design's measurements at a specific instance. Even better, the playground brings these numbers to life, letting you drag `weight` and watch `waist` respond in real-time. This transforms a vague suspicion like "doesn't the stroke get too thin in the black?" into a clear graph you can explore.
+With `ductus inspect file.ductus --set weight=900`, you can get a precise readout of your design's measurements at a specific instance. Even better, the playground brings these numbers to life, letting you drag `weight` and watch `waist` respond in real-time. This transforms a vague suspicion like "doesn't the stroke get too thin in the black?" into a clear graph you can explore.
 
 ## The loop
 
-So, what's the recommended workflow for putting all these tools to good use? It goes something like this: first, run `chi check` for syntax every time you save your work. Then, you'll spend most of your time shaping in the playground (or using `chi build --debug` with an SVG viewer that reloads). Finally, before you call a glyph done, you'll use probes alongside `chi inspect --set …` to thoroughly test the corners of your design space. This is exactly where those existence failures from the previous chapter tend to surface. The case studies that follow will put all these practices into action on real letters.
+So, what's the recommended workflow for putting all these tools to good use? It goes something like this: first, run `ductus check` for syntax every time you save your work. Then, you'll spend most of your time shaping in the playground (or using `ductus build --debug` with an SVG viewer that reloads). Finally, before you call a glyph done, you'll use probes alongside `ductus inspect --set …` to thoroughly test the corners of your design space. This is exactly where those existence failures from the previous chapter tend to surface. The case studies that follow will put all these practices into action on real letters.

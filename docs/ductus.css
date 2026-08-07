@@ -1,0 +1,103 @@
+/* Styles for figures emitted by the ductus-docs preprocessor: a highlighted
+   code pane beside the rendered SVG, stacking on narrow screens. */
+
+figure.ductus-example {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: stretch;
+  margin: 1.6rem 0;
+}
+
+figure.ductus-example .ductus-code {
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+figure.ductus-example .ductus-render {
+  flex: 1 1 16rem;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  border: 1px solid var(--table-border-color);
+  border-radius: 5px;
+}
+
+figure.ductus-example .ductus-render svg {
+  width: 100%;
+  height: auto;
+  max-height: 24rem;
+}
+
+/* Output-only figures (an empty ```ductus block): just the render pane,
+   centered and kept to a modest width. */
+figure.ductus-example.ductus-output-only .ductus-render {
+  flex: 1 1 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+}
+
+pre.ductus-code {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: var(--quote-bg);
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+pre.ductus-code.ductus-standalone {
+  margin: 1.6rem 0;
+}
+
+pre.ductus-code code {
+  font-family: "Source Code Pro", ui-monospace, Consolas, monospace;
+  font-size: 0.875em;
+  line-height: 1.45;
+  padding: 0;
+  background: transparent;
+}
+
+/* Syntax palette: Catppuccin Latte on the light themes, Mocha on the dark
+   ones — the same mapping of highlights.scm captures the playground uses.
+   Operators, punctuation and plain identifiers keep the text color. */
+
+:root {
+  --ductus-comment: #7c7f93;
+  --ductus-number: #fe640b;
+  --ductus-string: #40a02b;
+  --ductus-keyword: #8839ef;
+  --ductus-attribute: #df8e1d;
+  --ductus-function: #1e66f5;
+  --ductus-parameter: #e64553;
+  --ductus-property: #7287fd;
+}
+
+html.coal,
+html.navy,
+html.ayu {
+  --ductus-comment: #9399b2;
+  --ductus-number: #fab387;
+  --ductus-string: #a6e3a1;
+  --ductus-keyword: #cba6f7;
+  --ductus-attribute: #f9e2af;
+  --ductus-function: #89b4fa;
+  --ductus-parameter: #eba0ac;
+  --ductus-property: #b4befe;
+}
+
+.ductus-comment { color: var(--ductus-comment); }
+.ductus-number,
+.ductus-constant-builtin { color: var(--ductus-number); }
+.ductus-string { color: var(--ductus-string); }
+.ductus-keyword,
+.ductus-keyword-conditional,
+.ductus-keyword-storage { color: var(--ductus-keyword); }
+.ductus-attribute,
+.ductus-type { color: var(--ductus-attribute); }
+.ductus-function,
+.ductus-function-call,
+.ductus-function-method { color: var(--ductus-function); }
+.ductus-variable-parameter { color: var(--ductus-parameter); }
+.ductus-property { color: var(--ductus-property); }

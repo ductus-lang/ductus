@@ -4,7 +4,7 @@ This is a tool-first study, a charming `o` where its whole personality flows fro
 
 ## Pen and skeleton
 
-```chi norender acc
+```ductus norender acc
 params {
   # Below 45 the upper witness sits too asymmetrically in its leg and
   # the inner bank folds — see "Working the axes". The range is the fix.
@@ -24,7 +24,7 @@ pen nib {
 
 It's all about the *pen* here. Its three defining axes — the angle it's held at, its generous breadth, and how distinct it is from a mere razor-thin line — truly steer the show. The glyph itself, you'll find, is quite content to let the pen do most of the talking. It's a simple setup: just four nodes gracefully arranged on a counterclockwise skeleton, each one holding onto that very same pen.
 
-```chi acc glyph=o debug
+```ductus acc glyph=o debug
 glyph o : U+006F {
   advance = 560;
   c = (advance / 2, x / 2);
@@ -58,21 +58,21 @@ The real magic of this whole exploration truly blossoms within those two clever 
 
 The result, plain:
 
-```chi glyph=o
+```ductus glyph=o
 ```
 
 ## Working the axes
 
 Ah, but here's where the witnesses truly shine: because they operate as *queries* rather than fixed coordinates, they beautifully adapt to every single axis. Want to steepen the pen's angle? Watch as those delicate thin spots gracefully migrate around the ring. Or perhaps you'd prefer to plump the pen towards a stubbier shape? Then you'll see the pinch simply relax. The best part? It's all from the very same source code, without a single manual edit.
 
-```chi glyph=o set="pen_angle=60"
+```ductus glyph=o set="pen_angle=60"
 ```
 
-```chi glyph=o set="pen_height=34"
+```ductus glyph=o set="pen_height=34"
 ```
 
 ## The range is part of the design
 
-You'll find two intriguing constraints tucked away in that `params` block, both offering wonderful real-world insights from the interpolation chapter. Let's look at the first one: it's all about *existence*. A witness node can only truly come to life when the skeleton's tangent sweep gracefully covers the pen angle. Happily, with our closed skeleton here, the sweep spans a full circle, meaning every `pen_angle` effortlessly satisfies both queries. But if you were to cut the skeleton open — imagine an 'c', for example — that freedom vanishes, and a careful balance is needed. The `latin_set.chi` documentation thoughtfully details this precise negotiation right in its header.
+You'll find two intriguing constraints tucked away in that `params` block, both offering wonderful real-world insights from the interpolation chapter. Let's look at the first one: it's all about *existence*. A witness node can only truly come to life when the skeleton's tangent sweep gracefully covers the pen angle. Happily, with our closed skeleton here, the sweep spans a full circle, meaning every `pen_angle` effortlessly satisfies both queries. But if you were to cut the skeleton open — imagine an 'c', for example — that freedom vanishes, and a careful balance is needed. The `latin_set.ductus` documentation thoughtfully details this precise negotiation right in its header.
 
 The second constraint revealed itself in the most honest way, simply by building out the instances and seeing what happened. We discovered that below `pen_angle = 45`, the upper crossing drifts a bit too close to the top node. This causes the inner bank's fitted curve to fold right over itself, resulting in a rather unexpected black teardrop hanging into the counter. Curiously, the system reports no error whatsoever, because technically, nothing is 'wrong' except for the visual shape itself. (Incidentally, our debugging chapter's field guide points out this very scenario.) While adding more skeleton samples around the crossing would certainly expand the safe range, narrowing the *declared* range to `45..60` offered a much simpler and more direct fix. Plus, it has the lovely benefit of keeping that crucial constraint clearly noted right alongside where the axis is declared. Regardless of the approach, the range always comes to mean something quite specific: it marks precisely where this thoughtful construction is known to hold true, because, well, someone took the time to truly look.

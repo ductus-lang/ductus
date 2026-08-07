@@ -6,7 +6,7 @@ Let's kick things off with our simplest exploration – a capital stem boasting 
 
 Think of a slab serif as a neat rectangle nestled right beneath the stem. Now, the *bracket* is that lovely little curve that gently coaxes the serif into the stem, ensuring the joint feels smooth and never abruptly angular. We describe it using just four key numbers. The clever part is that they all spring from `stem`, which means your serif gracefully holds onto its perfect proportions no matter how the weight changes:
 
-```chi norender acc
+```ductus norender acc
 params { weight = 400 in 100..900; }
 
 metrics { upm = 1000; x = 500; cap = 700; asc = 750; desc = -220; }
@@ -22,7 +22,7 @@ br = 26 + 0.30 * stem;    # bracket size
 
 We'll trace this delightful shape counterclockwise, starting from the serif's bottom-left corner. You'll notice that every corner along the slab is a simple line-to-line transition, so there's no need for any special annotations. The two brackets, though, achieve their lovely smoothness precisely *because* their entry and exit directions are so thoughtfully constrained. For instance, `{left} .. {up}` effortlessly guides the curve from a horizontal path right into a vertical one:
 
-```chi acc glyph=stem
+```ductus acc glyph=stem
 glyph stem {
   advance = stem + 2 sl + 100;
   xl = (advance - stem) / 2;    # stem left edge
@@ -37,21 +37,21 @@ glyph stem {
 }
 ```
 
-Let's take a closer look at that right bracket. The path makes a graceful entrance along the serif's top, heading `{left}`, then gently curves, and finally departs heading `{up}` right into the stem. It's truly amazing: just one segment and two constraints, and chi's fitter somehow magically figures out the perfect, smooth ease. What's more, those points where the bracket's curve meets the straight lines on either side? They seamlessly become line/curve corners all on their own.
+Let's take a closer look at that right bracket. The path makes a graceful entrance along the serif's top, heading `{left}`, then gently curves, and finally departs heading `{up}` right into the stem. It's truly amazing: just one segment and two constraints, and ductus's fitter somehow magically figures out the perfect, smooth ease. What's more, those points where the bracket's curve meets the straight lines on either side? They seamlessly become line/curve corners all on their own.
 
 The debug view gives us a wonderful look at the entire structure – do note how the on-curve points beautifully cluster just at the brackets, and nowhere else:
 
-```chi glyph=stem debug
+```ductus glyph=stem debug
 ```
 
 ## Across the space
 
 Here's where the magic really happens: because `sl`, `sh`, and `br` all grow alongside the `stem` (though not purely proportionally, as each has a constant floor), our serif builds a wonderful sturdiness in the heavier weights without ever turning into a clunky brick. And in the lighter weights, it remains beautifully present and refuses to simply disappear:
 
-```chi glyph=stem set="weight=120"
+```ductus glyph=stem set="weight=120"
 ```
 
-```chi glyph=stem set="weight=880"
+```ductus glyph=stem set="weight=880"
 ```
 
 Imagine, just ten points at every single instance. Now, if there's one design decision here truly worth borrowing, it's all about these derivations, not just the path itself. Crafting a serif proportioned as `floor + k · stem` ensures that it interpolates *sensibly* across all weights. And believe me, no amount of clever outline trickery can ever save a design if the fundamental numbers underneath aren't quite right.

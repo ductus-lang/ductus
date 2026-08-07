@@ -1,12 +1,12 @@
-//! chi-docs — an mdBook preprocessor that compiles ```chi fences into
+//! ductus-docs — an mdBook preprocessor that compiles ```ductus fences into
 //! figures: highlighted source on one side, the rendered SVG on the other.
 //!
 //! mdBook pipes `[context, book]` JSON on stdin and reads the transformed
-//! book JSON from stdout; `chi-docs supports html` answers with exit 0.
+//! book JSON from stdout; `ductus-docs supports html` answers with exit 0.
 //! The book is handled as raw JSON so the only protocol dependency is
 //! serde_json.
 //!
-//! Fence options, whitespace-separated after `chi`:
+//! Fence options, whitespace-separated after `ductus`:
 //!
 //! ```text
 //! glyph=o               render only this glyph
@@ -26,8 +26,8 @@
 //! built. A block that fails to compile fails the book build, with the
 //! chapter file and line in the message.
 
-use chi_core::doc::Document;
-use chi_core::render::RenderOptions;
+use ductus_core::doc::Document;
+use ductus_core::render::RenderOptions;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::Read as _;
@@ -52,7 +52,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(message) => {
-            eprintln!("chi-docs: {message}");
+            eprintln!("ductus-docs: {message}");
             ExitCode::FAILURE
         }
     }
@@ -132,9 +132,9 @@ fn process_chapter(content: &str, chapter_dir: &Path, label: &str) -> Result<Str
             i += 1;
             continue;
         };
-        let is_chi = info == "chi" || info.starts_with("chi ") || info.starts_with("chi\t");
-        if !is_chi {
-            // A foreign fence passes through verbatim, including any ```chi
+        let is_ductus = info == "ductus" || info.starts_with("ductus ") || info.starts_with("ductus\t");
+        if !is_ductus {
+            // A foreign fence passes through verbatim, including any ```ductus
             // lines quoted inside it.
             out.push(lines[i].to_string());
             i += 1;
@@ -150,7 +150,7 @@ fn process_chapter(content: &str, chapter_dir: &Path, label: &str) -> Result<Str
         }
 
         let fence_line = i + 1; // 1-based, for error messages
-        let options = Options::parse(&info[3..])
+        let options = Options::parse(&info["ductus".len()..])
             .map_err(|message| format!("{label}:{fence_line}: {message}"))?;
         i += 1;
         let start = i;
@@ -158,7 +158,7 @@ fn process_chapter(content: &str, chapter_dir: &Path, label: &str) -> Result<Str
             i += 1;
         }
         if i == lines.len() {
-            return Err(format!("{label}:{fence_line}: unterminated ```chi block"));
+            return Err(format!("{label}:{fence_line}: unterminated ```ductus block"));
         }
         let block = lines[start..i].join("\n");
         i += 1; // the closing fence
@@ -208,7 +208,7 @@ fn process_block(
             String::new()
         } else {
             format!(
-                "<pre class=\"chi-code chi-standalone\"><code>{}</code></pre>",
+                "<pre class=\"ductus-code ductus-standalone\"><code>{}</code></pre>",
                 highlight(block)
             )
         });
@@ -216,7 +216,7 @@ fn process_block(
 
     if options.norender {
         return Ok(format!(
-            "<pre class=\"chi-code chi-standalone\"><code>{}</code></pre>",
+            "<pre class=\"ductus-code ductus-standalone\"><code>{}</code></pre>",
             highlight(block)
         ));
     }
@@ -229,7 +229,7 @@ fn process_block(
         glyph: options.glyph.clone(),
         debug: options.debug,
     };
-    let svg = chi_core::render::render(&document, &render_options).map_err(|error| BlockError {
+    let svg = ductus_core::render::render(&document, &render_options).map_err(|error| BlockError {
         line: None,
         message: error.message,
     })?;
@@ -243,8 +243,8 @@ fn process_block(
     if block.trim().is_empty() {
         let svg = svg.replace('\n', " ");
         return Ok(format!(
-            "<figure class=\"chi-example chi-output-only\">\
-             <div class=\"chi-render\">{svg}</div>\
+            "<figure class=\"ductus-example ductus-output-only\">\
+             <div class=\"ductus-render\">{svg}</div>\
              </figure>"
         ));
     }
@@ -288,7 +288,7 @@ impl Options {
                     options.set.insert(name.to_string(), value);
                 }
             } else {
-                return Err(format!("unknown ```chi option '{token}'"));
+                return Err(format!("unknown ```ductus option '{token}'"));
             }
         }
         let renders = options.debug || options.glyph.is_some() || !options.set.is_empty();
@@ -320,7 +320,7 @@ fn tokenize(text: &str) -> Result<Vec<String>, String> {
         }
     }
     if in_quotes {
-        return Err("unclosed quote in ```chi options".to_string());
+        return Err("unclosed quote in ```ductus options".to_string());
     }
     if !current.is_empty() {
         tokens.push(current);
@@ -382,18 +382,18 @@ fn compile(
     overrides: &HashMap<String, f64>,
     chapter_dir: &Path,
 ) -> Result<Document, CompileError> {
-    let tree = chi_core::parse::parse(source).map_err(|error| CompileError {
+    let tree = ductus_core::parse::parse(source).map_err(|error| CompileError {
         line: error.line,
         message: error.message,
     })?;
-    let program = chi_core::lower::lower(&tree, source).map_err(|error| CompileError {
+    let program = ductus_core::lower::lower(&tree, source).map_err(|error| CompileError {
         line: error.span.line,
         message: error.message,
     })?;
     let importer = FsImporter {
         root: chapter_dir.to_path_buf(),
     };
-    chi_core::eval::evaluate(&program, overrides, &importer).map_err(|error| CompileError {
+    ductus_core::eval::evaluate(&program, overrides, &importer).map_err(|error| CompileError {
         line: error.span.line,
         message: error.message,
     })
@@ -406,7 +406,7 @@ struct FsImporter {
     root: PathBuf,
 }
 
-impl chi_core::eval::Importer for FsImporter {
+impl ductus_core::eval::Importer for FsImporter {
     fn load(&self, path: &str, from: Option<&str>) -> Result<(String, String), String> {
         let base = match from {
             Some(from) => PathBuf::from(from)
@@ -434,9 +434,9 @@ impl chi_core::eval::Importer for FsImporter {
 fn figure(code_html: &str, svg: &str) -> String {
     let svg = svg.replace('\n', " ");
     format!(
-        "<figure class=\"chi-example\">\
-         <pre class=\"chi-code\"><code>{code_html}</code></pre>\
-         <div class=\"chi-render\">{svg}</div>\
+        "<figure class=\"ductus-example\">\
+         <pre class=\"ductus-code\"><code>{code_html}</code></pre>\
+         <div class=\"ductus-render\">{svg}</div>\
          </figure>"
     )
 }
@@ -444,23 +444,23 @@ fn figure(code_html: &str, svg: &str) -> String {
 // ---- Highlighting -----------------------------------------------------------
 
 /// The highlight query, embedded from the sibling grammar repo at build time
-/// — the same file the playground compiles into chi-wasm, so the class names
-/// (`chi-keyword`, `chi-number`, …) match its palette.
-const HIGHLIGHTS_QUERY: &str = include_str!("../../../tree-sitter-chi/queries/highlights.scm");
+/// — the same file the playground compiles into ductus-wasm, so the class names
+/// (`ductus-keyword`, `ductus-number`, …) match its palette.
+const HIGHLIGHTS_QUERY: &str = include_str!("../../../tree-sitter-ductus/queries/highlights.scm");
 
 fn highlight_query() -> &'static Query {
     static QUERY: OnceLock<Query> = OnceLock::new();
     QUERY.get_or_init(|| {
-        Query::new(&tree_sitter_chi::LANGUAGE.into(), HIGHLIGHTS_QUERY)
+        Query::new(&tree_sitter_ductus::LANGUAGE.into(), HIGHLIGHTS_QUERY)
             .expect("highlights.scm is a valid query")
     })
 }
 
-/// Escaped HTML for a chi source fragment, capture spans wrapped in
-/// `<span class="chi-...">`. Lenient parse: fragments with errors still get
+/// Escaped HTML for a ductus source fragment, capture spans wrapped in
+/// `<span class="ductus-...">`. Lenient parse: fragments with errors still get
 /// colors for everything the parser recognized.
 fn highlight(source: &str) -> String {
-    let tree = chi_core::parse::parse_lenient(source);
+    let tree = ductus_core::parse::parse_lenient(source);
     let mut html = String::new();
     let mut at = 0;
     for (start, end, class) in highlight_spans(&tree, source) {
@@ -468,7 +468,7 @@ fn highlight(source: &str) -> String {
             continue;
         }
         html.push_str(&escape(&source[at..start]));
-        html.push_str(&format!("<span class=\"chi-{class}\">", ));
+        html.push_str(&format!("<span class=\"ductus-{class}\">", ));
         html.push_str(&escape(&source[start..end]));
         html.push_str("</span>");
         at = end;
@@ -480,7 +480,7 @@ fn highlight(source: &str) -> String {
 
 /// Byte-range highlight spans, one per captured leaf, sorted by position.
 /// When several patterns claim the same range, the earliest pattern in
-/// `highlights.scm` wins — same resolution as chi-wasm's `analyze`.
+/// `highlights.scm` wins — same resolution as ductus-wasm's `analyze`.
 fn highlight_spans(tree: &Tree, source: &str) -> Vec<(usize, usize, String)> {
     let query = highlight_query();
     let names = query.capture_names();
@@ -529,7 +529,7 @@ mod tests {
         process_chapter(content, Path::new("."), "test.md")
     }
 
-    const SKETCH: &str = "```chi\nu = 100;\ndraw((0,0) .. (2u, u) .. (4u, 0));\n```";
+    const SKETCH: &str = "```ductus\nu = 100;\ndraw((0,0) .. (2u, u) .. (4u, 0));\n```";
 
     #[test]
     fn sketch_block_becomes_a_one_line_figure() {
@@ -540,18 +540,18 @@ mod tests {
             .expect("a figure line");
         assert!(figure.contains("<svg"), "{figure}");
         assert!(figure.contains("</figure>"), "{figure}");
-        assert!(figure.contains("chi-keyword\">draw<") || figure.contains("chi-function"));
+        assert!(figure.contains("ductus-keyword\">draw<") || figure.contains("ductus-function"));
     }
 
     #[test]
     fn text_and_foreign_fences_pass_through() {
-        let content = "# Title\n\n```rust\nfn main() {}\n```\n\n````md\n```chi\nnot compiled\n```\n````\n";
+        let content = "# Title\n\n```rust\nfn main() {}\n```\n\n````md\n```ductus\nnot compiled\n```\n````\n";
         assert_eq!(chapter(content).unwrap(), content.trim_end_matches('\n'));
     }
 
     #[test]
     fn hide_feeds_the_next_block_and_shows_nothing() {
-        let content = "```chi hide\nu = 100;\n```\n\n```chi\ndraw((0,0) -- (u, u));\n```";
+        let content = "```ductus hide\nu = 100;\n```\n\n```ductus\ndraw((0,0) -- (u, u));\n```";
         let html = chapter(content).unwrap();
         assert!(!html.contains("u = 100"), "hidden block leaked: {html}");
         assert!(html.contains("<figure"));
@@ -559,16 +559,16 @@ mod tests {
 
     #[test]
     fn norender_shows_code_without_compiling() {
-        let content = "```chi norender\nnode n = q dir 45 width w;\n```";
+        let content = "```ductus norender\nnode n = q dir 45 width w;\n```";
         let html = chapter(content).unwrap();
-        assert!(html.contains("chi-standalone"));
+        assert!(html.contains("ductus-standalone"));
         assert!(!html.contains("<svg"));
     }
 
     #[test]
     fn errors_point_at_the_chapter_line() {
         // Line 1 is text, line 2 opens the fence, line 4 is the bad statement.
-        let content = "intro\n```chi\nu = 100;\nv = boom;\n```";
+        let content = "intro\n```ductus\nu = 100;\nv = boom;\n```";
         let error = chapter(content).unwrap_err();
         assert!(error.starts_with("test.md:4:"), "{error}");
     }
@@ -576,14 +576,14 @@ mod tests {
     #[test]
     fn preamble_errors_report_their_own_line() {
         // The bad statement sits on chapter line 2, inside the hide block.
-        let content = "```chi hide\nx = nope;\n```";
+        let content = "```ductus hide\nx = nope;\n```";
         let error = chapter(content).unwrap_err();
         assert!(error.starts_with("test.md:2:"), "{error}");
     }
 
     #[test]
     fn set_selects_an_instance() {
-        let source = "```chi glyph=g set=\"w=200\"\nparams { w = 100 in 0..200; }\nglyph g { advance = w; contour c = (0,0) -- (w,0) -- (w,10) -- cycle; }\n```";
+        let source = "```ductus glyph=g set=\"w=200\"\nparams { w = 100 in 0..200; }\nglyph g { advance = w; contour c = (0,0) -- (w,0) -- (w,10) -- cycle; }\n```";
         let wide = chapter(source).unwrap();
         let default = chapter(&source.replace(" set=\"w=200\"", "")).unwrap();
         assert_ne!(wide, default);
@@ -591,46 +591,46 @@ mod tests {
 
     #[test]
     fn debug_renders_the_grid() {
-        let html = chapter(&SKETCH.replace("```chi\n", "```chi debug\n")).unwrap();
-        assert!(html.contains("chi-grid"), "{html}");
+        let html = chapter(&SKETCH.replace("```ductus\n", "```ductus debug\n")).unwrap();
+        assert!(html.contains("ductus-grid"), "{html}");
     }
 
     #[test]
     fn acc_shows_the_block_and_feeds_the_next_one() {
-        let content = "```chi norender acc\nu = 100;\n```\n\n```chi acc\ndraw((0,0) -- (u, u));\n```\n\n```chi\nfill((0,0) -- (u,0) -- 0.5[(0,0), (u,u)] -- cycle);\n```";
+        let content = "```ductus norender acc\nu = 100;\n```\n\n```ductus acc\ndraw((0,0) -- (u, u));\n```\n\n```ductus\nfill((0,0) -- (u,0) -- 0.5[(0,0), (u,u)] -- cycle);\n```";
         let html = chapter(content).unwrap();
-        assert!(html.contains("chi-standalone"), "acc block is visible: {html}");
+        assert!(html.contains("ductus-standalone"), "acc block is visible: {html}");
         assert!(html.contains(">100<"), "acc block is visible: {html}");
-        // Three chi blocks, two of them rendered (norender acc has no pane).
+        // Three ductus blocks, two of them rendered (norender acc has no pane).
         assert_eq!(html.matches("<svg").count(), 2, "{html}");
     }
 
     #[test]
     fn empty_block_is_an_output_only_figure() {
-        let content = "```chi hide\nu = 100;\ndraw((0,0) .. (u, u) .. (2u, 0));\n```\n\n```chi debug\n```";
+        let content = "```ductus hide\nu = 100;\ndraw((0,0) .. (u, u) .. (2u, 0));\n```\n\n```ductus debug\n```";
         let html = chapter(content).unwrap();
-        assert!(html.contains("chi-output-only"), "{html}");
+        assert!(html.contains("ductus-output-only"), "{html}");
         assert!(html.contains("<svg"), "{html}");
         assert!(!html.contains("<pre"), "no code pane: {html}");
     }
 
     #[test]
     fn unknown_options_are_rejected() {
-        let error = chapter("```chi dbug\nu = 1;\n```").unwrap_err();
-        assert!(error.contains("unknown ```chi option 'dbug'"), "{error}");
+        let error = chapter("```ductus dbug\nu = 1;\n```").unwrap_err();
+        assert!(error.contains("unknown ```ductus option 'dbug'"), "{error}");
         assert!(Options::parse(" hide debug").is_err());
         assert!(Options::parse(" norender glyph=o").is_err());
     }
 
     #[test]
     fn unterminated_block_is_an_error() {
-        let error = chapter("```chi\nu = 1;\n").unwrap_err();
+        let error = chapter("```ductus\nu = 1;\n").unwrap_err();
         assert!(error.contains("unterminated"), "{error}");
     }
 
     #[test]
     fn code_is_escaped_and_single_line() {
-        let html = chapter("```chi norender\na = 1 if 2 < 3 else 4; # <tag> & co\n```").unwrap();
+        let html = chapter("```ductus norender\na = 1 if 2 < 3 else 4; # <tag> & co\n```").unwrap();
         assert_eq!(html.lines().count(), 1);
         assert!(html.contains("&lt;tag&gt; &amp; co"));
     }

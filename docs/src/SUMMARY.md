@@ -2,7 +2,7 @@
 
 # Getting started
 
-- [Why chi](why-chi.md)
+- [Why ductus](why-ductus.md)
 - [First strokes](first-strokes.md)
 - [A first glyph](a-first-glyph.md)
 
@@ -40,4 +40,4 @@
 
 ---
 
-[Chi for MetaPost users](for-metapost-users.md)
+[Ductus for MetaPost users](for-metapost-users.md)

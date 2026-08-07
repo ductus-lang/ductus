@@ -66,7 +66,7 @@ fn err(span: Span, message: impl Into<String>) -> EvalError {
     }
 }
 
-/// Loads imported source files. chi-core has no filesystem access (it
+/// Loads imported source files. ductus-core has no filesystem access (it
 /// targets WebAssembly), so the host provides resolution and reading.
 pub trait Importer {
     /// Resolve `path` relative to the importing file (`from` is the

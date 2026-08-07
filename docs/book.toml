@@ -1,15 +1,15 @@
 [book]
-title = "The Chi Book"
+title = "The Ductus Book"
 authors = ["Santhosh Thottingal"]
 language = "en"
 src = "src"
 
-# The preprocessor is the chi-docs crate in this workspace; cargo resolves
+# The preprocessor is the ductus-docs crate in this workspace; cargo resolves
 # the workspace by walking up from the invocation directory, so `mdbook
 # build docs` from the repo root and `mdbook serve` from docs/ both work.
 # are part of the fence by the time it is compiled.
-[preprocessor.chi]
-command = "cargo run --quiet --package chi-docs --"
+[preprocessor.ductus]
+command = "cargo run --quiet --package ductus-docs --"
 
 [output.html]
-additional-css = ["chi.css"]
+additional-css = ["ductus.css"]

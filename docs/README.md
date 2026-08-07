@@ -1,7 +1,7 @@
-# The Chi Book
+# The Ductus Book
 
-Tutorial documentation for chi, built with [mdBook](https://rust-lang.github.io/mdBook/)
-and the `chi-docs` preprocessor from this workspace.
+Tutorial documentation for ductus, built with [mdBook](https://rust-lang.github.io/mdBook/)
+and the `ductus-docs` preprocessor from this workspace.
 
 ```sh
 cargo install mdbook   # once
@@ -10,12 +10,12 @@ make build             # or: make serve, for live reload at :3000
 
 ## Writing examples
 
-Every fenced ` ```chi ` block is compiled by `chi-docs` (via chi-core) at
+Every fenced ` ```ductus ` block is compiled by `ductus-docs` (via ductus-core) at
 book-build time and replaced by a figure: highlighted source beside the
 rendered SVG. A block that fails to compile fails the build, with the
 chapter file and line in the message.
 
-Options after `chi` in the fence's info string:
+Options after `ductus` in the fence's info string:
 
 | option | effect |
 |---|---|
@@ -37,8 +37,8 @@ visible block renders the preamble alone: an output-only figure, used to
 show another instance (`set=`) or view (`debug`) of what the chapter
 already built.
 
-Figure layout and the syntax palette live in `chi.css`; the highlight
-classes come from `tree-sitter-chi/queries/highlights.scm`, the same
+Figure layout and the syntax palette live in `ductus.css`; the highlight
+classes come from `tree-sitter-ductus/queries/highlights.scm`, the same
 query the playground uses.
 
 ## Voice
@@ -61,9 +61,9 @@ The habits that keep it that way:
 
 ## Notes
 
-- `book.toml` invokes the preprocessor as `cargo run -q -p chi-docs --`.
+- `book.toml` invokes the preprocessor as `cargo run -q -p ductus-docs --`.
   The trailing `--` matters: mdBook appends `supports html` to the
   command, and mdBook silently skips a preprocessor whose supports-check
   fails.
-- mdBook 0.5 renamed the book JSON's `sections` to `items`; chi-docs
+- mdBook 0.5 renamed the book JSON's `sections` to `items`; ductus-docs
   accepts both.

@@ -533,15 +533,15 @@ const MOCHA: DebugPalette = DebugPalette {
 /// coordinates, that origin is the baseline and glyph origin, so a major line
 /// lands exactly on y=0 and on every glyph's x=0 for free.
 const GRID_DEFS: &str = r##"  <defs>
-    <pattern id="chi-grid-s" width="10" height="10" patternUnits="userSpaceOnUse">
+    <pattern id="ductus-grid-s" width="10" height="10" patternUnits="userSpaceOnUse">
       <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#313244" stroke-width="0.8" stroke-opacity="0.6"/>
     </pattern>
-    <pattern id="chi-grid-m" width="50" height="50" patternUnits="userSpaceOnUse">
-      <rect width="50" height="50" fill="url(#chi-grid-s)"/>
+    <pattern id="ductus-grid-m" width="50" height="50" patternUnits="userSpaceOnUse">
+      <rect width="50" height="50" fill="url(#ductus-grid-s)"/>
       <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#45475a" stroke-width="1.4" stroke-opacity="0.7"/>
     </pattern>
-    <pattern id="chi-grid" width="100" height="100" patternUnits="userSpaceOnUse">
-      <rect width="100" height="100" fill="url(#chi-grid-m)"/>
+    <pattern id="ductus-grid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="url(#ductus-grid-m)"/>
       <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#585b70" stroke-width="2.2" stroke-opacity="0.8"/>
     </pattern>
   </defs>
@@ -632,7 +632,7 @@ pub fn render(document: &Document, options: &RenderOptions) -> Result<String, Re
     let prelude = if options.debug {
         format!(
             "{GRID_DEFS}  <rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"{bg}\"/>\n\
-             \x20 <rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"url(#chi-grid)\"/>\n",
+             \x20 <rect x=\"{x}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"url(#ductus-grid)\"/>\n",
             x = fmt(min_x),
             y = fmt(min_y),
             w = fmt(width),
@@ -990,7 +990,7 @@ mod tests {
         // A leave-only constraint on an interior smooth point must also
         // shape the incoming segment (a smooth point has one tangent).
         // curve_fitter pins both sides; this guards that contract from
-        // chi's side (the va_pen terminal bug).
+        // ductus's side (the va_pen terminal bug).
         let path = PathValue {
             points: vec![
                 smooth(0.0, 0.0),
@@ -1155,8 +1155,8 @@ mod tests {
             },
         )
         .unwrap();
-        assert!(svg.contains("id=\"chi-grid\""));
-        assert!(svg.contains("fill=\"url(#chi-grid)\""));
+        assert!(svg.contains("id=\"ductus-grid\""));
+        assert!(svg.contains("fill=\"url(#ductus-grid)\""));
         assert!(svg.contains(&format!("fill=\"{}\"", MOCHA.background)));
         assert!(!svg.contains("fill=\"currentColor\""));
     }
@@ -1169,7 +1169,7 @@ mod tests {
         };
         let svg = render(&doc, &RenderOptions::default()).unwrap();
         assert!(!svg.contains("<defs"));
-        assert!(!svg.contains("chi-grid"));
+        assert!(!svg.contains("ductus-grid"));
         assert!(svg.contains("fill=\"currentColor\""));
     }
 

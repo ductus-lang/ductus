@@ -19,7 +19,7 @@ The way `clamp` throws an error is quite intentional, not just a defensive measu
 
 ## Points and vectors
 
-A single point in chi is wonderfully versatile, effectively doubling as a 2-D vector. These next four functions help you smoothly convert between seeing things as vectors and understanding their angular representations (you can find more details in the [Expressions chapter](expressions.md#angles-and-vectors)):
+A single point in ductus is wonderfully versatile, effectively doubling as a 2-D vector. These next four functions help you smoothly convert between seeing things as vectors and understanding their angular representations (you can find more details in the [Expressions chapter](expressions.md#angles-and-vectors)):
 
 | function | returns |
 |---|---|
@@ -58,4 +58,4 @@ Meet `circle`, `ellipse`, `roundrect`, and `superellipse`—these delightful fun
 | `draw(path, ...)` | render each path as a thin spine |
 | `fill(path, ...)` | fill each closed path |
 
-These commands are special; you'll only find them meaningful at the top level of sketch files. If your file happens to include any `glyph` block, chi will happily render those glyphs instead. A quick note: `fill` is designed to work with closed paths. Each `fill` operation works independently. This means if you're trying to create a counter (that's a fancy word for a hole), you'll need to define it using a glyph's contours, rather than trying to use two separate `fill` commands.
+These commands are special; you'll only find them meaningful at the top level of sketch files. If your file happens to include any `glyph` block, ductus will happily render those glyphs instead. A quick note: `fill` is designed to work with closed paths. Each `fill` operation works independently. This means if you're trying to create a counter (that's a fancy word for a hole), you'll need to define it using a glyph's contours, rather than trying to use two separate `fill` commands.

@@ -1,4 +1,4 @@
-//! Typed AST for Chi, produced by lowering the tree-sitter CST.
+//! Typed AST for Ductus, produced by lowering the tree-sitter CST.
 
 /// 1-based source position of the construct, for error messages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

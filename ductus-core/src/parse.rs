@@ -1,4 +1,4 @@
-//! Parse Chi source with tree-sitter and reject files with syntax errors.
+//! Parse Ductus source with tree-sitter and reject files with syntax errors.
 
 use tree_sitter::{Node, Parser, Tree};
 
@@ -31,8 +31,8 @@ impl std::error::Error for SyntaxError {}
 pub fn parse_lenient(source: &str) -> Tree {
     let mut parser = Parser::new();
     parser
-        .set_language(&tree_sitter_chi::LANGUAGE.into())
-        .expect("chi grammar should load");
+        .set_language(&tree_sitter_ductus::LANGUAGE.into())
+        .expect("ductus grammar should load");
     parser
         .parse(source, None)
         .expect("tree-sitter always returns a tree without a timeout")
