@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ductus</title>
+  <meta name="description" content="Ductus is a language for parametric type design.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14' font-family='serif' font-style='italic'>d</text></svg>">
+  <style>
+    /* Catppuccin Latte / Mocha, following the OS preference, matching the
+       playground and the book. */
+    :root {
+      color-scheme: light;
+      --bg: #e6e9ef;
+      --panel: #eff1f5;
+      --border: #bcc0cc;
+      --text: #4c4f69;
+      --text-muted: #6c6f85;
+      --blue: #1e66f5;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #181825;
+        --panel: #1e1e2e;
+        --border: #45475a;
+        --text: #cdd6f4;
+        --text-muted: #a6adc8;
+        --blue: #89b4fa;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-content: center;
+      gap: 2rem;
+      padding: 2rem;
+      background: var(--bg);
+      color: var(--text);
+      font: 1rem/1.6 system-ui, sans-serif;
+      text-align: center;
+    }
+    h1 {
+      margin: 0;
+      font: italic 500 4rem/1 Georgia, serif;
+    }
+    p {
+      margin: 0;
+      color: var(--text-muted);
+      max-width: 36ch;
+    }
+    nav {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    nav a {
+      padding: 0.6rem 1.4rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    nav a:hover {
+      border-color: var(--blue);
+    }
+  </style>
+</head>
+<body>
+  <h1>ductus</h1>
+  <p>A language for parametric type design. Write glyphs as expressions
+     over named parameters; get outlines.</p>
+  <nav>
+    <a href="docs/">Documentation</a>
+    <a href="playground/">Playground</a>
+    <a href="https://github.com/ductus-lang/ductus">Source</a>
+  </nav>
+</body>
+</html>
