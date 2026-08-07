@@ -23,15 +23,16 @@ python3 -m http.server 8613     # or any static file server
 ```sh
 bun install
 bun run build           # bundle src/ -> dist/
-bun run sync-wasm       # rebuild ../ductus/ductus-wasm -> pkg/ (needs wasm-pack, clang)
-bun run sync-examples   # copy ../tree-sitter-ductus/examples -> examples/
+bun run sync-wasm       # rebuild ../ductus-wasm -> pkg/ (needs wasm-pack, clang)
+bun run sync-examples   # copy ../../tree-sitter-ductus/examples -> examples/
 ```
 
-Syntax colors come from `../tree-sitter-ductus/queries/highlights.scm`, embedded
+Syntax colors come from `tree-sitter-ductus/queries/highlights.scm`, embedded
 into the wasm at build time. Editing that query requires `bun run sync-wasm`
 (then `bun run build`) for the change to reach the editor.
 
-Requires the sibling checkouts `../ductus` and `../tree-sitter-ductus`.
+`sync-examples` requires a sibling checkout of `tree-sitter-ductus` next to
+this repository.
 
 ## License
 
