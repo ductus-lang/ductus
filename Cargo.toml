@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "curve-fitter",
   "ductus-core",
   "ductus-cli",
   "ductus-wasm",
