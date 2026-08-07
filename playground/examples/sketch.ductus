@@ -1,0 +1,6 @@
+# A freehand sketch: no glyph block, just paths drawn as spines.
+u = 100;
+a = (0, 0);
+b = (5u, 3u);
+p = a {45} .. (3u, 4u) .. {down} b;
+draw(p);

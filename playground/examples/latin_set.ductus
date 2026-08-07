@@ -1,0 +1,268 @@
+# Simple Latin set.
+
+params {
+  # Both thin crossings must exist on the skeleton: the second needs
+  # tangent pen_angle + 180 within the p..q leg's 270..215 sweep.
+  pen_angle = 45 in 40..65;
+  pen_width = 100 in 100..150;
+  pen_height = 1 in 1..30;
+
+}
+
+metrics {
+  u=100;
+  x=6u;
+  cap=100;
+  over = 10 + pen_width / 200;
+}
+
+pen broad_nib_pen {
+  width  = pen_width;
+  height = pen_height;
+  angle  = pen_angle;
+}
+
+glyph a {
+  advance =  7u;
+  node m = (2.5u, 0) dir left pen broad_nib_pen;
+  node n = (0, 3u) dir up pen broad_nib_pen;
+  node o = (2.5u, 6u) dir right pen broad_nib_pen;
+  node p = (5u, 3u) dir down pen broad_nib_pen;
+
+  guide skel = m.pos .. n.pos .. o.pos .. p.pos .. cycle;
+
+  node w1 = directionpoint(skel, pen_angle + 240) dir pen_angle + 240 pen broad_nib_pen;
+  node w2 = directionpoint(skel, 240) dir 240 pen broad_nib_pen;
+
+
+  # Thin-crossing witness nodes: banks are exactly `height` apart there,
+  # and the query keeps them on the crossing as pen_angle moves.
+  node w3 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
+
+
+  contour c1 =  {w1.dir} w1.right .. o.right..{w3.dir+180} w3.right
+     .. n.right..m.right .. {w2.dir+180} w2.right -- w2.left .. m.left .. n.left
+     ..{w3.dir}w3.left.. o.left
+      .. {w1.dir} w1.left --cycle;
+
+  node a = (w1.pos.x, 6u) dir down pen broad_nib_pen;
+  node b = (a.pos.x, 2u) dir down pen broad_nib_pen;
+  node c = (a.pos.x+ u, 0) dir down pen broad_nib_pen;
+  node d = (c.pos.x + u, u) dir pen_angle pen broad_nib_pen;
+
+  guide skel_vertical = a.pos{down}.. {down}b.pos .. c.pos..d.pos;
+  contour c2 = a.left{down}..b.left{down}..c.left{right}..d.left--
+   d.right..c.right{left}..b.right{up}..a.right--
+   cycle;
+
+
+}
+
+
+glyph c {
+  advance =  5u;
+  node m = (2.5u, 0) dir left pen broad_nib_pen;
+  node n = (0, 3u) dir up pen broad_nib_pen;
+  node o = (2.5u, 6u) dir right pen broad_nib_pen;
+  node p = (5u, 3u) dir down pen broad_nib_pen;
+
+  guide skel = m.pos .. n.pos .. o.pos .. p.pos .. cycle;
+
+  # Thin-crossing witness nodes: banks are exactly `height` apart there,
+  # and the query keeps them on the crossing as pen_angle moves.
+  node w1 = directionpoint(skel, pen_angle + 270) dir pen_angle + 270 pen broad_nib_pen;
+  node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
+
+  contour c1 =  {w1.dir} w1.right .. o.right
+     .. n.right..m.right .. {w2.dir+180} w2.right -- w2.left .. m.left .. n.left .. o.left
+      .. {w1.dir} w1.left --cycle;
+}
+glyph h {
+  advance = 4u;
+  node a = (3u,9u) dir up pen broad_nib_pen;
+  node b = (2u,10u) dir left pen broad_nib_pen;
+  node c = (0,8u) dir down pen broad_nib_pen;
+  node d = (c.pos.x, 0) dir down pen broad_nib_pen;
+
+  guide skel = a.pos.. b.pos .. c.pos--d.pos;
+  contour c1 = a.right..b.right{left}..c.right{down}..d.right{down}--
+  d.left{up}..c.left{up}..b.left{right}..a.left--
+  cycle;
+
+  node cc = c.pos + (0, -4u) dir right pen broad_nib_pen;
+  node p = cc.pos + (3u, 2u) dir right pen broad_nib_pen;
+  node q = p.pos + (1u, -2u) dir down pen broad_nib_pen;
+  node r = q.pos + (0, -2u) dir down pen broad_nib_pen;
+  node s = r.pos + (u, -2u) dir right pen broad_nib_pen;
+  node u = s.pos + (u, u) dir pen_angle pen broad_nib_pen;
+  guide arm = d.pos--cc.pos..p.pos..q.pos{down}..r.pos..s.pos..u.pos;
+  contour c2 = d.left--cc.left{pen_angle}..p.right..q.right{down}..r.right{down}..s.right
+  .. u.right--u.left
+  ..  s.left{left}..r.left{up}..q.left{up}..p.left..cc.right--d.right
+  --  cycle;
+
+
+}
+
+
+glyph l {
+  advance = 3u;
+
+  node a = (0,9u) dir pen_angle pen broad_nib_pen;
+  node b = (u,10u) dir right pen broad_nib_pen;
+  node c = (2u,8u) dir down pen broad_nib_pen;
+  node d = (c.pos.x, 2u) dir down pen broad_nib_pen;
+  node e = (d.pos.x+u, 0) dir down pen broad_nib_pen;
+  node f = (e.pos.x+u, u/2) dir pen_angle pen broad_nib_pen;
+  guide skel = a.pos.. b.pos .. c.pos..d.pos..e.pos..f.pos;
+  contour c1 = a.right..b.right{right}..c.right{down}..d.right{down}..e.right..f.right--
+  f.left..e.left..d.left{up}..c.left{up}..b.left{left}..a.left--
+  cycle;
+
+}
+
+glyph m {
+  advance = 10u;
+
+  node a = (0,5u) dir pen_angle pen broad_nib_pen;
+  node b = (u, 6u) dir right pen broad_nib_pen;
+  node c = (2u,4u) dir down pen broad_nib_pen;
+  node d = (c.pos.x, 0) dir down pen broad_nib_pen;
+
+  guide skel = a.pos.. b.pos .. c.pos..d.pos;
+  contour c1 = a.right..b.right{right}..c.right{down}..d.right{down}--
+  d.left{up}..c.left{up}..b.left{left}..a.left--
+  cycle;
+
+
+  node e = c.pos + (2.5u, 2u) dir right pen broad_nib_pen;
+  node f = e.pos + (1u, -3u) dir down pen broad_nib_pen;
+  node g = (f.pos.x,0) dir down pen broad_nib_pen;
+
+  guide mid_arch = d.pos--c.pos..e.pos..f.pos{down}..g.pos;
+
+  contour c2 = d.left{up}..{up}c.left{pen_angle}..e.right..f.right{down}
+  ..g.right -- g.left
+  ..  f.left{up}..e.left..c.right{pen_angle}--d.right
+  --  cycle;
+
+  node gg = g.pos dir up pen broad_nib_pen;
+  node ff = (f.pos.x, c.pos.y) dir up pen broad_nib_pen;
+  node p = (ff.pos.x +2.5u, e.pos.y) dir right pen broad_nib_pen;
+  node q = p.pos + (1u, -2u) dir down pen broad_nib_pen;
+  node r = q.pos + (0, -2u) dir down pen broad_nib_pen;
+  node s = (r.pos.x+u,0) dir right pen broad_nib_pen;
+  node u = s.pos + (u, u) dir 45 pen broad_nib_pen;
+  guide arm = gg.pos--ff.pos..p.pos..q.pos{down}..r.pos..s.pos..u.pos;
+
+  contour c3 = gg.right--ff.right{pen_angle}..p.right..q.right{down}..r.right{down}
+  ..s.right .. u.right--u.left
+  ..  s.left{left}..r.left{up}..q.left{up}..p.left..
+  ff.left{pen_angle}  -- gg.left
+  --  cycle;
+
+
+}
+
+glyph n {
+  advance = 8u;
+  node a = (0,5u) dir pen_angle pen broad_nib_pen;
+  node b = (u,6u) dir right pen broad_nib_pen;
+  node c = (2u,4u) dir down pen broad_nib_pen;
+  node d = (c.pos.x, 0) dir down pen broad_nib_pen;
+
+  guide skel = a.pos.. b.pos .. c.pos--d.pos;
+  contour c1 = a.right..b.right{right}..c.right{down}..d.right{down}--
+  d.left{up}..c.left{up}..b.left{left}..a.left--
+  cycle;
+
+  node p = c.pos + (3u, 2u) dir right pen broad_nib_pen;
+  node q = p.pos + (1u, -2u) dir down pen broad_nib_pen;
+  node r = q.pos + (0, -2u) dir down pen broad_nib_pen;
+  node s = (r.pos.x+u,0) dir right pen broad_nib_pen;
+  node u = s.pos + (u, u) dir pen_angle pen broad_nib_pen;
+  guide arm = d.pos--c.pos..p.pos..q.pos{down}..r.pos..s.pos..u.pos;
+  contour c2 = d.left--c.left{pen_angle}..p.right..q.right{down}..r.right{down}..s.right
+  .. u.right--u.left
+  ..  s.left{left}..r.left{up}..q.left{up}..p.left..c.right--d.right
+  --  cycle;
+
+
+}
+
+
+glyph o : U+006F {
+  advance =  5u;
+  node m = (2.5u, 0) dir left pen broad_nib_pen;
+  node n = (0, 3u) dir up pen broad_nib_pen;
+  node o = (2.5u, 6u) dir right pen broad_nib_pen;
+  node p = (5u, 3u) dir down pen broad_nib_pen;
+
+  guide skel = m.pos .. n.pos .. o.pos .. p.pos .. cycle;
+
+  # Thin-crossing witness nodes: banks are exactly `height` apart there,
+  # and the query keeps them on the crossing as pen_angle moves.
+  node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
+  node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
+
+  contour c1 =  m.right .. n.right .. {w1.dir} w1.right .. o.right
+    .. p.right .. {w2.dir} w2.right .. cycle;
+  contour c2 = m.left .. {w2.dir + 180} w2.left .. p.left .. o.left
+     .. {w1.dir + 180} w1.left .. n.left .. m.left
+   ..cycle;
+}
+
+
+glyph r {
+  advance = 5u;
+  node a = (0,5u) dir pen_angle pen broad_nib_pen;
+  node b = (u,6u) dir right pen broad_nib_pen;
+  node c = (2u,4u) dir down pen broad_nib_pen;
+  node d = (c.pos.x, 0) dir down pen broad_nib_pen;
+
+  guide skel = a.pos.. b.pos .. c.pos--d.pos;
+  contour c1 = a.right..b.right{right}..c.right{down}..d.right{down}--
+  d.left{up}..c.left{up}..b.left{left}..a.left--
+  cycle;
+
+  node p = c.pos + (2u, 2u) dir right pen broad_nib_pen;
+  node q = p.pos + (1u, -1u) dir down pen broad_nib_pen;
+
+  guide arm = d.pos--c.pos..p.pos..q.pos{down};
+  contour c2 = d.left--c.left
+  ..p.right{right}..q.right--q.left..p.left..c.right--d.right
+  --  cycle;
+
+
+}
+
+
+glyph s : U+0073 {
+  advance = 4u;
+
+  # skeleton, travelling from the upper terminal to the lower one
+  node a = (4u - 0.1u, x-u)              dir 150  pen broad_nib_pen;
+  node b = (2u,  x) dir 180 pen broad_nib_pen;
+  node c = (0.1u, .75x )             dir 270  pen broad_nib_pen;
+  node d = (b.pos.x, x/2)            dir 305  pen broad_nib_pen;
+  node e = (a.pos.x, x/4)   dir down pen broad_nib_pen;
+  node f = (b.pos.x, 0)    dir 180  pen broad_nib_pen;
+  node g = (0, x/4)                            dir 130  pen broad_nib_pen;
+
+
+  guide skeleton = a.pos .. b.pos .. c.pos .. d.pos .. e.pos .. f.pos .. g.pos;
+  # Thin-crossing witness nodes: banks are exactly `height` apart there,
+  # and the query keeps them on the crossing as pen_angle moves.
+
+  node w1 = directionpoint(skeleton, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
+  #node w2 = directionpoint(skeleton, pen_angle) dir pen_angle  pen broad_nib_pen;
+
+  # Terminal tangents are pinned to the skeleton's direction there.
+   contour main =
+       a.right  .. b.right .. {w1.dir}w1.right..c.right  .. d.right .. e.right{down} .. f.right
+    ..   g.right
+    -- g.left   .. f.left .. e.left{up} .. d.left .. c.left   .. w1.left{w1.dir+180}..b.left
+    ..  a.left
+    -- cycle;
+}
+

@@ -1,0 +1,42 @@
+# A calligraphic bowl drawn with a razor-like ellipse pen. The pen's
+# small height keeps the thin crossings from collapsing to zero, and the
+# witness nodes at those crossings are found by query — where the
+# skeleton's tangent runs parallel to the pen axis — instead of by eye.
+
+metrics{
+  u=100;
+}
+
+params {
+  # Both thin crossings must exist on the skeleton: the second needs
+  # tangent pen_angle + 180 within the p..q leg's 270..215 sweep.
+  pen_angle = 45 in 40..65;
+}
+
+pen main {
+  width  = 150;
+  height = 10;
+  angle  = pen_angle;
+}
+
+glyph va: U+006F {
+  advance =  12u;
+  node m = (3u, 0) dir 135 pen main;
+  node n = (0, 5u) dir up pen main;
+  node o = (5u, 10u) dir right pen main;
+  node p = (10u, 5u) dir down pen main;
+  node q = (7u, 0) dir 215 pen main;
+
+  guide skel = m.pos .. n.pos .. o.pos .. p.pos .. q.pos;
+
+  # Thin-crossing witness nodes: banks are exactly `height` apart there,
+  # and the query keeps them on the crossing as pen_angle moves.
+  node w1 = directionpoint(skel, pen_angle) dir pen_angle pen main;
+  node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen main;
+
+  contour c1 =  m.right .. n.right .. {w1.dir} w1.right .. o.right
+   .. p.right .. {w2.dir} w2.right .. q.right
+   -- q.left .. {w2.dir + 180} w2.left .. p.left .. o.left
+   .. {w1.dir + 180} w1.left .. n.left .. m.left
+  --cycle;
+}

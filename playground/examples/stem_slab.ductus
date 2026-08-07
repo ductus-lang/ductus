@@ -1,0 +1,23 @@
+# Direction specs and brackets: a slab-serifed stem.
+# Line/line and line/curve corners are automatic; the brackets are
+# smooth because their entry and exit directions are constrained.
+params { weight = 400 in 100..900; }
+metrics { upm = 1000; x = 500; cap = 700; asc = 750; desc = -220; }
+
+stem = 40 + 0.14 * weight;
+
+glyph stem_slab {
+  advance = stem + 230;
+  sl = 55;                          # serif overhang beyond the stem
+  sh = 42;                          # serif slab height
+  b  = 30;                          # bracket size
+  xl = (advance - stem) / 2;        # stem left edge
+  xr = xl + stem;                   # stem right edge
+
+  contour main =
+      (xl - sl, 0) -- (xr + sl, 0) -- (xr + sl, sh)
+   -- (xr + b, sh) {left} .. {up} (xr, sh + 2b)
+   -- (xr, cap) -- (xl, cap)
+   -- (xl, sh + 2b) {down} .. {left} (xl - b, sh)
+   -- (xl - sl, sh) -- cycle;
+}

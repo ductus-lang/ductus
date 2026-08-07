@@ -1,0 +1,341 @@
+* {
+  box-sizing: border-box;
+}
+
+/* Catppuccin Latte (light) / Mocha (dark), following the OS preference.
+   The editor itself is themed in main.js with the matching CodeMirror
+   themes; the glyph preview inherits `color` via currentColor fills. */
+:root {
+  color-scheme: light;
+  --bg: #e6e9ef; /* mantle */
+  --panel: #eff1f5; /* base — matches the editor background */
+  --border: #bcc0cc; /* surface1 */
+  --text: #4c4f69;
+  --text-muted: #6c6f85; /* subtext0 */
+  --text-faint: #8c8fa1; /* overlay1 */
+  --red: #d20f39;
+  --green: #40a02b;
+  --yellow: #df8e1d;
+  --blue: #1e66f5;
+  --mauve: #8839ef;
+  --peach: #fe640b;
+  --maroon: #e64553;
+  --lavender: #7287fd;
+  --overlay2: #7c7f93;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #181825; /* mantle */
+    --panel: #1e1e2e; /* base */
+    --border: #45475a; /* surface1 */
+    --text: #cdd6f4;
+    --text-muted: #a6adc8;
+    --text-faint: #7f849c;
+    --red: #f38ba8;
+    --green: #a6e3a1;
+    --yellow: #f9e2af;
+    --blue: #89b4fa;
+    --mauve: #cba6f7;
+    --peach: #fab387;
+    --maroon: #eba0ac;
+    --lavender: #b4befe;
+    --overlay2: #9399b2;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+header h1 span {
+  font-weight: 300;
+  color: var(--text-faint);
+}
+
+header label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+header select {
+  font-size: 0.85rem;
+}
+
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns:
+    minmax(320px, min(var(--editor-width, 44%), 100% - 320px - 6px))
+    6px 1fr;
+  min-height: 0;
+}
+
+#divider {
+  cursor: col-resize;
+  touch-action: none;
+}
+
+#divider:hover,
+body.resizing #divider {
+  background: var(--overlay2);
+}
+
+/* While dragging, the pointer crosses the editor and preview; keep the
+   resize cursor and stop text selection until the capture is released. */
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+#editor-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+}
+
+#editor {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+#editor .cm-editor {
+  height: 100%;
+}
+#editor .cm-editor.cm-focused {
+  outline: none;
+}
+#editor .cm-scroller {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 13px;
+}
+
+/* Syntax colors from tree-sitter-ductus/queries/highlights.scm, mapped onto
+   the Catppuccin palette so they track the editor theme. */
+.ductus-comment {
+  color: var(--overlay2);
+}
+.ductus-number {
+  color: var(--peach);
+}
+.ductus-string {
+  color: var(--green);
+}
+.ductus-constant-builtin {
+  color: var(--peach);
+}
+.ductus-keyword,
+.ductus-keyword-conditional,
+.ductus-keyword-storage {
+  color: var(--mauve);
+}
+.ductus-attribute {
+  color: var(--yellow);
+}
+.ductus-type {
+  color: var(--yellow);
+}
+.ductus-function,
+.ductus-function-call,
+.ductus-function-method {
+  color: var(--blue);
+}
+.ductus-variable-parameter {
+  color: var(--maroon);
+}
+.ductus-property {
+  color: var(--lavender);
+}
+
+#status {
+  padding: 0.4rem 1rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  background: color-mix(in srgb, var(--red) 12%, var(--panel));
+  color: var(--red);
+  border-top: 1px solid color-mix(in srgb, var(--red) 30%, var(--panel));
+  white-space: pre-wrap;
+}
+
+#preview-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+/* Tweakpane floats over the preview's bottom-right corner; its stock theme
+   is dark-only, so remap its variables onto the Catppuccin palette. */
+#params {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  width: 280px;
+  z-index: 10;
+}
+
+#params .tp-rotv {
+  --tp-base-background-color: color-mix(in srgb, var(--panel) 92%, transparent);
+  --tp-base-shadow-color: rgb(0 0 0 / 0.2);
+  --tp-container-background-color: color-mix(
+    in srgb,
+    var(--text) 8%,
+    transparent
+  );
+  --tp-container-background-color-active: color-mix(
+    in srgb,
+    var(--text) 22%,
+    transparent
+  );
+  --tp-container-background-color-focus: color-mix(
+    in srgb,
+    var(--text) 17%,
+    transparent
+  );
+  --tp-container-background-color-hover: color-mix(
+    in srgb,
+    var(--text) 12%,
+    transparent
+  );
+  --tp-container-foreground-color: var(--text);
+  --tp-button-background-color: color-mix(
+    in srgb,
+    var(--text) 82%,
+    transparent
+  );
+  --tp-button-background-color-active: color-mix(
+    in srgb,
+    var(--text) 99%,
+    transparent
+  );
+  --tp-button-background-color-focus: color-mix(
+    in srgb,
+    var(--text) 95%,
+    transparent
+  );
+  --tp-button-background-color-hover: color-mix(
+    in srgb,
+    var(--text) 96%,
+    transparent
+  );
+  --tp-button-foreground-color: var(--panel);
+  --tp-groove-foreground-color: color-mix(
+    in srgb,
+    var(--text) 15%,
+    transparent
+  );
+  --tp-input-background-color: color-mix(in srgb, var(--text) 10%, transparent);
+  --tp-input-background-color-active: color-mix(
+    in srgb,
+    var(--text) 24%,
+    transparent
+  );
+  --tp-input-background-color-focus: color-mix(
+    in srgb,
+    var(--text) 19%,
+    transparent
+  );
+  --tp-input-background-color-hover: color-mix(
+    in srgb,
+    var(--text) 14%,
+    transparent
+  );
+  --tp-input-foreground-color: var(--text);
+  --tp-label-foreground-color: var(--text-muted);
+}
+
+#preview {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  padding: 1rem;
+  container-type: size;
+}
+
+/* Fit-to-container times --zoom, on whichever axis binds. The drawing's
+   viewBox ratio arrives as --vw/--vh (set per render), since a max-height
+   clamp would not preserve the ratio once width is explicitly set.
+   margin: auto centres the element when small yet keeps every edge
+   reachable by scrolling when zoomed in, which flex centring would not. */
+#preview svg {
+  width: calc(
+    var(--zoom, 1) *
+    min(100cqw, 100cqh * var(--vw, 1) / var(--vh, 1))
+  );
+  height: auto;
+  flex: none;
+  margin: auto;
+}
+
+#inspector {
+  max-height: 11rem;
+  overflow: auto;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 0.8rem;
+}
+
+#inspector summary {
+  cursor: pointer;
+  color: var(--text-faint);
+  user-select: none;
+}
+
+#inspector .groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+#inspector .group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 1rem;
+}
+
+#inspector .label {
+  min-width: 5.5rem;
+  color: var(--text-faint);
+}
+
+#inspector .measure {
+  display: flex;
+  gap: 0.4rem;
+  font-family: ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+#inspector .measure .value {
+  color: var(--text);
+}

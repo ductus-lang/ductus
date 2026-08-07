@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ductus playground</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='14' font-family='serif' font-style='italic'>d</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>ductus <span>playground</span></h1>
+    <label>example
+      <select id="example">
+        <option value="o">o — skeleton bowl</option>
+        <option value="c">c — open bowl, terminals</option>
+        <option value="s">s — spine with inflection</option>
+        <option value="h">h — stem &amp; shoulder</option>
+        <option value="tha">ത — round tips, width axis</option>
+        <option value="l">l — direct outline</option>
+        <option value="stem_slab">stem_slab — serifs &amp; brackets</option>
+        <option value="va">va — razor nib</option>
+        <option value="va_pen">വ — soft nib</option>
+        <option value="N-caps-joints">N — caps &amp; joints</option>
+        <option value="ra_calligraphic">റ — calligraphy nib</option>
+        <option value="latin_set">English small letters</option>
+        <option value="shapes">shapes — circle, squircle, oval</option>
+        <option value="copperplate">copperplate — 7 strokes, and letters</option>
+        <option value="pressure_pen">Pressure pen</option>
+        <option value="malayalam_design_0">Malayalam designs set 0</option>
+      </select>
+    </label>
+  </header>
+  <main>
+    <section id="editor-pane">
+      <div id="editor"></div>
+      <div id="status" hidden></div>
+    </section>
+    <div id="divider"></div>
+    <section id="preview-pane">
+      <div id="params"></div>
+      <div id="preview"></div>
+      <details id="inspector">
+        <summary>inspector</summary>
+        <div class="groups"></div>
+      </details>
+    </section>
+  </main>
+  <script type="module" src="dist/main.js"></script>
+</body>
+</html>

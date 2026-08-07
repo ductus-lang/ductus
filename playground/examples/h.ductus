@@ -1,0 +1,39 @@
+# Stem plus shoulder: 'h'. Two overlapping contours united by the
+# nonzero fill rule — the ascender stem is a plain rectangle, the
+# shoulder is a skeleton band whose left end tucks inside the stem.
+# The crotch emerges where the outer shoulder crosses the stem edge.
+params {
+  weight   = 400 in 100..900;
+  contrast = 0.85 in 0.24..1.0;
+}
+metrics {
+  upm = 1000; x = 500; cap = 700; asc = 750; desc = -220;
+  over = 10 + weight / 200;
+}
+
+stem = 40 + 0.14 * weight;
+hair = contrast * stem;
+sh   = 0.7[hair, stem];             # shoulder thickness at the apex
+
+glyph h : U+0068 {
+  advance = 2 stem + 340;
+  xl = 85;                          # left stem, left edge
+  xr = advance - 85 - stem;         # right stem, left edge
+  ys = 0.62 * x;                    # shoulder springs from the stem here
+
+  node p = (xl + stem / 2, ys)                      dir up    width stem;
+  node q = (0.52[xl + stem, xr], x + over - sh / 2) dir right width sh;
+  node r = (xr + stem / 2, 0.55 * x)                dir down  width stem;
+
+  guide arch = p.pos .. q.pos .. r.pos;
+
+  contour upright =
+      (xl, 0) -- (xl + stem, 0) -- (xl + stem, asc) -- (xl, asc) -- cycle;
+
+  contour shoulder =
+      p.right {up} .. q.right .. {down} r.right
+   -- (xr, 0) -- (xr + stem, 0)
+   -- r.left {up} .. q.left
+   ..  {250} p.pos # Inktrap
+   -- cycle;
+}

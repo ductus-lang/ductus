@@ -1,0 +1,41 @@
+# A spine with an inflection: 's'. One open skeleton from the upper
+# terminal to the lower one; the contour is the band around it.
+# Direction constraints pin the flow through the double curve.
+params {
+  weight   = 400 in 100..900;
+  contrast = 0.85 in 0.4..1.0;
+}
+metrics {
+  upm = 1000; x = 500; cap = 700; asc = 750; desc = -220;
+  over = 10 + weight / 200;
+}
+
+stem  = 40 + 0.14 * weight;
+hair  = contrast * stem;
+mid   = 0.6[hair, stem];
+term  = 0.45[hair, stem];
+spine = 1.05 * stem;                # the diagonal carries the weight
+
+glyph s : U+0073 {
+  advance = stem + 350;
+
+  # skeleton, travelling from the upper terminal to the lower one
+  node a = (advance - 52, x - 118)              dir 150 width term;
+  node b = (advance * 0.47, x + over - hair / 2) dir 180 width hair;
+  node c = (45 + mid / 2, x * 0.72)             dir 270 width mid;
+  node d = (advance * 0.5, x/2)            dir 305 width spine;
+  node e = (advance - 45 - mid / 2, x * 0.28)   dir 270 width mid;
+  node f = (advance * 0.53, hair / 2 - over)    dir 180 width hair;
+  node g = (52, 118)                            dir 130 width term;
+
+  guide skeleton = a.pos .. b.pos .. c.pos .. d.pos .. e.pos .. f.pos .. g.pos;
+
+  # Terminal tangents are pinned to the skeleton's direction there.
+  contour main =
+      a.right  .. b.right .. c.right  .. d.right .. e.right .. f.right
+   ..   g.right
+   -- g.left   .. f.left .. e.left .. d.left .. c.left   .. b.left
+   ..  a.left
+   -- cycle;
+}
+
