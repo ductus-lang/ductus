@@ -1,0 +1,49 @@
+# ductus-core has path dependencies on sibling checkouts, so CI recreates
+# the workspace layout next to the project directory before building.
+#
+# This assumes tree-sitter-ductus is a public repository. If it is
+# private, replace the plain clone with a checkout that uses a PAT or a
+# deploy key.
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone sibling repositories
+        run: |
+          git clone --depth 1 https://github.com/ductus-lang/tree-sitter-ductus.git ../tree-sitter-ductus
+          git clone --depth 1 https://github.com/santhoshtr/kurbo-curve-fit-stroke.git ../curve-fit
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install mdBook
+        run: curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.5.4/mdbook-v0.5.4-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
+      - run: cargo test --workspace
+      - run: mdbook build docs
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/master'
+        with:
+          path: docs/book
+
+  # Publish the book to GitHub Pages from the default branch.
+  # Repo settings must set Pages "Source" to "GitHub Actions".
+  pages:
+    needs: test
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
