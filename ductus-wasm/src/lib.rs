@@ -158,16 +158,13 @@ fn compile_inner(
     })
 }
 
-/// The highlight query, embedded from the sibling grammar repo at build time.
-///
-/// Editing `highlights.scm` requires `bun run sync-wasm` in the playground for
-/// the change to take effect.
-const HIGHLIGHTS_QUERY: &str = include_str!("../../../tree-sitter-ductus/queries/highlights.scm");
-
 fn highlight_query() -> &'static Query {
     static QUERY: OnceLock<Query> = OnceLock::new();
     QUERY.get_or_init(|| {
-        Query::new(&tree_sitter_ductus::LANGUAGE.into(), HIGHLIGHTS_QUERY)
+        Query::new(
+            &tree_sitter_ductus::LANGUAGE.into(),
+            tree_sitter_ductus::HIGHLIGHTS_QUERY,
+        )
             .expect("highlights.scm is a valid query")
     })
 }

@@ -27,9 +27,12 @@ bun run sync-wasm       # rebuild ../ductus-wasm -> pkg/ (needs wasm-pack, clang
 bun run sync-examples   # copy ../../tree-sitter-ductus/examples -> examples/
 ```
 
-Syntax colors come from `tree-sitter-ductus/queries/highlights.scm`, embedded
-into the wasm at build time. Editing that query requires `bun run sync-wasm`
-(then `bun run build`) for the change to reach the editor.
+Syntax colors come from `highlights.scm` in the `tree-sitter-ductus` crate,
+which Cargo.lock pins to a git commit. To change the colors: push the query
+change to the grammar repository, run `cargo update -p tree-sitter-ductus`,
+then `bun run sync-wasm` and `bun run build`. For local grammar work, point
+the dependency at your checkout with a `[patch]` entry in the workspace
+`Cargo.toml`.
 
 `sync-examples` requires a sibling checkout of `tree-sitter-ductus` next to
 this repository.

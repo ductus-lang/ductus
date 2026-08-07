@@ -1,9 +1,5 @@
-# ductus-core has path dependencies on sibling checkouts, so CI recreates
-# the workspace layout next to the project directory before building.
-#
-# This assumes tree-sitter-ductus is a public repository. If it is
-# private, replace the plain clone with a checkout that uses a PAT or a
-# deploy key.
+# ductus-core has a path dependency on a sibling curve-fit checkout, so
+# CI recreates that layout next to the project directory before building.
 
 name: CI
 
@@ -19,7 +15,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Clone sibling repositories
         run: |
-          git clone --depth 1 https://github.com/ductus-lang/tree-sitter-ductus.git ../tree-sitter-ductus
           git clone --depth 1 https://github.com/santhoshtr/kurbo-curve-fit-stroke.git ../curve-fit
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
