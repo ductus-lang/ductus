@@ -5,6 +5,6 @@ edition = "2024"
 
 [dependencies]
 tree-sitter = { workspace = true }
-tree-sitter-ductus = { path = "../../tree-sitter-ductus" }
+tree-sitter-ductus = { workspace = true }
 kurbo = { workspace = true }
 curve_fitter = { path = "../../curve-fit/curve_fitter" }

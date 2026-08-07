@@ -9,5 +9,6 @@ members = [
 
 [workspace.dependencies]
 tree-sitter = "0.26.3"
+tree-sitter-ductus = { git = "https://github.com/ductus-lang/tree-sitter-ductus.git" }
 clap = { version = "4.0", features = ["derive"] }
 kurbo = { version = "0.13.0", features = ["std"] }
