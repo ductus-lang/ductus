@@ -80,7 +80,7 @@ glyph circle {
   guide box = corner_guide(center);
 
   # The fitter's own error, measured from inside the language: read these
-  # with `chi inspect` or in the playground's inspector. The handle length
+  # with `ductus inspect` or in the playground's inspector. The handle length
   # is chosen so the arc passes exactly through 45°, which is the midpoint
   # of the first segment — so `waist` is zero, and the error lives between,
   # peaking near t = 0.21 at 0.027 % of r.

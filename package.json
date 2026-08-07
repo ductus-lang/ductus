@@ -1,12 +1,12 @@
 {
-  "name": "chi-playground",
+  "name": "ductus-playground",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "bun build src/main.js --outdir dist --format esm --minify",
     "serve": "python3 -m http.server 8613",
-    "sync-wasm": "wasm-pack build ../chi/chi-wasm --target web --release --out-name chi --out-dir ../../chi-playground/pkg && rm -f pkg/.gitignore",
-    "sync-examples": "cp ../tree-sitter-chi/examples/*.chi examples/"
+    "sync-wasm": "wasm-pack build ../ductus/ductus-wasm --target web --release --out-name ductus --out-dir ../../ductus-playground/pkg && rm -f pkg/.gitignore",
+    "sync-examples": "cp ../tree-sitter-ductus/examples/*.ductus examples/"
   },
   "dependencies": {
     "@catppuccin/codemirror": "^1.0.3",

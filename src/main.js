@@ -4,9 +4,10 @@ import { Compartment, EditorState, RangeSetBuilder, StateEffect, StateField } fr
 import { setDiagnostics } from "@codemirror/lint";
 import { catppuccinLatte, catppuccinMocha } from "@catppuccin/codemirror";
 import { Pane } from "tweakpane";
-import init, { analyze, compile } from "../pkg/chi.js";
+import init, { analyze, compile } from "../pkg/ductus.js";
 
-const STORAGE_KEY = "chi-playground-source";
+const STORAGE_KEY = "ductus-playground-source";
+const LEGACY_STORAGE_KEY = "chi-playground-source";
 const DEFAULT_EXAMPLE = "o";
 
 const exampleSelect = document.querySelector("#example");
@@ -53,7 +54,7 @@ const highlightField = StateField.define({
 function buildDecorations(highlights) {
   const builder = new RangeSetBuilder();
   for (const { from, to, class: cls } of highlights) {
-    if (to > from) builder.add(from, to, Decoration.mark({ class: `chi-${cls}` }));
+    if (to > from) builder.add(from, to, Decoration.mark({ class: `ductus-${cls}` }));
   }
   return builder.finish();
 }
@@ -69,7 +70,7 @@ const view = new EditorView({
   extensions: [
     basicSetup,
     editorTheme.of(darkScheme.matches ? catppuccinMocha : catppuccinLatte),
-    // chi uses `#` line comments. Without a Language there is no languageData,
+    // ductus uses `#` line comments. Without a Language there is no languageData,
     // so toggleComment (Ctrl+/) has no comment token to work with; supply it.
     EditorState.languageData.of(() => [{ commentTokens: { line: "#" } }]),
     highlightField,
@@ -269,7 +270,7 @@ function precise(value) {
 }
 
 async function loadExample(name) {
-  const response = await fetch(`examples/${name}.chi`);
+  const response = await fetch(`examples/${name}.ductus`);
   const source = await response.text();
   overrides = {};
   paramsSignature = "";
@@ -329,14 +330,15 @@ exportFolder.addButton({ title: "export svg" }).on("click", () => {
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${settings.glyph || "chi"}.svg`;
+  link.download = `${settings.glyph || "ductus"}.svg`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
-await init({ module_or_path: new URL("./pkg/chi_bg.wasm", document.baseURI) });
+await init({ module_or_path: new URL("./pkg/ductus_bg.wasm", document.baseURI) });
 
-const saved = localStorage.getItem(STORAGE_KEY);
+// One-time migration: fall back to the source saved under the old chi key.
+const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
 if (saved) {
   view.dispatch({ changes: { from: 0, to: 0, insert: saved } });
   render();

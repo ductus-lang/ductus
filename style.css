@@ -137,40 +137,40 @@ body.resizing {
   font-size: 13px;
 }
 
-/* Syntax colors from tree-sitter-chi/queries/highlights.scm, mapped onto
+/* Syntax colors from tree-sitter-ductus/queries/highlights.scm, mapped onto
    the Catppuccin palette so they track the editor theme. */
-.chi-comment {
+.ductus-comment {
   color: var(--overlay2);
 }
-.chi-number {
+.ductus-number {
   color: var(--peach);
 }
-.chi-string {
+.ductus-string {
   color: var(--green);
 }
-.chi-constant-builtin {
+.ductus-constant-builtin {
   color: var(--peach);
 }
-.chi-keyword,
-.chi-keyword-conditional,
-.chi-keyword-storage {
+.ductus-keyword,
+.ductus-keyword-conditional,
+.ductus-keyword-storage {
   color: var(--mauve);
 }
-.chi-attribute {
+.ductus-attribute {
   color: var(--yellow);
 }
-.chi-type {
+.ductus-type {
   color: var(--yellow);
 }
-.chi-function,
-.chi-function-call,
-.chi-function-method {
+.ductus-function,
+.ductus-function-call,
+.ductus-function-method {
   color: var(--blue);
 }
-.chi-variable-parameter {
+.ductus-variable-parameter {
   color: var(--maroon);
 }
-.chi-property {
+.ductus-property {
   color: var(--lavender);
 }
 

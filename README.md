@@ -1,11 +1,11 @@
-# chi playground
+# ductus playground
 
-A browser playground for **Chi**, the parametric type design language:
+A browser playground for **Ductus**, the parametric type design language:
 an editor with live SVG preview, param sliders generated from the source's
 `params` block, per-glyph selection, and a debug view showing skeleton
 nodes, guides, metrics lines and control handles.
 
-Everything runs client-side: `chi-core` (parser, evaluator, renderer) is
+Everything runs client-side: `ductus-core` (parser, evaluator, renderer) is
 compiled to WebAssembly.
 
 ## Running
@@ -23,15 +23,15 @@ python3 -m http.server 8613     # or any static file server
 ```sh
 bun install
 bun run build           # bundle src/ -> dist/
-bun run sync-wasm       # rebuild ../chi/chi-wasm -> pkg/ (needs wasm-pack, clang)
-bun run sync-examples   # copy ../tree-sitter-chi/examples -> examples/
+bun run sync-wasm       # rebuild ../ductus/ductus-wasm -> pkg/ (needs wasm-pack, clang)
+bun run sync-examples   # copy ../tree-sitter-ductus/examples -> examples/
 ```
 
-Syntax colors come from `../tree-sitter-chi/queries/highlights.scm`, embedded
+Syntax colors come from `../tree-sitter-ductus/queries/highlights.scm`, embedded
 into the wasm at build time. Editing that query requires `bun run sync-wasm`
 (then `bun run build`) for the change to reach the editor.
 
-Requires the sibling checkouts `../chi` and `../tree-sitter-chi`.
+Requires the sibling checkouts `../ductus` and `../tree-sitter-ductus`.
 
 ## License
 

@@ -1,7 +1,7 @@
 # Copperplate: the seven basic strokes, and letters built from them.
 #
 # Copperplate is written with a pointed pen whose tines spread under
-# pressure, so a stroke swells and thins along its length. chi has no
+# pressure, so a stroke swells and thins along its length. ductus has no
 # pressure — but a node's *width* is an ordinary expression, so pressure is
 # just that expression, and the fitter draws the swell between the nodes.
 # The pressure profile is sampled at nodes exactly as an outline is sampled
