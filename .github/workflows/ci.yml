@@ -17,17 +17,37 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/santhoshtr/kurbo-curve-fit-stroke.git ../curve-fit
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+      - uses: oven-sh/setup-bun@v2
       - name: Install mdBook
         run: curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.5.4/mdbook-v0.5.4-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
+      - name: Install wasm-pack
+        run: curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
       - run: cargo test --workspace
       - run: mdbook build docs
+      - name: Build playground
+        working-directory: playground
+        run: |
+          bun install --frozen-lockfile
+          bun run sync-wasm
+          bun run build
+      # The site is one tree: a landing page at the root, the book under
+      # docs/, and the playground under playground/.
+      - name: Assemble site
+        run: |
+          mkdir -p _site/playground
+          cp site/index.html _site/
+          cp -r docs/book _site/docs
+          cp -r playground/index.html playground/style.css playground/dist \
+            playground/pkg playground/examples _site/playground/
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/master'
         with:
-          path: docs/book
+          path: _site
 
-  # Publish the book to GitHub Pages from the default branch.
+  # Publish the site to GitHub Pages from the default branch.
   # Repo settings must set Pages "Source" to "GitHub Actions".
   pages:
     needs: test
