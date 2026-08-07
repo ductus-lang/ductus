@@ -443,16 +443,16 @@ fn figure(code_html: &str, svg: &str) -> String {
 
 // ---- Highlighting -----------------------------------------------------------
 
-/// The highlight query, embedded from the sibling grammar repo at build time
-/// — the same file the playground compiles into ductus-wasm, so the class names
-/// (`ductus-keyword`, `ductus-number`, …) match its palette.
-const HIGHLIGHTS_QUERY: &str = include_str!("../../../tree-sitter-ductus/queries/highlights.scm");
-
 fn highlight_query() -> &'static Query {
     static QUERY: OnceLock<Query> = OnceLock::new();
     QUERY.get_or_init(|| {
-        Query::new(&tree_sitter_ductus::LANGUAGE.into(), HIGHLIGHTS_QUERY)
-            .expect("highlights.scm is a valid query")
+        // The same query the playground uses, so the class names
+        // (`ductus-keyword`, `ductus-number`, …) match its palette.
+        Query::new(
+            &tree_sitter_ductus::LANGUAGE.into(),
+            tree_sitter_ductus::HIGHLIGHTS_QUERY,
+        )
+        .expect("highlights.scm is a valid query")
     })
 }
 
