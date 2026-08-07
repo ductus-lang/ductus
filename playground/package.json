@@ -5,7 +5,7 @@
   "scripts": {
     "build": "bun build src/main.js --outdir dist --format esm --minify",
     "serve": "python3 -m http.server 8613",
-    "sync-wasm": "wasm-pack build ../ductus-wasm --target web --release --out-name ductus --out-dir ../playground/pkg && rm -f pkg/.gitignore",
+    "sync-wasm": "wasm-pack build ../crates/ductus-wasm --target web --release --out-name ductus --out-dir ../../playground/pkg && rm -f pkg/.gitignore",
     "sync-examples": "cp ../../tree-sitter-ductus/examples/*.ductus examples/"
   },
   "dependencies": {

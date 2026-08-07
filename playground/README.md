@@ -23,7 +23,7 @@ python3 -m http.server 8613     # or any static file server
 ```sh
 bun install
 bun run build           # bundle src/ -> dist/
-bun run sync-wasm       # rebuild ../ductus-wasm -> pkg/ (needs wasm-pack, clang)
+bun run sync-wasm       # rebuild ../crates/ductus-wasm -> pkg/ (needs wasm-pack, clang)
 bun run sync-examples   # copy ../../tree-sitter-ductus/examples -> examples/
 ```
 

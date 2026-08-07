@@ -1,11 +1,11 @@
 [workspace]
 resolver = "3"
 members = [
-  "curve-fitter",
-  "ductus-core",
-  "ductus-cli",
-  "ductus-wasm",
-  "ductus-docs",
+  "crates/curve-fitter",
+  "crates/ductus-core",
+  "crates/ductus-cli",
+  "crates/ductus-wasm",
+  "crates/ductus-docs",
 ]
 
 [workspace.dependencies]
