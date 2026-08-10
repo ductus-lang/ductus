@@ -46,23 +46,23 @@
 #     everywhere, so neither has come up.
 
 params {
-  size     = 560 in 240..700;   # the box: side length, before overshoot
-  aspect   = 0.72 in 0.35..1.0; # ellipse: height / width
-  corner   = 0.28 in 0..1;      # rounded square: corner radius / side
-  exponent = 4 in 2..10;        # squircle: superellipse exponent
-  waist    = 0.40 in 0.28..0.5; # oval: height of the widest point / height
+  size = 560 in 240..700; # the box: side length, before overshoot
+  aspect = 0.72 in 0.35..1.0; # ellipse: height / width
+  corner = 0.28 in 0..1; # rounded square: corner radius / side
+  exponent = 4 in 2..10; # squircle: superellipse exponent
+  waist = 0.40 in 0.28..0.5; # oval: height of the widest point / height
 }
 
 metrics {
-  upm  = 1000;
-  cap  = size;        # the box top; every shape sits on the baseline
-  x    = 0.5 size;    # half-height, for reference in --debug
-  asc  = 800;
+  upm = 1000;
+  cap = size; # the box top; every shape sits on the baseline
+  x = 0.5size; # half-height, for reference in --debug
+  asc = 800;
   desc = -100;
-  over = size / 55;   # round shapes overshoot the flat ones
+  over = size / 55; # round shapes overshoot the flat ones
 }
 
-sb = 60;              # sidebearing, same on every glyph
+sb = 60; # sidebearing, same on every glyph
 
 # Centre to box corner: the direction every shape in the square box
 # reaches for, and the length none of them reaches.
@@ -71,9 +71,9 @@ def corner_guide(c) -> g {
 }
 
 glyph circle {
-  advance = size + 2 sb;
-  center  = (advance / 2, size / 2);
-  r       = size / 2 + over;
+  advance = size + 2sb;
+  center = (advance / 2, size / 2);
+  r = size / 2 + over;
 
   contour main = circle(center, r);
 
@@ -84,15 +84,15 @@ glyph circle {
   # is chosen so the arc passes exactly through 45°, which is the midpoint
   # of the first segment — so `waist` is zero, and the error lives between,
   # peaking near t = 0.21 at 0.027 % of r.
-  waist = distance(point(main, 0.5), center) - r;   #  0
-  bulge = distance(point(main, 0.2), center) - r;   #  0.0787 at r = 290
+  waist = distance(point(main, 0.5), center) - r; #  0
+  bulge = distance(point(main, 0.2), center) - r; #  0.0787 at r = 290
 
   # Three queries, one point: the tangent turns 135° exactly where segment
   # time reaches 0.5 and where the diagonal crosses, so on a circle all
   # three anchors land together. They read the fitted geometry, not the
   # source points.
   anchor corner = directionpoint(main, 135);
-  anchor mid    = point(main, 0.5);
+  anchor mid = point(main, 0.5);
 
   # How far the shape reaches along the box diagonal — what the guide is
   # there to compare. 0.73 of the half-diagonal at these defaults, against
@@ -101,10 +101,10 @@ glyph circle {
 }
 
 glyph ellipse {
-  advance = size + 2 sb;
-  center  = (advance / 2, aspect * size / 2);
-  rx      = size / 2 + over;
-  ry      = aspect * rx;
+  advance = size + 2sb;
+  center = (advance / 2, aspect * size / 2);
+  rx = size / 2 + over;
+  ry = aspect * rx;
 
   contour main = ellipse(center, rx, ry);
 
@@ -117,8 +117,8 @@ glyph ellipse {
 }
 
 glyph roundsquare {
-  advance = size + 2 sb;
-  center  = (advance / 2, size / 2);
+  advance = size + 2sb;
+  center = (advance / 2, size / 2);
 
   # The slider runs past 0.5, where neighbouring arcs would overlap;
   # roundrect() holds the radius at half the shorter side, so the shape
@@ -130,27 +130,27 @@ glyph roundsquare {
 
   guide box = corner_guide(center);
   anchor corner = directionpoint(main, 135);
-  anchor reach  = intersection(main, box);
+  anchor reach = intersection(main, box);
 }
 
 glyph squircle {
-  advance = size + 2 sb;
-  center  = (advance / 2, size / 2);
+  advance = size + 2sb;
+  center = (advance / 2, size / 2);
 
   # Overshoot in proportion to how round the shape still is: exponent 2 is
   # a circle and takes the full amount, a high exponent is nearly a square
   # and takes almost none.
-  r = size / 2 + 2 over / exponent;
+  r = size / 2 + 2over / exponent;
 
   contour main = superellipse(center, r, r, exponent, 16);
 
   guide box = corner_guide(center);
   anchor corner = directionpoint(main, 135);
-  anchor reach  = intersection(main, box);
+  anchor reach = intersection(main, box);
 }
 
 glyph oval {
-  advance = size + 2 sb;
+  advance = size + 2sb;
 
   # An egg, by hand. Same height as the rest, but the widest point sits
   # below the middle: `waist[0, size]` is mediation — waist of the way
@@ -159,15 +159,14 @@ glyph oval {
   # longer of the two domes over the same half-width. At waist = 0.5 it is
   # an ellipse, and the same four points describe both.
   cx = advance / 2;
-  rx = 0.38 size;
+  rx = 0.38size;
   yw = waist[0, size];
 
-  contour main =
-      (cx + rx, yw)        {up}
-   .. (cx, size + over)    {left}
-   .. (cx - rx, yw)        {down}
-   .. (cx, -over)          {right}
-   .. cycle;
+  contour main = (cx + rx, yw) {up}
+      .. (cx, size + over) {left}
+      .. (cx - rx, yw) {down}
+      .. (cx, -over) {right}
+      .. cycle;
 
   guide axis = (cx, -over) -- (cx, size + over);
   anchor corner = directionpoint(main, 135);

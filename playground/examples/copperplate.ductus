@@ -71,40 +71,41 @@
 #     The combinatorial promise is real; the count is ten, not seven.
 
 params {
-  slant    = 55 in 40..70;    # the shade axis, degrees from the baseline
-  shade    = 46 in 12..90;    # full-pressure thickness
-  contrast = 11 in 3..24;     # shade / hairline
-  xheight  = 250 in 150..320;
+  slant = 55 in 40..70; # the shade axis, degrees from the baseline
+  shade = 46 in 12..90; # full-pressure thickness
+  contrast = 11 in 3..24; # shade / hairline
+  xheight = 250 in 150..320;
 }
 
 metrics {
-  upm  = 1000;
-  x    = xheight;
-  asc  = 2.6 xheight;         # engrosser's proportions are extreme
-  desc = -1.3 xheight;
-  cap  = 2 xheight;
+  upm = 1000;
+  x = xheight;
+  asc = 2.6xheight; # engrosser's proportions are extreme
+  desc = -1.3xheight;
+  cap = 2xheight;
 }
 
-hair  = shade / contrast;
-shear = 1 / tan(slant);       # rightward push per unit of height
-aw    = 0.66 x;               # arch width: the run of one letter part
-sb    = 0.18 x;               # sidebearing
+hair = shade / contrast;
+shear = 1 / tan(slant); # rightward push per unit of height
+aw = 0.66x; # arch width: the run of one letter part
+sb = 0.18x; # sidebearing
 
-touch = 0;         # the lightest mark: the tines only just apart
+touch = 0; # the lightest mark: the tines only just apart
 
-axis_up   = slant;            # travelling up the shade axis
-axis_down = slant + 180;      # and down it
+axis_up = slant; # travelling up the shade axis
+axis_down = slant + 180; # and down it
 
 # A point `run` along the baseline and `rise` above it, pushed right by the
 # slant, so that a fixed run traces the shade axis.
-def at(run, rise) -> p { p = (run + shear * rise, rise); }
+def at(run, rise) -> p {
+  p = (run + shear * rise, rise);
+}
 
 # A pressure sample: a node on the pen path at segment time `t`, its width
 # the tine spread at `pressure` — 0 for a shut pen, 1 for full weight.
 # Position and direction both come from the path.
 def press(path, t, pressure) -> n {
-  node n = point(path, t) dir direction(path, t)
-           width hair + pressure * (shade - hair);
+  node n = point(path, t) dir direction(path, t) width hair + pressure * (shade - hair);
 }
 
 # ---- The seven strokes -----------------------------------------------------
@@ -117,138 +118,242 @@ def press(path, t, pressure) -> n {
 # baseline to meet the letter. It begins from nothing and ends into the
 # letter's first stroke.
 def entrance(run) -> (outline, spine) {
-  spine = (run, 0.03 x) {30} .. (run + 0.45 aw, 0.24 x)
-       .. at(run + 0.55 aw, 0.52 x) {axis_up};
-  a = press(spine, 0,   0);
-  b = press(spine, 1,   touch);
+  spine = (run, 0.03x) {30}
+      .. (run + 0.45aw, 0.24x)
+      .. at(run + 0.55aw, 0.52x) {axis_up};
+  a = press(spine, 0, 0);
+  b = press(spine, 1, touch);
   c = press(spine, 1.6, touch);
-  d = press(spine, 2,   touch);
+  d = press(spine, 2, touch);
 
-  outline = a.right .. b.right .. c.right .. d.right -- d.left
-         .. c.left .. b.left .. a.left -- cycle;
+  outline = a.right
+      .. b.right
+      .. c.right
+      .. d.right
+      -- d.left
+      .. c.left
+      .. b.left
+      .. a.left
+      -- cycle;
 }
 
 # (2) The oval: a closed pen path, shaded down its left flank and hairline
 # up its right. No terminals at all. Travelling counterclockwise, the right
 # bank is the outer contour and the left bank — reversed — is the counter.
 def oval(run) -> (outer, counter, spine) {
-  cu = run + 0.5 aw;
-  ru = 0.38 aw;
-  spine = at(cu, x) .. at(cu - ru, 0.5 x) .. at(cu, 0) .. at(cu + ru, 0.5 x)
-       .. cycle;
-  a = press(spine, 0,   0.5);     # top
+  cu = run + 0.5aw;
+  ru = 0.38aw;
+  spine = at(cu, x)
+      .. at(cu - ru, 0.5x)
+      .. at(cu, 0)
+      .. at(cu + ru, 0.5x)
+      .. cycle;
+  a = press(spine, 0, 0.5); # top
   b = press(spine, 0.5, 1);
-  c = press(spine, 1,   1);       # left flank: the shade
+  c = press(spine, 1, 1); # left flank: the shade
   d = press(spine, 1.5, 0.5);
-  e = press(spine, 2,   touch);   # bottom
+  e = press(spine, 2, touch); # bottom
   f = press(spine, 2.5, touch);
-  g = press(spine, 3,   touch);   # right flank
+  g = press(spine, 3, touch); # right flank
   h = press(spine, 3.5, touch);
 
-  outer = a.right .. b.right .. c.right .. d.right .. e.right .. f.right
-       .. g.right .. h.right .. cycle;
-  counter = a.left .. h.left .. g.left .. f.left .. e.left .. d.left
-       .. c.left .. b.left .. cycle;
+  outer = a.right
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.right
+      .. f.right
+      .. g.right
+      .. h.right
+      .. cycle;
+  counter = a.left
+      .. h.left
+      .. g.left
+      .. f.left
+      .. e.left
+      .. d.left
+      .. c.left
+      .. b.left
+      .. cycle;
 }
 
 # (3) The underturn: a flat top, down the shade axis under pressure, round
 # the baseline as the pen lets go, away to a point.
 def underturn(run) -> (outline, spine) {
-  spine = at(run, x) {axis_down} .. (run + 0.30 x, 0.14 x)
-       .. {right} (run + 0.5 aw, 0) .. at(run + aw, 0.52 x) {axis_up};
-  a = press(spine, 0,    0.55);   # the flat top
+  spine = at(run, x) {axis_down}
+      .. (run + 0.30x, 0.14x)
+      .. {right} (run + 0.5aw, 0)
+      .. at(run + aw, 0.52x) {axis_up};
+  a = press(spine, 0, 0.55); # the flat top
   b = press(spine, 0.35, 1);
-  c = press(spine, 0.7,  1);
-  d = press(spine, 1,    0.5);
-  e = press(spine, 1.5,  touch);
-  f = press(spine, 2,    touch);
-  g = press(spine, 3,    0);
+  c = press(spine, 0.7, 1);
+  d = press(spine, 1, 0.5);
+  e = press(spine, 1.5, touch);
+  f = press(spine, 2, touch);
+  g = press(spine, 3, 0);
 
-  outline = a.right .. b.right .. c.right .. d.right .. e.right .. f.right
-         .. g.right -- g.left .. f.left .. e.left .. d.left .. c.left
-         .. b.left .. a.left -- cycle;
+  outline = a.right
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.right
+      .. f.right
+      .. g.right
+      -- g.left
+      .. f.left
+      .. e.left
+      .. d.left
+      .. c.left
+      .. b.left
+      .. a.left
+      -- cycle;
 }
 
 # (4) The overturn: up from nothing, over the shoulder, then down under
 # pressure to a flat foot. The mirror of the underturn, pressure and all.
 def overturn(run) -> (outline, spine) {
-  spine = (run, 0.03 x) {50} .. at(run + 0.1 aw, 0.6 x)
-       .. {right} at(run + aw, x) .. at(run + aw, 0.03 x) {axis_down};
-  a = press(spine, 0,    0);
-  b = press(spine, 1,    touch);
-  c = press(spine, 2,    touch);  # the shoulder stays light
-  d = press(spine, 2.4,  0.5);
+  spine = (run, 0.03x) {50}
+      .. at(run + 0.1aw, 0.6x)
+      .. {right} at(run + aw, x)
+      .. at(run + aw, 0.03x) {axis_down};
+  a = press(spine, 0, 0);
+  b = press(spine, 1, touch);
+  c = press(spine, 2, touch); # the shoulder stays light
+  d = press(spine, 2.4, 0.5);
   e = press(spine, 2.65, 1);
   f = press(spine, 2.85, 1);
-  g = press(spine, 3,    0.55);
+  g = press(spine, 3, 0.55);
 
-  outline = a.right .. b.right .. c.right .. d.right .. e.right .. f.right
-         .. g.right -- g.left .. f.left .. e.left .. d.left .. c.left
-         .. b.left .. a.left -- cycle;
+  outline = a.right
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.right
+      .. f.right
+      .. g.right
+      -- g.left
+      .. f.left
+      .. e.left
+      .. d.left
+      .. c.left
+      .. b.left
+      .. a.left
+      -- cycle;
 }
 
 # (5) The compound: an overturn and an underturn in one pen stroke — up,
 # over, down under pressure, round the bottom, away. Two pressure events on
 # one path, which is where the want of a dynamic nib shows most.
 def compound(run) -> (outline, spine) {
-  spine = (run, 0.03 x) {50} .. at(run + 0.1 aw, 0.6 x)
-       .. {right} at(run + aw, x) .. (run + aw + 0.30 x, 0.14 x)
-       .. {right} (run + 1.5 aw, 0) .. at(run + 2 aw, 0.52 x) {axis_up};
-  a = press(spine, 0,    0);
-  b = press(spine, 1,    touch);
-  c = press(spine, 2,    touch);  # the shoulder stays light
+  spine = (run, 0.03x) {50}
+      .. at(run + 0.1aw, 0.6x)
+      .. {right} at(run + aw, x)
+      .. (run + aw + 0.30x, 0.14x)
+      .. {right} (run + 1.5aw, 0)
+      .. at(run + 2aw, 0.52x) {axis_up};
+  a = press(spine, 0, 0);
+  b = press(spine, 1, touch);
+  c = press(spine, 2, touch); # the shoulder stays light
   d = press(spine, 2.45, 0.5);
   e = press(spine, 2.75, 1);
-  f = press(spine, 3,    0.5);
-  g = press(spine, 3.5,  touch);
-  h = press(spine, 4,    touch);
-  i = press(spine, 5,    0);
+  f = press(spine, 3, 0.5);
+  g = press(spine, 3.5, touch);
+  h = press(spine, 4, touch);
+  i = press(spine, 5, 0);
 
-  outline = a.right .. b.right .. c.right .. d.right .. e.right .. f.right
-         .. g.right .. h.right .. i.right -- i.left .. h.left .. g.left
-         .. f.left .. e.left .. d.left .. c.left .. b.left .. a.left
-         -- cycle;
+  outline = a.right
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.right
+      .. f.right
+      .. g.right
+      .. h.right
+      .. i.right
+      -- i.left
+      .. h.left
+      .. g.left
+      .. f.left
+      .. e.left
+      .. d.left
+      .. c.left
+      .. b.left
+      .. a.left
+      -- cycle;
 }
 
 # (6) The ascender: a hairline loop over the top, then the shaded stem down
 # to a flat foot on the baseline, crossing the loop on the way.
 def ascender(run) -> (outline, spine) {
-  lu = run + 0.34 aw;
-  spine = at(lu, 0.5 asc) {72} .. at(lu + 0.3 aw, 0.84 asc)
-       .. {170} at(lu + 0.02 aw, asc) .. at(lu - 0.26 aw, 0.8 asc)
-       .. at(run, 0.42 asc) .. at(run, 0.03 x) {axis_down};
-  a = press(spine, 0,   0);
-  b = press(spine, 1,   touch);
-  c = press(spine, 2,   touch);
+  lu = run + 0.34aw;
+  spine = at(lu, 0.5asc) {72}
+      .. at(lu + 0.3aw, 0.84asc)
+      .. {170} at(lu + 0.02aw, asc)
+      .. at(lu - 0.26aw, 0.8asc)
+      .. at(run, 0.42asc)
+      .. at(run, 0.03x) {axis_down};
+  a = press(spine, 0, 0);
+  b = press(spine, 1, touch);
+  c = press(spine, 2, touch);
   d = press(spine, 2.6, touch);
-  e = press(spine, 3,   0.5);
+  e = press(spine, 3, 0.5);
   f = press(spine, 3.6, 1);
-  g = press(spine, 4,   1);
-  h = press(spine, 5,   0.5);
+  g = press(spine, 4, 1);
+  h = press(spine, 5, 0.5);
 
-  outline = a.right .. b.right .. c.right .. d.right .. e.right .. f.right
-         .. g.right .. h.right -- h.left .. g.left .. f.left .. e.left
-         .. d.left .. c.left .. b.left .. a.left -- cycle;
+  outline = a.right
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.right
+      .. f.right
+      .. g.right
+      .. h.right
+      -- h.left
+      .. g.left
+      .. f.left
+      .. e.left
+      .. d.left
+      .. c.left
+      .. b.left
+      .. a.left
+      -- cycle;
 }
 
 # (7) The descender: a flat top, the shaded stem down through the baseline,
 # then the loop swinging out below and back up to a point, crossing the stem.
 def descender(run) -> (outline, spine) {
-  spine = at(run, x) {axis_down} .. at(run, 0.42 desc)
-       .. {185} at(run - 0.34 aw, desc) .. at(run - 0.74 aw, 0.42 desc)
-       .. (run + 0.34 aw, 0.08 x) {28};
-  a = press(spine, 0,    0.55);   # the flat top
+  spine = at(run, x) {axis_down}
+      .. at(run, 0.42desc)
+      .. {185} at(run - 0.34aw, desc)
+      .. at(run - 0.74aw, 0.42desc)
+      .. (run + 0.34aw, 0.08x) {28};
+  a = press(spine, 0, 0.55); # the flat top
   b = press(spine, 0.35, 1);
   c = press(spine, 0.75, 1);
-  d = press(spine, 1,    0.5);
-  e = press(spine, 1.5,  touch);
-  f = press(spine, 2,    touch);
-  g = press(spine, 3,    touch);
-  h = press(spine, 4,    0);
+  d = press(spine, 1, 0.5);
+  e = press(spine, 1.5, touch);
+  f = press(spine, 2, touch);
+  g = press(spine, 3, touch);
+  h = press(spine, 4, 0);
 
-  outline = a.right .. b.right .. c.right .. d.right .. e.right .. f.right
-         .. g.right .. h.right -- h.left .. g.left .. f.left .. e.left
-         .. d.left .. c.left .. b.left .. a.left -- cycle;
+  outline = a.right
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.right
+      .. f.right
+      .. g.right
+      .. h.right
+      -- h.left
+      .. g.left
+      .. f.left
+      .. e.left
+      .. d.left
+      .. c.left
+      .. b.left
+      .. a.left
+      -- cycle;
 }
 
 # ---- The strokes as glyphs -------------------------------------------------
@@ -257,14 +362,14 @@ def descender(run) -> (outline, spine) {
 # plus the pressure its nodes carry.
 
 glyph entrance {
-  advance = aw + shear * x + 2 sb;
+  advance = aw + shear * x + 2sb;
   (o, k) = entrance(sb);
   contour s = o;
   guide pen_path = k;
 }
 
 glyph oval {
-  advance = aw + shear * x + 2 sb;
+  advance = aw + shear * x + 2sb;
   (body, hole, k) = oval(sb);
   contour outer = body;
   contour inner = hole;
@@ -272,36 +377,36 @@ glyph oval {
 }
 
 glyph underturn {
-  advance = aw + shear * x + 2 sb;
+  advance = aw + shear * x + 2sb;
   (o, k) = underturn(sb);
   contour s = o;
   guide pen_path = k;
 }
 
 glyph overturn {
-  advance = aw + shear * x + 2 sb;
+  advance = aw + shear * x + 2sb;
   (o, k) = overturn(sb);
   contour s = o;
   guide pen_path = k;
 }
 
 glyph compound {
-  advance = 2 aw + shear * x + 2 sb;
+  advance = 2aw + shear * x + 2sb;
   (o, k) = compound(sb);
   contour s = o;
   guide pen_path = k;
 }
 
 glyph ascender {
-  advance = aw + shear * asc + 2 sb;
+  advance = aw + shear * asc + 2sb;
   (o, k) = ascender(sb);
   contour s = o;
   guide pen_path = k;
 }
 
 glyph descender {
-  advance = aw + shear * x + 4 sb;
-  (o, k) = descender(sb + 0.8 aw);
+  advance = aw + shear * x + 4sb;
+  (o, k) = descender(sb + 0.8aw);
   contour s = o;
   guide pen_path = k;
 }
@@ -310,9 +415,9 @@ glyph descender {
 
 # (6) ascender + (5) compound
 glyph h : U+0068 {
-  advance = 2 aw + shear * x + 2 sb;
+  advance = 2aw + shear * x + 2sb;
   (stem, stem_path) = ascender(sb);
-  (arch, arch_path) = compound(sb + 0.05 aw);
+  (arch, arch_path) = compound(sb + 0.05aw);
   contour s1 = stem;
   contour s2 = arch;
   guide k1 = stem_path;
@@ -322,9 +427,9 @@ glyph h : U+0068 {
 # (5) compound + (3) underturn. No stroke (1): the compound opens with an
 # upstroke of its own, which is the entrance.
 glyph u : U+0075 {
-  advance = 3 aw + shear * x + 2 sb;
+  advance = 3aw + shear * x + 2sb;
   (first, first_path) = compound(sb);
-  (last, last_path)   = underturn(sb + 2 aw);
+  (last, last_path) = underturn(sb + 2aw);
   contour s1 = first;
   contour s2 = last;
   guide k1 = first_path;
@@ -333,10 +438,10 @@ glyph u : U+0075 {
 
 # (4) overturn + (4) overturn + (5) compound
 glyph m : U+006D {
-  advance = 4 aw + shear * x + 2 sb;
-  (first, first_path)   = overturn(sb);
+  advance = 4aw + shear * x + 2sb;
+  (first, first_path) = overturn(sb);
   (second, second_path) = overturn(sb + aw);
-  (last, last_path)     = compound(sb + 2 aw);
+  (last, last_path) = compound(sb + 2aw);
   contour s1 = first;
   contour s2 = second;
   contour s3 = last;
@@ -347,9 +452,9 @@ glyph m : U+006D {
 
 # (4) overturn + (5) compound — the same two strokes 'm' ends with.
 glyph n : U+006E {
-  advance = 3 aw + shear * x + 2 sb;
+  advance = 3aw + shear * x + 2sb;
   (first, first_path) = overturn(sb);
-  (last, last_path)   = compound(sb + aw);
+  (last, last_path) = compound(sb + aw);
   contour s1 = first;
   contour s2 = last;
   guide k1 = first_path;
@@ -359,10 +464,10 @@ glyph n : U+006E {
 # (1) entrance + (2) oval + (7) descender. The oval opens on a downstroke,
 # so this is a letter that does need the entrance stroke.
 glyph g : U+0067 {
-  advance = 2 aw + shear * x + 2 sb;
-  (lead, lead_path)       = entrance(sb - 0.5 aw);
+  advance = 2aw + shear * x + 2sb;
+  (lead, lead_path) = entrance(sb - 0.5aw);
   (body, hole, body_path) = oval(sb);
-  (tail, tail_path)       = descender(sb + 0.95 aw);
+  (tail, tail_path) = descender(sb + 0.95aw);
   contour s1 = lead;
   contour s2 = body;
   contour s3 = hole;

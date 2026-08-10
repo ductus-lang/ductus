@@ -1,0 +1,140 @@
+# Glyphs for LIPI font
+
+params {
+  pen_width = 100 in 10..150; # full-pressure pen width
+  contrast = 0.5 in .1..1; # shade / hairline
+  pen_angle = 30 in 0..90; # angle of the pen's major axis
+}
+
+metrics {
+  upm = 1000;
+  x = 0.5upm;
+  asc = 0.7upm;
+  desc = -0.3upm;
+  cap = 0.6upm;
+  u = upm / 100;
+  pen_height = pen_width * contrast;
+}
+
+# The nib at full pressure: an ellipse. Its .left/.right are the true
+# contact points of the moving ellipse, so the banks are envelope edges,
+# and .tip/.tail trace its round ends for the terminals.
+pen brush {
+  width = pen_width;
+  height = pen_height;
+  angle = pen_angle;
+}
+
+glyph L {
+  advance = 50u;
+
+  node a = (0, cap) dir 235 pen brush;
+  node b = (20u, cap - 20u) dir right pen brush;
+  node c = (40u, cap - 10u) dir up pen brush;
+  node d1 = (25u, cap) dir left pen brush;
+  guide spineA = a.pos .. b.pos .. c.pos .. d1.pos;
+
+  node d2 = (25u, cap) dir 290 pen brush;
+  node e = (28u, cap / 2) dir down pen brush;
+  node f = (10u, 0) dir left pen brush;
+  node g = (0, 6u) dir up pen brush;
+  node h = (10u, 12u) dir right pen brush;
+  node i = (40u, 0) dir right pen brush;
+  node j = (45u, 20u) dir 145 pen brush;
+
+  guide spineB = d2.pos .. e.pos .. f.pos .. g.pos .. h.pos .. i.pos .. j.pos;
+
+  contour outlineA = a.tailcap
+      .. b.right
+      .. c.right {c.dir}
+      .. d1.tipcap
+      .. c.left
+      .. b.left
+      .. cycle;
+
+  contour outlineB = d2.tailcap
+      .. e.right
+      .. f.right
+      .. g.right {g.dir}
+      .. h.right
+      .. i.right {i.dir}
+      .. j.tipcap
+      .. i.left {i.dir + 180}
+      .. h.left
+      .. g.left {g.dir + 180}
+      .. f.left
+      .. e.left
+      .. cycle;
+}
+
+glyph I {
+  advance = 30u;
+
+  node a = (20u, cap - 20u) dir 230 pen brush;
+  node b = (20, cap - 20u) dir up pen brush;
+  node c = (30u, cap) dir 20 pen brush;
+  guide spineA = a.pos {230} .. b.pos {up} .. c.pos {20};
+
+  node d = (30u, cap) dir down pen brush;
+  node e = (28u, cap / 2) dir down pen brush;
+  node f = (10u, 0) dir pen_angle + 180 pen brush;
+  node g = (0, 6u) dir up pen brush;
+  node h = (10u, 15u) dir right pen brush;
+
+  guide spineB = d.pos .. e.pos .. f.pos .. g.pos .. h.pos;
+
+  contour outlineA = a.tailcap
+      .. b.right {b.dir}
+      .. c.tipcap
+      .. b.left {b.dir + 180}
+      .. cycle;
+
+  contour outlineB = d.tailcap
+      .. e.right
+      .. f.right
+      .. g.right {g.dir}
+      .. h.tipcap
+      .. g.left {g.dir + 180}
+      .. f.left
+      .. e.left
+      .. cycle;
+}
+
+glyph P {
+  advance = 45u;
+
+  node a = (20u, cap - 20u) dir 230 pen brush;
+  node b = (20, 0.6cap) dir up pen brush;
+  node c = (30u, cap) dir 0 pen brush;
+  node d = (50u, 0.74cap) dir down pen brush;
+  node e = (30u, 0.5cap) dir left pen brush;
+  guide spineA = a.pos {230} .. b.pos {up} .. c.pos .. d.pos .. e.pos;
+
+  node f = (30u, cap) dir down pen brush;
+  node g = (28u, cap / 2) dir 260 pen brush;
+  node h = (10u, 0) dir left pen brush;
+  node i = (0, 6u) dir up pen brush;
+  node j = (10u, 15u) dir 10 pen brush;
+
+  guide spineB = f.pos .. g.pos .. h.pos .. i.pos .. j.pos;
+
+  contour outlineA = a.tailcap
+      .. b.right {b.dir}
+      .. c.right {c.dir}
+      .. d.right {d.dir}
+      .. e.tipcap
+      .. d.left {d.dir + 180}
+      .. c.left {c.dir + 180}
+      .. b.left {b.dir + 180}
+      .. cycle;
+
+  contour outlineB = f.tailcap
+      .. g.right
+      .. h.right
+      .. i.right {i.dir}
+      .. j.tipcap
+      .. i.left {i.dir + 180}
+      .. h.left
+      .. g.left
+      .. cycle;
+}

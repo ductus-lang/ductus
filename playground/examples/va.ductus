@@ -1,15 +1,14 @@
-metrics{
-  u=100;
+metrics {
+  u = 100;
 }
 
 params {
   nib_angle = 30 in 0..360;
   nib_width = 100 in 10..200;
-
 }
 
-glyph va: U+006F {
-  advance =  15u;
+glyph va : U+006F {
+  advance = 15u;
   node m = (3u, 0) dir 135 width nib_width nib nib_angle;
   node n = (0, 5u) dir up width nib_width nib nib_angle;
   node o = (5u, 10u) dir right width nib_width nib nib_angle;
@@ -17,11 +16,18 @@ glyph va: U+006F {
   node q = (7u, 0) dir 215 width nib_width nib nib_angle;
   node r = q.pos + (7u, 0) dir right width nib_width nib nib_angle;
   node s = r.pos + (0, 10u) dir up width nib_width nib nib_angle;
-  guide pat =  m.pos .. n.pos..o.pos..p.pos..q.pos--r.pos--s.pos;
-  contour c1 =  m.right .. n.right..o.right..p.right..q.right
-   -- q.left..p.left ..o.left..n.left..m.left
-  --cycle;
-  contour c2 = q.left --r.left -- r.right --q.right--cycle;
-  contour c3 = r.right --s.right -- s.left --r.left--cycle;
+  guide pat = m.pos .. n.pos .. o.pos .. p.pos .. q.pos -- r.pos -- s.pos;
+  contour c1 = m.right
+      .. n.right
+      .. o.right
+      .. p.right
+      .. q.right
+      -- q.left
+      .. p.left
+      .. o.left
+      .. n.left
+      .. m.left
+      -- cycle;
+  contour c2 = q.left -- r.left -- r.right -- q.right -- cycle;
+  contour c3 = r.right -- s.right -- s.left -- r.left -- cycle;
 }
-

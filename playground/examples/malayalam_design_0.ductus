@@ -5,20 +5,24 @@
 # Gayathri has contrast = 2, pen_angle=0.
 # Nupuram has contrast = 2, pen_angle=90.
 params {
-  weight   = 400 in 100..900;
+  weight = 400 in 100..900;
   contrast = 1 in 0.1..2;
   pen_angle = 45 in 0..90;
 }
+
 metrics {
   upm = 1024;
-  x = upm/2; cap = 700; asc = 750; desc = -220;
-  over = 0.01*upm;
+  x = upm / 2;
+  cap = 700;
+  asc = 750;
+  desc = -220;
+  over = 0.01 * upm;
 }
 
 pen brush {
-  width  =  weight*0.1* contrast;
-  height =  weight*0.1;
-  angle  = pen_angle;
+  width = weight * 0.1 * contrast;
+  height = weight * 0.1;
+  angle = pen_angle;
 }
 
 stem = 40 + 0.14 * weight;
@@ -32,123 +36,123 @@ def mirror(n, axis) -> m {
 }
 
 glyph tha : U+0D24 {
-  u = upm/10;
+  u = upm / 10;
   advance = 8u;
   mid = 4u;
 
-  node a  = (1.8u, 0)   dir 165 pen brush;
-  node b  = (0, x/2.2)    dir up  pen brush;
-  node c = (2u , x-over)  dir right pen brush;
-  node d = (b.pos.x + 5.5u , x/2.5 ) dir down pen brush;
-  node e = (3.6u, over)    dir left  pen brush;
-
+  node a = (1.8u, 0) dir 165 pen brush;
+  node b = (0, x / 2.2) dir up pen brush;
+  node c = (2u, x - over) dir right pen brush;
+  node d = (b.pos.x + 5.5u, x / 2.5) dir down pen brush;
+  node e = (3.6u, over) dir left pen brush;
 
   # Right half by symmetry.
   f = mirror(d, mid);
   g = mirror(c, mid);
-  h  = mirror(b,  mid);
+  h = mirror(b, mid);
   i = mirror(a, mid);
 
-  guide skeleton = a.pos .. b.pos..c.pos..d.pos..e.pos{left}..f.pos{up}..g.pos..h.pos..i.pos;
+  guide skeleton = a.pos
+      .. b.pos
+      .. c.pos
+      .. d.pos
+      .. e.pos {left}
+      .. f.pos {up}
+      .. g.pos
+      .. h.pos
+      .. i.pos;
 
   # Make the y-extrema handles horizontal. For this find the points where
   # the spline is at 'right(0)' degrees.
   node c_ = directionpoint(skeleton, 0) dir right pen brush;
-  node g_ = directionpoint(skeleton, 0,1) dir right pen brush;
+  node g_ = directionpoint(skeleton, 0, 1) dir right pen brush;
 
-  contour main =
-       {a.dir} a.right {a.dir}
-    .. b.right
-    .. c_.right
-    .. d.right
-    .. e.right
-    .. f.right
-    .. g_.right
-    .. h.right
-    .. {i.dir} i.right {i.dir}
-    .. i.tipcap
-    .. {i.dir + 180} i.left {i.dir + 180}
-    .. h.left
-    .. g_.left
-    .. f.left
-    .. e.left
-    .. d.left
-    .. c_.left
-    .. b.left
-    .. a.left {a.dir + 180}
-    .. a.tailcap
-    .. cycle;
+  contour main = {a.dir} a.right {a.dir}
+      .. b.right
+      .. c_.right
+      .. d.right
+      .. e.right
+      .. f.right
+      .. g_.right
+      .. h.right
+      .. {i.dir} i.right {i.dir}
+      .. i.tipcap
+      .. {i.dir + 180} i.left {i.dir + 180}
+      .. h.left
+      .. g_.left
+      .. f.left
+      .. e.left
+      .. d.left
+      .. c_.left
+      .. b.left
+      .. a.left {a.dir + 180}
+      .. a.tailcap
+      .. cycle;
 }
 
 glyph Ra : U+0D31 {
-  u = upm/10;
+  u = upm / 10;
   advance = 5u;
   mid = 4u;
 
-  node a  = (1.8u, 0)   dir 160 pen brush;
-  node b  = (0, x/2)    dir up  pen brush;
-  node c = (2.5u, x-over)  dir right pen brush;
-  node d = (b.pos.x + 5u , b.pos.y ) dir down pen brush;
-  node e = (d.pos.x-1.8u, 0)    dir 200  pen brush;
+  node a = (1.8u, 0) dir 160 pen brush;
+  node b = (0, x / 2) dir up pen brush;
+  node c = (2.5u, x - over) dir right pen brush;
+  node d = (b.pos.x + 5u, b.pos.y) dir down pen brush;
+  node e = (d.pos.x - 1.8u, 0) dir 200 pen brush;
 
-  guide skeleton = a.pos .. b.pos..c.pos..d.pos..e.pos;
+  guide skeleton = a.pos .. b.pos .. c.pos .. d.pos .. e.pos;
 
-  contour main =
-       {a.dir} a.right {a.dir}
-    .. b.right
-    .. c.right
-    .. d.right
-    .. {e.dir} e.right {e.dir}
-    .. e.tipcap
-    .. {e.dir + 180} e.left {e.dir + 180}
-    .. d.left
-    .. c.left
-    .. b.left
-    .. a.left {a.dir + 180}
-    .. a.tailcap
-    .. cycle;
+  contour main = {a.dir} a.right {a.dir}
+      .. b.right
+      .. c.right
+      .. d.right
+      .. {e.dir} e.right {e.dir}
+      .. e.tipcap
+      .. {e.dir + 180} e.left {e.dir + 180}
+      .. d.left
+      .. c.left
+      .. b.left
+      .. a.left {a.dir + 180}
+      .. a.tailcap
+      .. cycle;
 }
 
 glyph ra : U+0D30 {
-  u = upm/10;
+  u = upm / 10;
   advance = 8u;
   mid = 4u;
 
-
-  node a  = (1.8u, 0)   dir 165 pen brush;
-  node b  = (0, x/2)    dir up  pen brush;
-  node c = (2u , x-over)  dir right pen brush;
-  node d = (b.pos.x + 5.5u , x/2 ) dir down pen brush;
-  node e = (3.6u, over)    dir left  pen brush;
-
+  node a = (1.8u, 0) dir 165 pen brush;
+  node b = (0, x / 2) dir up pen brush;
+  node c = (2u, x - over) dir right pen brush;
+  node d = (b.pos.x + 5.5u, x / 2) dir down pen brush;
+  node e = (3.6u, over) dir left pen brush;
 
   # Right half by symmetry.
   f = mirror(d, mid);
 
-
-
-  guide skeleton = a.pos .. b.pos..c.pos..d.pos..e.pos{left}..f.pos;
+  guide skeleton = a.pos .. b.pos .. c.pos .. d.pos .. e.pos {left} .. f.pos;
 
   # Make the y-extrema handles horizontal. For this find the points where
   # the spline is at 'right(0)' degrees.
   node c_ = directionpoint(skeleton, 0) dir right pen brush;
 
-  node g =  directionpoint(skeleton, 320) dir 15 pen brush;
-  contour main =
-       {a.dir} a.right {a.dir}
-    .. b.right
-    .. c_.right
-    .. d.right
-    .. e.right
-    .. f.right
-    .. {g.dir} g.right {g.dir}
-    -- g.left {g.dir + 180}
-    .. f.left
-    .. e.left
-    .. d.left
-    .. c_.left
-    .. b.left
-    .. a.left {a.dir + 180}
-    .. a.tailcap
-    .. cycle;
+  node g = directionpoint(skeleton, 320) dir 15 pen brush;
+  contour main = {a.dir} a.right {a.dir}
+      .. b.right
+      .. c_.right
+      .. d.right
+      .. e.right
+      .. f.right
+      .. {g.dir} g.right {g.dir}
+      -- g.left {g.dir + 180}
+      .. f.left
+      .. e.left
+      .. d.left
+      .. c_.left
+      .. b.left
+      .. a.left {a.dir + 180}
+      .. a.tailcap
+      .. cycle;
 }

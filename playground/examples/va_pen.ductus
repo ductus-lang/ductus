@@ -8,27 +8,27 @@ metrics {
 }
 
 params {
-  pen_width  = 100 in 10..200;
+  pen_width = 100 in 10..200;
   pen_height = 20 in 1..100;
-  pen_angle  = 30 in 0..180;
+  pen_angle = 30 in 0..180;
 }
 
 pen main {
-  width  = pen_width;
+  width = pen_width;
   height = pen_height;
-  angle  = pen_angle;
+  angle = pen_angle;
 }
 
 glyph va : U+006F {
   advance = 15u;
 
-  node m = (3u, 0)   dir 135   pen main;
-  node n = (0, 5u)   dir up    pen main;
+  node m = (3u, 0) dir 135 pen main;
+  node n = (0, 5u) dir up pen main;
   node o = (5u, 10u) dir right pen main;
-  node p = (10u, 5u) dir down  pen main;
-  node q = (7u, 0)   dir 215   pen main;
-  node r = q.pos + (7u, 0)  dir right pen main;
-  node s = r.pos + (0, 10u) dir up    pen main;
+  node p = (10u, 5u) dir down pen main;
+  node q = (7u, 0) dir 215 pen main;
+  node r = q.pos + (7u, 0) dir right pen main;
+  node s = r.pos + (0, 10u) dir up pen main;
 
   guide skeleton = m.pos .. n.pos .. o.pos .. p.pos .. q.pos -- r.pos -- s.pos;
 
@@ -36,11 +36,19 @@ glyph va : U+006F {
   # around the m terminal to close. The pen's tangent at .tip/.tail is
   # perpendicular to the travel direction, so the direction constraints
   # below trace the ellipse.
-  contour bowl =
-      {m.dir} m.right .. n.right .. o.right .. p.right .. q.right
-      {q.dir} .. q.tipcap .. {q.dir + 180} q.left
-      .. p.left .. o.left .. n.left .. m.left
-      {m.dir + 180} ..  m.tailcap .. cycle;
+  contour bowl = {m.dir} m.right
+      .. n.right
+      .. o.right
+      .. p.right
+      .. q.right {q.dir}
+      .. q.tipcap
+      .. {q.dir + 180} q.left
+      .. p.left
+      .. o.left
+      .. n.left
+      .. m.left {m.dir + 180}
+      .. m.tailcap
+      .. cycle;
 
   # Bar + stem: one stroke q -> r -> s with a 90-degree turn at r. The
   # outer shoulder traces the pen through an intermediate travel
@@ -51,11 +59,15 @@ glyph va : U+006F {
   node r2 = r.pos dir up pen main;
   inner = intersection(q2.left -- r.left, r2.left -- s.left);
 
-  contour arm =
-      {q2.dir} q2.right -- r.right
-      {right} .. rj.right .. {up}
-      r2.right -- s.right
-      {s.dir} ..  s.tipcap .. {s.dir + 180} s.left
-      -- inner -- q2.left
-      {q2.dir + 180} .. q2.tailcap.. cycle;
+  contour arm = {q2.dir} q2.right
+      -- r.right {right}
+      .. rj.right
+      .. {up} r2.right
+      -- s.right {s.dir}
+      .. s.tipcap
+      .. {s.dir + 180} s.left
+      -- inner
+      -- q2.left {q2.dir + 180}
+      .. q2.tailcap
+      .. cycle;
 }

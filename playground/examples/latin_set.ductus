@@ -6,69 +6,78 @@ params {
   # tangent pen_angle + 180 within the p..q leg's 270..215 sweep.
   pen_angle = 30 in 30..45;
   pen_width = 100 in 100..150;
-
 }
 
 metrics {
-upem=1000;
-  u=1000/10; # desc = 3 asc = 7
-  x=4pen_width;
-  cap=7pen_width;
+  upem = 1000;
+  u = 1000 / 10; # desc = 3 asc = 7
+  x = 4pen_width;
+  cap = 7pen_width;
   over = 10 + pen_width / 200;
-  pen_height =  0.1 * pen_width;
+  pen_height = 0.1 * pen_width;
 }
 
 pen broad_nib_pen {
-  width  = pen_width;
+  width = pen_width;
   height = pen_height;
-  angle  = pen_angle;
+  angle = pen_angle;
 }
 
 glyph a {
   advance = 1.4x;
-  w=x;
-  node m = (2/3*w, 0) dir left pen broad_nib_pen;
-  node n = (0, x/2) dir up pen broad_nib_pen;
+  w = x;
+  node m = (2 / 3 * w, 0) dir left pen broad_nib_pen;
+  node n = (0, x / 2) dir up pen broad_nib_pen;
   node o = (m.pos.x, x) dir right pen broad_nib_pen;
-  node p = (x, x/2) dir down pen broad_nib_pen;
+  node p = (x, x / 2) dir down pen broad_nib_pen;
 
   guide skel = m.pos .. n.pos .. o.pos .. p.pos .. cycle;
 
   node w1 = directionpoint(skel, pen_angle + 240) dir pen_angle + 240 pen broad_nib_pen;
   node w2 = directionpoint(skel, 240) dir 240 pen broad_nib_pen;
 
-
   # Thin-crossing witness nodes: banks are exactly `height` apart there,
   # and the query keeps them on the crossing as pen_angle moves.
   node w3 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
 
-
-  contour c1 =  {w1.dir} w1.right .. o.right..{w3.dir+180} w3.right
-     .. n.right..m.right .. {w2.dir+180} w2.right -- w2.left .. m.left .. n.left
-     ..{w3.dir}w3.left.. o.left
-      .. {w1.dir} w1.left --cycle;
+  contour c1 = {w1.dir} w1.right
+      .. o.right
+      .. {w3.dir + 180} w3.right
+      .. n.right
+      .. m.right
+      .. {w2.dir + 180} w2.right
+      -- w2.left
+      .. m.left
+      .. n.left
+      .. {w3.dir} w3.left
+      .. o.left
+      .. {w1.dir} w1.left
+      -- cycle;
 
   node a = (w1.pos.x, x) dir down pen broad_nib_pen;
-  node b = (a.pos.x, x/2) dir down pen broad_nib_pen;
-  node c = (a.pos.x+ u, 0) dir down pen broad_nib_pen;
+  node b = (a.pos.x, x / 2) dir down pen broad_nib_pen;
+  node c = (a.pos.x + u, 0) dir down pen broad_nib_pen;
   node d = (c.pos.x + u, 0.2x) dir pen_angle pen broad_nib_pen;
 
-  guide skel_vertical = a.pos{down}.. {down}b.pos .. c.pos..d.pos;
-  contour c2 = a.left{down}..b.left{down}..c.left{right}..d.left--
-   d.right..c.right{left}..b.right{up}..a.right--
-   cycle;
-
-
+  guide skel_vertical = a.pos {down} .. {down} b.pos .. c.pos .. d.pos;
+  contour c2 = a.left {down}
+      .. b.left {down}
+      .. c.left {right}
+      .. d.left
+      -- d.right
+      .. c.right {left}
+      .. b.right {up}
+      .. a.right
+      -- cycle;
 }
-
 
 glyph c {
   advance = 0.8x;
-  w=x;
+  w = x;
   node m = (0.5x, 0) dir left pen broad_nib_pen;
-  node n = (0, x/2) dir up pen broad_nib_pen;
+  node n = (0, x / 2) dir up pen broad_nib_pen;
   node o = (m.pos.x, x) dir right pen broad_nib_pen;
-  node p = (w, x/2) dir down pen broad_nib_pen;
+  node p = (w, x / 2) dir down pen broad_nib_pen;
 
   guide skel = m.pos .. n.pos .. o.pos .. p.pos .. cycle;
 
@@ -76,214 +85,280 @@ glyph c {
   # and the query keeps them on the crossing as pen_angle moves.
   node w1 = directionpoint(skel, pen_angle + 290) dir pen_angle + 290 pen broad_nib_pen;
   node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
-  node w3 = directionpoint(skel, pen_angle) dir pen_angle  pen broad_nib_pen;
-  contour c1 =  {w1.dir} w1.right
-       .. o.right{o.dir+180}
-       ..w3.right{w3.dir+180}
-     .. n.right
-     ..m.right
-     .. {  w2.dir+180} w2.right
-     -- w2.left .. m.left .. n.left
-     ..w3.left{w3.dir}
-     .. o.left
-      .. {w1.dir} w1.left --cycle;
+  node w3 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
+  contour c1 = {w1.dir} w1.right
+      .. o.right {o.dir + 180}
+      .. w3.right {w3.dir + 180}
+      .. n.right
+      .. m.right
+      .. {w2.dir + 180} w2.right
+      -- w2.left
+      .. m.left
+      .. n.left
+      .. w3.left {w3.dir}
+      .. o.left
+      .. {w1.dir} w1.left
+      -- cycle;
+}
+
+glyph e {
+  advance = 0.9x;
+  w = 0.8x;
+  node a = (0, 0.4x) dir right pen broad_nib_pen;
+  node b = (0.9w, 0.8x) dir up pen broad_nib_pen;
+  node c = (w / 2, x) dir left pen broad_nib_pen;
+  node d = a.pos dir down pen broad_nib_pen;
+  node e = (c.pos.x, 0) dir down pen broad_nib_pen;
+  node f = (1.1w, x / 4) dir pen_angle pen broad_nib_pen;
+
+  guide skel = a.pos {right}
+      .. b.pos {up}
+      .. c.pos
+      .. d.pos
+      .. e.pos {right}
+      .. f.pos;
+  node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
+  node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
+  node w3 = directionpoint(skel, pen_angle, 1) dir pen_angle pen broad_nib_pen;
+  node a1 = directionpoint(skel, 300) dir pen_angle pen broad_nib_pen;
+  contour contour1 = a1.right {pen_angle}
+      #..w1.right
+      .. b.right {up}
+      .. c.right
+      .. w2.right {w2.dir}
+      .. d.right
+      .. e.right
+      .. f.right
+      -- f.left
+      #..w3.left{w3.dir+180}
+      .. e.left
+      .. d.left
+      #..w2.left
+      .. c.left
+      .. b.left {down}
+      #..w1.left
+      .. a1.left
+      -- cycle;
 }
 
 glyph h {
   advance = 0.8x;
-  w=x;
-  node a = (2/3*w, cap-u) dir up pen broad_nib_pen;
-  node b = (a.pos.x/2, cap) dir left pen broad_nib_pen;
-  node c = (0,cap-2u) dir down pen broad_nib_pen;
+  w = x;
+  node a = (2 / 3 * w, cap - u) dir up pen broad_nib_pen;
+  node b = (a.pos.x / 2, cap) dir left pen broad_nib_pen;
+  node c = (0, cap - 2u) dir down pen broad_nib_pen;
   node d = (c.pos.x, 0) dir down pen broad_nib_pen;
 
-  guide skel = a.pos.. b.pos .. c.pos--d.pos;
-  contour c1 = a.right..b.right{left}..c.right{down}..d.right{down}--
-  d.left{up}..c.left{up}..b.left{right}..a.left--
-  cycle;
+  guide skel = a.pos .. b.pos .. c.pos -- d.pos;
+  contour c1 = a.right
+      .. b.right {left}
+      .. c.right {down}
+      .. d.right {down}
+      -- d.left {up}
+      .. c.left {up}
+      .. b.left {right}
+      .. a.left
+      -- cycle;
 
-
-  node cc = c.pos + (0, -x*2/3) dir pen_angle pen broad_nib_pen;
-  node p = (cc.pos.x + x/2, x) dir right pen broad_nib_pen;
-  node q = p.pos + (1u, -x/3) dir down pen broad_nib_pen;
-  node r = q.pos + (0, -x/3) dir down pen broad_nib_pen;
-  node s = r.pos + (u, -x/3) dir right pen broad_nib_pen;
+  node cc = c.pos + (0, -x * 2 / 3) dir pen_angle pen broad_nib_pen;
+  node p = (cc.pos.x + x / 2, x) dir right pen broad_nib_pen;
+  node q = p.pos + (1u, -x / 3) dir down pen broad_nib_pen;
+  node r = q.pos + (0, -x / 3) dir down pen broad_nib_pen;
+  node s = r.pos + (u, -x / 3) dir right pen broad_nib_pen;
   node t = s.pos + 0.67(u, u) dir pen_angle pen broad_nib_pen;
-  guide arm = cc.pos..p.pos..q.pos{down}..r.pos..s.pos{right}..t.pos;
+  guide arm = cc.pos
+      .. p.pos
+      .. q.pos {down}
+      .. r.pos
+      .. s.pos {right}
+      .. t.pos;
 
-  node w1=  directionpoint(arm, pen_angle) dir pen_angle pen broad_nib_pen;
-  node w2=  directionpoint(arm, pen_angle,1) dir pen_angle pen broad_nib_pen;
+  node w1 = directionpoint(arm, pen_angle) dir pen_angle pen broad_nib_pen;
+  node w2 = directionpoint(arm, pen_angle, 1) dir pen_angle pen broad_nib_pen;
   contour c2 = cc.right
-  ..w1.right{w1.dir}
-  #..p.right
-  ..q.right{down}..r.right{down}..s.right
-  ..w2.right
-  .. t.right
-  -- t.left
-  #.. s.left{left}
-  .. w2.left
-  ..r.left{up}..q.left{up}
-  ..p.left
-  .. w1.left{w1.dir+180}
-  .. cc.left
-  --  cycle;
-
-
+      .. w1.right {w1.dir}
+      #..p.right
+      .. q.right {down}
+      .. r.right {down}
+      .. s.right
+      .. w2.right
+      .. t.right
+      -- t.left
+      #.. s.left{left}
+      .. w2.left
+      .. r.left {up}
+      .. q.left {up}
+      .. p.left
+      .. w1.left {w1.dir + 180}
+      .. cc.left
+      -- cycle;
 }
 
-
 glyph l {
-  advance = 0.6x;
+  advance = 0.5x;
 
-  node a = (0,cap-u) dir pen_angle pen broad_nib_pen;
-  node b = (u,cap) dir right pen broad_nib_pen;
-  node c = (2u,cap-2u) dir down pen broad_nib_pen;
+  node a = (0, cap - u) dir pen_angle pen broad_nib_pen;
+  node b = (u, cap) dir right pen broad_nib_pen;
+  node c = (2u, cap - 2u) dir down pen broad_nib_pen;
   node d = (c.pos.x, 2u) dir down pen broad_nib_pen;
-  node e = (d.pos.x+u, 0) dir down pen broad_nib_pen;
-  node f = (e.pos.x+u, u/2) dir pen_angle pen broad_nib_pen;
-  guide skel = a.pos.. b.pos .. c.pos..d.pos..e.pos..f.pos;
-  contour c1 = a.right..b.right{right}..c.right{down}..d.right{down}..e.right..f.right--
-  f.left..e.left..d.left{up}..c.left{up}..b.left{left}..a.left--
-  cycle;
-
+  node e = (d.pos.x + u, 0) dir down pen broad_nib_pen;
+  node f = (e.pos.x + u, u / 2) dir pen_angle pen broad_nib_pen;
+  guide skel = a.pos .. b.pos .. c.pos .. d.pos .. e.pos .. f.pos;
+  contour c1 = a.right
+      .. b.right {right}
+      .. c.right {down}
+      .. d.right {down}
+      .. e.right
+      .. f.right
+      -- f.left
+      .. e.left
+      .. d.left {up}
+      .. c.left {up}
+      .. b.left {left}
+      .. a.left
+      -- cycle;
 }
 
 glyph m {
-  advance = 2x;
-  node a = (0,x-u) dir pen_angle pen broad_nib_pen;
-  node b = (u,x) dir right pen broad_nib_pen;
-  node c = (2u,0.67x) dir down pen broad_nib_pen;
+  advance = 1.8x;
+  node a = (0, x - u) dir pen_angle pen broad_nib_pen;
+  node b = (u, x) dir right pen broad_nib_pen;
+  node c = (2u, 0.67x) dir down pen broad_nib_pen;
   node d = (c.pos.x, 0) dir down pen broad_nib_pen;
 
-  guide skel = a.pos.. b.pos{right} .. c.pos--d.pos;
+  guide skel = a.pos .. b.pos {right} .. c.pos -- d.pos;
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
 
-  w=x;
-  contour contour1 =
-  a.right
-  ..w1.right{w1.dir}
-  #..b.right
-  ..c.right{down}
-  ..d.right
-  --d.left{up}
-  ..c.left{up}
-  ..b.left{left}
-  ..w1.left
-  ..a.left
-  --cycle;
+  w = x;
+  contour contour1 = a.right
+      .. w1.right {w1.dir}
+      #..b.right
+      .. c.right {down}
+      .. d.right
+      -- d.left {up}
+      .. c.left {up}
+      .. b.left {left}
+      .. w1.left
+      .. a.left
+      -- cycle;
 
   node c1 = c.pos dir pen_angle pen broad_nib_pen;
-  node e = (c1.pos.x + w/2, x) dir right pen broad_nib_pen;
-  node f = e.pos + (1u, -x/3) dir down pen broad_nib_pen;
+  node e = (c1.pos.x + w / 2, x) dir right pen broad_nib_pen;
+  node f = e.pos + (1u, -x / 3) dir down pen broad_nib_pen;
   node g = (f.pos.x, 0) dir down pen broad_nib_pen;
 
-  guide mid_arch = d.pos--c.pos..e.pos{right}..f.pos{down}..g.pos;
-  node w21 = directionpoint(mid_arch, pen_angle,0) dir pen_angle pen broad_nib_pen;
+  guide mid_arch = d.pos -- c.pos .. e.pos {right} .. f.pos {down} .. g.pos;
+  node w21 = directionpoint(mid_arch, pen_angle, 0) dir pen_angle pen broad_nib_pen;
 
   contour c2 = c1.right
-  ..w21.right{w21.dir}
-  ..e.right{e.dir}
-  ..f.right{down}
-  ..g.right
-  -- g.left
-  ..  f.left{up}
-  ..e.left{e.dir+180}
-  .. w21.left{w21.dir+180}
-  .. c1.left
-  -- cycle;
-
+      .. w21.right {w21.dir}
+      .. e.right
+      .. f.right {down}
+      .. g.right
+      -- g.left
+      .. f.left {up}
+      .. e.left
+      .. w21.left
+      .. c1.left
+      -- cycle;
 
   node o = f.pos dir pen_angle pen broad_nib_pen;
-  node p = (o.pos.x + w/2, x) dir right pen broad_nib_pen;
-  node q = p.pos + (1u, -x/4) dir down pen broad_nib_pen;
-  node r = q.pos + (0, -x/2) dir down pen broad_nib_pen;
-  node s = (r.pos.x + u, pen_width*sin(pen_angle)*0.25) dir right pen broad_nib_pen;
+  node p = (o.pos.x + w / 2, x) dir right pen broad_nib_pen;
+  node q = p.pos + (1u, -x / 4) dir down pen broad_nib_pen;
+  node r = q.pos + (0, -x / 2) dir down pen broad_nib_pen;
+  node s = (r.pos.x + u, pen_width * sin(pen_angle) * 0.25) dir right pen broad_nib_pen;
   node u = s.pos + 0.67(u, u) dir pen_angle pen broad_nib_pen;
 
-  guide arm = o.pos..p.pos{right}..q.pos{down}..{down}r.pos..s.pos{right}..u.pos;
-  node w31 = directionpoint(arm, pen_angle,0) dir pen_angle pen broad_nib_pen;
-  node w32 = directionpoint(arm, pen_angle,1) dir pen_angle pen broad_nib_pen;
-  contour contour3 =o.right
-  .. w31.right{w31.dir}
-   ..p.right
-   ..q.right
-   ..r.right
-   ..s.right
-   .. w32.right
-  .. u.right
-   -- u.left
-   #.. s.left
-   .. w32.left
-   .. r.left
-   .. q.left
-   .. p.left
-   .. w31.left{w31.dir+180}
-   .. o.left
-   --  cycle;
-
-
+  guide arm = o.pos
+      .. p.pos {right}
+      .. q.pos {down}
+      .. {down} r.pos
+      .. s.pos {right}
+      .. u.pos;
+  node w31 = directionpoint(arm, pen_angle, 0) dir pen_angle pen broad_nib_pen;
+  node w32 = directionpoint(arm, pen_angle, 1) dir pen_angle pen broad_nib_pen;
+  contour contour3 = o.right
+      .. w31.right {w31.dir}
+      .. p.right
+      .. q.right
+      .. r.right
+      .. s.right
+      .. w32.right
+      .. u.right
+      -- u.left
+      #.. s.left
+      .. w32.left
+      .. r.left
+      .. q.left
+      .. p.left
+      .. w31.left
+      .. o.left
+      -- cycle;
 }
 
 glyph n {
-  advance = 1.6x;
-  node a = (0,x-u) dir pen_angle pen broad_nib_pen;
-  node b = (u,x) dir right pen broad_nib_pen;
-  node c = (2u,0.67x) dir down pen broad_nib_pen;
+  advance = 1.4x;
+  node a = (0, x - u) dir pen_angle pen broad_nib_pen;
+  node b = (u, x) dir right pen broad_nib_pen;
+  node c = (2u, 0.67x) dir down pen broad_nib_pen;
   node d = (c.pos.x, 0) dir down pen broad_nib_pen;
 
-  guide skel = a.pos.. b.pos{right} .. c.pos--d.pos;
+  guide skel = a.pos .. b.pos {right} .. c.pos -- d.pos;
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
 
-  contour c1 =
-  a.right
-  #..w1.right
-  ..b.right
-  ..c.right{down}
-  ..d.right
-  --d.left{up}
-  ..c.left{up}
-  ..b.left{left}
-  ..w1.left
-  ..a.left
-  --cycle;
+  contour c1 = a.right
+      #..w1.right
+      .. b.right
+      .. c.right {down}
+      .. d.right
+      -- d.left {up}
+      .. c.left {up}
+      .. b.left {left}
+      .. w1.left
+      .. a.left
+      -- cycle;
 
   node o = c.pos dir pen_angle pen broad_nib_pen;
-  node p = (c.pos.x + x/2, x) dir right pen broad_nib_pen;
-  node q = p.pos + (u, -x/3) dir down pen broad_nib_pen;
-  node r = q.pos + (0, -x/3) dir down pen broad_nib_pen;
-  node s = (r.pos.x + u, pen_width*sin(pen_angle)*0.25) dir right pen broad_nib_pen;
+  node p = (c.pos.x + x / 2, x) dir right pen broad_nib_pen;
+  node q = p.pos + (u, -x / 3) dir down pen broad_nib_pen;
+  node r = q.pos + (0, -x / 3) dir down pen broad_nib_pen;
+  node s = (r.pos.x + u, pen_width * sin(pen_angle) * 0.25) dir right pen broad_nib_pen;
   node u = s.pos + 0.67(u, u) dir pen_angle pen broad_nib_pen;
 
-  guide arm = c.pos..p.pos{right}..q.pos{down}..r.pos..s.pos{right}..u.pos;
-  node w2 = directionpoint(arm, pen_angle,0) dir pen_angle pen broad_nib_pen;
-  node w3 = directionpoint(arm, pen_angle,1) dir pen_angle pen broad_nib_pen;
-  contour c2 =o.right
-  .. w2.right{w2.dir}
-  ..p.right
-  ..q.right
-  ..r.right
-  ..s.right
-  .. w3.right
-  .. u.right
-  -- u.left
-  #.. s.left
-  .. w3.left
-  .. r.left
-  .. q.left
-  .. p.left
-  .. w2.left
-  .. o.left
-  --  cycle;
-
+  guide arm = c.pos
+      .. p.pos {right}
+      .. q.pos {down}
+      .. r.pos
+      .. s.pos {right}
+      .. u.pos;
+  node w2 = directionpoint(arm, pen_angle, 0) dir pen_angle pen broad_nib_pen;
+  node w3 = directionpoint(arm, pen_angle, 1) dir pen_angle pen broad_nib_pen;
+  contour c2 = o.right
+      .. w2.right {w2.dir}
+      .. p.right
+      .. q.right
+      .. r.right
+      .. s.right
+      .. w3.right
+      .. u.right
+      -- u.left
+      #.. s.left
+      .. w3.left
+      .. r.left
+      .. q.left
+      .. p.left
+      .. w2.left
+      .. o.left
+      -- cycle;
 }
 
-
 glyph o : U+006F {
-  advance = x;
-  node m = (x/2, 0) dir left pen broad_nib_pen;
-  node n = (0, x/2) dir up pen broad_nib_pen;
-  node o = (x/2, x) dir right pen broad_nib_pen;
-  node p = (x, x/2) dir down pen broad_nib_pen;
+  advance = 0.8x;
+  w = 0.9x;
+  node m = (w / 2, 0) dir left pen broad_nib_pen;
+  node n = (0, x / 2) dir up pen broad_nib_pen;
+  node o = (w / 2, x) dir right pen broad_nib_pen;
+  node p = (w, x / 2) dir down pen broad_nib_pen;
 
   guide skel = m.pos .. n.pos .. o.pos .. p.pos .. cycle;
 
@@ -292,99 +367,106 @@ glyph o : U+006F {
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
   node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
 
-  contour c1 =  m.right .. n.right .. {w1.dir} w1.right .. o.right
-    .. p.right .. {w2.dir} w2.right .. cycle;
-  contour c2 = m.left .. {w2.dir + 180} w2.left .. p.left .. o.left
-     .. {w1.dir + 180} w1.left .. n.left .. m.left
-   ..cycle;
+  contour c1 = m.right
+      .. n.right
+      .. {w1.dir} w1.right
+      .. o.right
+      .. p.right
+      .. {w2.dir} w2.right
+      .. cycle;
+  contour c2 = m.left
+      .. {w2.dir + 180} w2.left
+      .. p.left
+      .. o.left
+      .. {w1.dir + 180} w1.left
+      .. n.left
+      .. m.left
+      .. cycle;
 }
-
 
 glyph r {
-  advance = 1.2x;
-  node a = (0,x-u) dir pen_angle pen broad_nib_pen;
-  node b = (u,x) dir right pen broad_nib_pen;
-  node c = (2u,0.67x) dir down pen broad_nib_pen;
+  advance = x;
+  node a = (0, x - u) dir pen_angle pen broad_nib_pen;
+  node b = (u, x) dir right pen broad_nib_pen;
+  node c = (2u, 0.67x) dir down pen broad_nib_pen;
   node d = (c.pos.x, 0) dir down pen broad_nib_pen;
 
-  guide skel = a.pos.. b.pos .. c.pos--d.pos;
+  guide skel = a.pos .. b.pos .. c.pos -- d.pos;
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
 
-  contour cont1 =
-  a.right
-  ..w1.right{w1.dir}
-  #..b.right
-  ..c.right{down}
-  ..d.right
-  --d.left{up}
-  ..c.left{up}
-  ..b.left{left}
-  ..w1.left
-  ..a.left
-  --cycle;
+  contour cont1 = a.right
+      .. w1.right {w1.dir}
+      #..b.right
+      .. c.right {down}
+      .. d.right
+      -- d.left {up}
+      .. c.left {up}
+      .. b.left {left}
+      .. w1.left
+      .. a.left
+      -- cycle;
 
-  node c1 =c.pos dir pen_angle pen broad_nib_pen;
-  node p = (c.pos.x + x/2, x) dir right pen broad_nib_pen;
+  node c1 = c.pos dir pen_angle pen broad_nib_pen;
+  node p = (c.pos.x + x / 2, x) dir right pen broad_nib_pen;
   node q = p.pos + 0.66(1u, -1u) dir down pen broad_nib_pen;
 
-  guide arm = d.pos--c.pos..p.pos..q.pos{down};
-  node w2 = directionpoint(arm, pen_angle,0) dir pen_angle pen broad_nib_pen;
+  guide arm = d.pos -- c.pos .. p.pos .. q.pos {down};
+  node w2 = directionpoint(arm, pen_angle, 0) dir pen_angle pen broad_nib_pen;
 
   contour cont2 = c1.right
-  .. w2.right{w2.dir}
-  ..p.right
-  ..q.right
-  --q.left
-  ..p.left
-  ..w2.left
-  ..c1.left
-   --  cycle;
-
-
+      .. w2.right {w2.dir}
+      .. p.right
+      .. q.right
+      -- q.left
+      .. p.left
+      .. w2.left
+      .. c1.left
+      -- cycle;
 }
-
 
 glyph s : U+0073 {
   advance = 4u;
-  w=x*0.8;
+  w = x * 0.67;
   # skeleton, travelling from the upper terminal to the lower one
-  node a = (w - 0.1u, x-u/2)           dir up  pen broad_nib_pen;
-  node b = (w/2,  x) dir left pen broad_nib_pen;
-  node c = (0.1u, .75x )             dir down  pen broad_nib_pen;
-  node d = (b.pos.x, x/2)            dir right  pen broad_nib_pen;
-  node e = (a.pos.x, x/4)   dir down pen broad_nib_pen;
-  node f = (b.pos.x, 0)    dir left  pen broad_nib_pen;
-  node g = (0, x/4)                           dir 130  pen broad_nib_pen;
+  node a = (w - 0.1u, x - u / 2) dir up pen broad_nib_pen;
+  node b = (w / 2, x) dir left pen broad_nib_pen;
+  node c = (0.1u, .75x) dir down pen broad_nib_pen;
+  node d = (b.pos.x, x / 2) dir right pen broad_nib_pen;
+  node e = (a.pos.x, x / 4) dir down pen broad_nib_pen;
+  node f = (b.pos.x, 0) dir left pen broad_nib_pen;
+  node g = (0, x / 4) dir 130 pen broad_nib_pen;
 
-
-  guide skeleton = a.pos .. b.pos{left} .. c.pos .. d.pos{right}
-  .. e.pos{down} .. f.pos .. g.pos;
+  guide skeleton = a.pos
+      .. b.pos {left}
+      .. c.pos
+      .. d.pos {right}
+      .. e.pos {down}
+      .. f.pos
+      .. g.pos;
   # Thin-crossing witness nodes: banks are exactly `height` apart there,
   # and the query keeps them on the crossing as pen_angle moves.
 
   node w1 = directionpoint(skeleton, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
-  node w2 = directionpoint(skeleton, pen_angle+180, 1) dir pen_angle+180  pen broad_nib_pen;
+  node w2 = directionpoint(skeleton, pen_angle + 180, 1) dir pen_angle + 180 pen broad_nib_pen;
 
   # Terminal tangents are pinned to the skeleton's direction there.
-   contour main =
-       a.right
-       .. b.right
-       .. {w1.dir}w1.right
-       ..c.right
-       .. d.right
-       .. e.right{e.dir}
-     #  .. w2.right
-       ..f.right{f.dir}
-    ..   g.right
-    -- g.left
-    .. f.left {f.dir+180}
-    .. w2.left
-    .. e.left
-    .. d.left
-    .. c.left{c.dir+180}
-    #.. w1.left{w1.dir+180}
-    ..b.left{b.dir+180}
-    .. a.left
-    -- cycle;
+  contour main = a.right
+      .. b.right
+      .. {w1.dir} w1.right
+      .. c.right
+      .. d.right
+      .. e.right {e.dir}
+      #  .. w2.right
+      .. f.right {f.dir}
+      .. g.right
+      -- g.left
+      .. f.left {f.dir + 180}
+      .. w2.left
+      .. e.left
+      .. d.left
+      .. c.left {c.dir + 180}
+      #.. w1.left{w1.dir+180}
+      .. b.left {b.dir + 180}
+      .. a.left
+      -- cycle;
 }
-

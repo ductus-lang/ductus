@@ -5,18 +5,23 @@
 # for the letter's symmetry, and rounded caps built from ordinary
 # path points.
 params {
-  weight   = 400 in 100..900;
+  weight = 400 in 100..900;
   contrast = 0.85 in 0.4..1.0;
-  width    = 100 in 60..120;
+  width = 100 in 60..120;
 }
+
 metrics {
-  upm = 1000; x = 500; cap = 700; asc = 750; desc = -220;
+  upm = 1000;
+  x = 500;
+  cap = 700;
+  asc = 750;
+  desc = -220;
   over = 10 + weight / 200;
 }
 
 stem = 40 + 0.14 * weight;
 hair = contrast * stem;
-term = 0.75 * hair;                 # tips taper before the round cap
+term = 0.75 * hair; # tips taper before the round cap
 
 # Mirror a node across the vertical line at `axis`. Direction is
 # negated (mirror plus travel reversal), so the mirrored node reads
@@ -27,54 +32,70 @@ def mirror(n, axis) -> m {
 }
 
 glyph tha : U+0D24 {
-  bowl = 1.6 * width;               # bowl counter width
-  gap  = 0.55 * width;              # counter between the central strokes
+  bowl = 1.6 * width; # bowl counter width
+  gap = 0.55 * width; # counter between the central strokes
 
-  wx  = 45 + stem / 2;              # left outer stroke, centre
-  lcx = wx + stem + bowl;           # left central stroke, centre
-  rcx = lcx + stem + gap;           # right central stroke, centre
-  ex  = rcx + stem + bowl;          # right outer stroke, centre
+  wx = 45 + stem / 2; # left outer stroke, centre
+  lcx = wx + stem + bowl; # left central stroke, centre
+  rcx = lcx + stem + gap; # right central stroke, centre
+  ex = rcx + stem + bowl; # right outer stroke, centre
   advance = ex + stem / 2 + 45;
   mid = 0.5[lcx, rcx];
 
-  ax = 0.5[wx, lcx] + 14;           # tip hovers just right of bowl centre
+  ax = 0.5[wx, lcx] + 14; # tip hovers just right of bowl centre
 
   # Left half of the skeleton, travelling from the tip into the letter:
   # curl up over the left shoulder, down and around the left bowl, up to
   # the central peak.
-  node a  = (ax, 0)                       dir 150   width term;
-  node b  = (wx, 0.48 * x)                       dir up   width term;
-  node c = (0.5[wx, lcx], x+ hair / 2 - over)      dir right width hair;
-  node d = (mid + 2gap, b.pos.y ) dir down width hair;
-  node e = (mid, over)  dir left  width hair;
+  node a = (ax, 0) dir 150 width term;
+  node b = (wx, 0.48 * x) dir up width term;
+  node c = (0.5[wx, lcx], x + hair / 2 - over) dir right width hair;
+  node d = (mid + 2gap, b.pos.y) dir down width hair;
+  node e = (mid, over) dir left width hair;
 
-#  node lc = (lcx, 0.55 * x)                      dir up    width stem;
- # node peak = (mid, x + over - hair / 2)         dir right width hair;
+  #  node lc = (lcx, 0.55 * x)                      dir up    width stem;
+  # node peak = (mid, x + over - hair / 2)         dir right width hair;
 
   # Right half by symmetry.
   f = mirror(d, mid);
   g = mirror(c, mid);
-  h  = mirror(b,  mid);
+  h = mirror(b, mid);
   i = mirror(a, mid);
 
-
-  guide skeleton = a.pos .. b.pos..c.pos..d.pos..e.pos..f.pos..g.pos..h.pos..i.pos;
+  guide skeleton = a.pos
+      .. b.pos
+      .. c.pos
+      .. d.pos
+      .. e.pos
+      .. f.pos
+      .. g.pos
+      .. h.pos
+      .. i.pos;
 
   # Rounded caps: one extra point past each tip, half a width out along
   # the travel direction, with the semicircle's tangents pinned.
   acap = a.pos - (a.width / 2) * unitvec(a.dir);
   icap = i.pos + (i.width / 2) * unitvec(i.dir);
 
-  contour main =
-       {a.dir} a.right {a.dir}
-    .. b.right .. c.right .. d.right .. e.right .. f.right .. g.right
-    .. h.right
-    .. {i.dir} i.right {i.dir}
-    .. icap {i.dir + 90}
-    .. {i.dir + 180} i.left {i.dir + 180}
-    .. h.left .. g.left .. f.left .. e.left .. d.left .. c.left
-    .. b.left
-    ..  a.left {a.dir + 180}
-    .. acap {a.dir + 270}
-    .. cycle;
+  contour main = {a.dir} a.right {a.dir}
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.right
+      .. f.right
+      .. g.right
+      .. h.right
+      .. {i.dir} i.right {i.dir}
+      .. icap {i.dir + 90}
+      .. {i.dir + 180} i.left {i.dir + 180}
+      .. h.left
+      .. g.left
+      .. f.left
+      .. e.left
+      .. d.left
+      .. c.left
+      .. b.left
+      .. a.left {a.dir + 180}
+      .. acap {a.dir + 270}
+      .. cycle;
 }
