@@ -1,10 +1,10 @@
 import { basicSetup } from "codemirror";
-import { Decoration, EditorView } from "@codemirror/view";
+import { Decoration, EditorView, keymap } from "@codemirror/view";
 import { Compartment, EditorState, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
 import { setDiagnostics } from "@codemirror/lint";
 import { catppuccinLatte, catppuccinMocha } from "@catppuccin/codemirror";
 import { Pane } from "tweakpane";
-import init, { analyze, compile } from "../pkg/ductus.js";
+import init, { analyze, compile, format } from "../pkg/ductus.js";
 
 const STORAGE_KEY = "ductus-playground-source";
 const LEGACY_STORAGE_KEY = "chi-playground-source";
@@ -73,6 +73,7 @@ const view = new EditorView({
     // ductus uses `#` line comments. Without a Language there is no languageData,
     // so toggleComment (Ctrl+/) has no comment token to work with; supply it.
     EditorState.languageData.of(() => [{ commentTokens: { line: "#" } }]),
+    keymap.of([{ key: "Mod-Shift-f", run: formatDocument, preventDefault: true }]),
     highlightField,
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
@@ -124,6 +125,28 @@ function paintSyntax() {
     status.textContent = `line ${first.line}:${first.column} — ${first.message}${extra}`;
   }
   return errors;
+}
+
+// Format on demand (button / Mod-Shift-f). Source with syntax errors is
+// refused by the formatter, so the code is never touched while broken —
+// the status bar already points at the error. The whole document is
+// replaced, so the cursor is clamped to its old offset to stay nearby.
+function formatDocument() {
+  const source = view.state.doc.toString();
+  const result = JSON.parse(format(source));
+  if (!result.ok) {
+    status.hidden = false;
+    const { line, column, message } = result.error;
+    status.textContent = `line ${line}:${column} — ${message}`;
+    return true;
+  }
+  if (result.formatted !== source) {
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: result.formatted },
+      selection: { anchor: Math.min(view.state.selection.main.head, result.formatted.length) },
+    });
+  }
+  return true;
 }
 
 function render() {
@@ -313,6 +336,7 @@ pane.addBinding(settings, "debug").on("change", render);
 pane.addBinding(settings, "zoom", { min: 0.25, max: 8 }).on("change", (event) => {
   preview.style.setProperty("--zoom", event.value);
 });
+pane.addButton({ title: "format" }).on("click", formatDocument);
 const exportFolder = pane.addFolder({ title: "Export", expanded: false });
 const copyButton = exportFolder.addButton({ title: "copy svg" });
 copyButton.on("click", async () => {

@@ -158,6 +158,37 @@ fn compile_inner(
     })
 }
 
+#[derive(Serialize)]
+#[serde(untagged)]
+enum FormatResponse {
+    Ok { ok: bool, formatted: String },
+    Err { ok: bool, error: ErrorInfo },
+}
+
+/// Format ductus source into the canonical layout.
+///
+/// Returns a JSON string: `{ok, formatted}` or `{ok, error}`. Source with
+/// syntax errors is refused, so a failed format never loses code.
+#[wasm_bindgen]
+pub fn format(source: &str) -> String {
+    console_error_panic_hook::set_once();
+    let response = match ductus_core::format::format(source) {
+        Ok(formatted) => FormatResponse::Ok {
+            ok: true,
+            formatted,
+        },
+        Err(error) => FormatResponse::Err {
+            ok: false,
+            error: ErrorInfo {
+                line: error.line,
+                column: error.column,
+                message: error.message,
+            },
+        },
+    };
+    serde_json::to_string(&response).expect("response serializes")
+}
+
 fn highlight_query() -> &'static Query {
     static QUERY: OnceLock<Query> = OnceLock::new();
     QUERY.get_or_init(|| {
@@ -354,6 +385,20 @@ mod tests {
     fn member_property_is_property_not_keyword() {
         // The regex mode's known bug: `width` in `n.width` colored as keyword.
         assert_eq!(highlight_class("x = n.width;\n", "width"), "property");
+    }
+
+    #[test]
+    fn formats_source() {
+        let response = format("u=1;\n");
+        assert!(response.contains("\"ok\":true"), "{response}");
+        assert!(response.contains("u = 1;"), "{response}");
+    }
+
+    #[test]
+    fn format_refuses_syntax_errors() {
+        let response = format("u = ;\n");
+        assert!(response.contains("\"ok\":false"), "{response}");
+        assert!(response.contains("\"line\":1"), "{response}");
     }
 
     #[test]
