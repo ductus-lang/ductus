@@ -1,6 +1,6 @@
 # A first glyph
 
-Imagine a sketch, freely drawing anything you wish, anywhere you please. Now, meet the glyph — it's a bit more committed. A glyph isn't just a drawing; it's a promise, complete with a name, a defined width, and neatly closed contours ready for a font renderer to bring to life. In this chapter, we're going to craft the simplest glyph imaginable: a straightforward sans-serif `l`, essentially just a single rectangle. But we won't stop there; we'll transform it into something parametric, which is, after all, the true magic of using ductus.
+Imagine a sketch, freely drawing anything you wish, anywhere you please. Now, meet the glyph — it's a bit more committed. A glyph isn't just a drawing; it's a promise, complete with a name, a defined width, and  closed contours ready for a font renderer to bring to life. In this chapter, we're going to craft the simplest glyph imaginable: a straightforward sans-serif `l`, essentially just a single rectangle. But we won't stop there; we'll transform it into something parametric, which is, after all, the true magic of using ductus.
 
 ## A complete file
 
@@ -37,7 +37,7 @@ ductus build l.ductus -o l.svg        # every glyph, one sheet
 ductus build l.ductus --glyph l --debug -o l-debug.svg
 ```
 
-The `--debug` flag activates the construction view, which is the very same rendering style you'll see used throughout this book. It's a fantastic way to visualize everything: your metrics guidelines, the underlying grid, all your on-curve points, and those neatly fitted handles.
+The `--debug` flag activates the construction view, which is the very same rendering style you'll see used throughout this book. It's a fantastic way to visualize everything: your metrics guidelines, the underlying grid, all your on-curve points, and those  fitted handles.
 
 ## Making it parametric
 
@@ -51,7 +51,7 @@ metrics { upm = 1000; x = 500; cap = 700; asc = 750; desc = -220; }
 stem = 40 + 0.14 * weight;
 ```
 
-So, `weight` has now become a vibrant design axis. What that means is this single file is capable of describing every possible `weight` value, all the way from 100 to 900, simultaneously. You then pick a specific *instance* from outside the source file, perhaps by running `ductus build l.ductus --set weight=700`, or by simply adjusting a slider in the playground. Notice that `stem` is still just a regular binding, but now it gracefully adapts based on that chosen `weight`.
+So, `weight` has now become a vibrant design axis. What that means is this single file is capable of describing every possible `weight` value, all the way from 100 to 900, simultaneously. You then pick a specific *instance* from outside the source file, perhaps by running `ductus build l.ductus --set weight=700`, or by simply adjusting a slider in the playground. Notice that `stem` is still just a regular binding, but now it  adapts based on that chosen `weight`.
 
 The glyph's definition itself hardly needs touching. The main difference is that `stem` moves to the file level, and we adjust the `advance` so it elegantly grows alongside the stem, keeping those sidebearings perfectly balanced.
 
@@ -78,7 +78,7 @@ and at `--set weight=900`:
 
 Same file, same four points, same topology — just imagine, only the numbers have shifted. This beautiful invariance is a testament to ductus's interpolation-compatibility rule doing its job, and it's precisely what allows you to effortlessly sample an entire designspace from a single, unified source.
 
-> **Try it** — head over to the playground and observe the sidebearings as you adjust the `weight`. You'll notice how the advance gracefully increases with the stem, ensuring the white space on each side remains perfectly consistent. That magic comes from the `advance = stem + 190` line, marking our very first deliberate design decision in this book.
+> **Try it** — head over to the playground and observe the sidebearings as you adjust the `weight`. You'll notice how the advance  increases with the stem, ensuring the white space on each side remains perfectly consistent. That magic comes from the `advance = stem + 190` line, marking our very first deliberate design decision in this book.
 
 Finally, the debug view of the default instance, now with something to show: the metrics lines from the `metrics` block, the baseline, and the four on-curve points of the contour:
 

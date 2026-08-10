@@ -10,7 +10,7 @@ ductus build sketch.ductus -o sketch.svg
 
 Each statement you write in ductus should end with a semicolon. If you want to add a helpful note, just use `#` to start a comment. And when you need to give something a name, the `=` symbol is your friend. It's worth noting that bindings are single-assignment here. This means if you try to rebind a name within the same scope, ductus will gently let you know it's an error. This design choice ensures that every value in your file can be traced back to a single, clear line.
 
-Here's a neat trick: placing a number directly in front of an expression automatically multiplies it. This means once you've set up a unit, your coordinates will start to feel delightfully intuitive, almost like working on graph paper. For instance, `3u` simply means three units, and `2(a + b)` gives you twice the sum.
+Here's a neat trick: placing a number directly in front of an expression automatically multiplies it. This means once you've set up a unit, your coordinates will start to feel  intuitive, almost like working on graph paper. For instance, `3u` simply means three units, and `2(a + b)` gives you twice the sum.
 
 ```ductus
 u = 100;                   # our unit
@@ -21,7 +21,7 @@ The coordinate system is Cartesian and y-up. This means x grows to the right and
 
 ## Points are values
 
-In ductus, `(x, y)` creates a point. These points are quite versatile: you can add them, subtract them, and scale them with ease. What's more, a point also happily doubles as a 2-D vector, which makes calculating displacements a delightfully straightforward arithmetic task:
+In ductus, `(x, y)` creates a point. These points are quite versatile: you can add them, subtract them, and scale them with ease. What's more, a point also happily doubles as a 2-D vector, which makes calculating displacements a  straightforward arithmetic task:
 
 ```ductus
 u = 100;
@@ -38,7 +38,7 @@ Meet `t[a, b]`, an operation we call *mediation*. Chances are, this will quickly
 
 ## Curves
 
-Want to create a beautiful curve? Just connect your points with `..` instead of `--`, and ductus will gracefully fit a smooth path right through them. This is truly the heart of the language's approach to curves: you simply place your on-curve points, and a sophisticated two-parameter spline solver — a clever descendant of the one John Hobby crafted for METAFONT — intelligently selects every control handle for you, ensuring the curve flows smoothly through each and every point.
+Want to create a beautiful curve? Just connect your points with `..` instead of `--`, and ductus will  fit a smooth path right through them. This is truly the heart of the language's approach to curves: you simply place your on-curve points, and a sophisticated two-parameter spline solver — a clever descendant of the one John Hobby crafted for METAFONT — intelligently selects every control handle for you, ensuring the curve flows smoothly through each and every point.
 
 ```ductus
 u = 100;
@@ -48,7 +48,7 @@ draw(p);
 
 You'll notice that no handles ever appear in your source code, and they never will. If a curve isn't quite shaping up how you envisioned, your instinct won't be to fiddle with handles. Instead, you'll simply add another point exactly where you feel the geometry needs a bit more definition, or perhaps you'll constrain its direction.
 
-> **Try it** — Feel encouraged to paste this wave example into the playground and have some fun pushing those numbers around. Try raising a crest, adding a fifth point, or even deleting one. Don't worry, you really can't break anything. The fitter is wonderfully responsive, re-solving the curve with every keystroke, and watching it gracefully adapt is truly the quickest way to build a rapport with it.
+> **Try it** — Feel encouraged to paste this wave example into the playground and have some fun pushing those numbers around. Try raising a crest, adding a fifth point, or even deleting one. Don't worry, you really can't break anything. The fitter is wonderfully responsive, re-solving the curve with every keystroke, and watching it  adapt is truly the quickest way to build a rapport with it.
 
 ## Directions
 
@@ -66,11 +66,11 @@ draw(p);
 draw(q shifted (5u, 0));            # beside it, to compare
 ```
 
-Notice how the wave on the left follows the fitter's gentle, natural route. The wave on the right, however, is beautifully constrained, forced to gracefully leave point `a` straight up and then elegantly dive into `b` straight down. (By the way, `shifted` is just one of ductus's handy transform operators – we'll dedicate an entire chapter to them later.)
+Notice how the wave on the left follows the fitter's gentle, natural route. The wave on the right, however, is  constrained, forced to  leave point `a` straight up and then elegantly dive into `b` straight down. (By the way, `shifted` is just one of ductus's handy transform operators – we'll dedicate an entire chapter to them later.)
 
 ## Mixing lines and curves
 
-You'll be pleased to know that `--` for lines and `..` for curves can be mixed together quite freely within a single path. When a line gracefully meets a curve, that intersection point effortlessly transforms into a natural line/curve corner. The curve will arrive perfectly tangent to whatever direction it needs, while the line, of course, remains wonderfully straight.
+You'll be pleased to know that `--` for lines and `..` for curves can be mixed together quite freely within a single path. When a line  meets a curve, that intersection point effortlessly transforms into a natural line/curve corner. The curve will arrive perfectly tangent to whatever direction it needs, while the line, of course, remains wonderfully straight.
 
 ```ductus
 u = 100;
@@ -92,13 +92,13 @@ draw(wave);
 draw(scallop shifted (5u, 0));
 ```
 
-We're using the very same five points in both examples. On the left, you can see how the fitter keeps the curve beautifully smooth right through the middle point, allowing it to gracefully swing through a rounded valley. On the right, however, that middle point becomes a deliberate corner. Here, each side is fitted entirely independently, causing the two arches to end quite steeply, meeting in a distinct cusp. Corners like these — strategically placed where two curves should visibly break apart — are truly the seeds for crafting every teardrop terminal and ink trap we'll explore in Part III.
+We're using the very same five points in both examples. On the left, you can see how the fitter keeps the curve  smooth right through the middle point, allowing it to  swing through a rounded valley. On the right, however, that middle point becomes a deliberate corner. Here, each side is fitted entirely independently, causing the two arches to end quite steeply, meeting in a distinct cusp. Corners like these — strategically placed where two curves should visibly break apart — are truly the seeds for crafting every teardrop terminal and ink trap we'll explore in Part III.
 
 Here's a little confession, with a valuable lesson tucked inside: in two earlier drafts of this very example, I tried marking the tip of a teardrop as a corner, and absolutely nothing changed. The shape stubbornly remained a smooth egg both times. The trick is, at a perfectly symmetric point, the tangents that the `{corner}` specifier frees up can simply choose to align perfectly with what the smooth ones would have done anyway. Think of `{corner}` as granting the fitter the *freedom* to break smoothness; it's the surrounding geometry that ultimately decides whether that freedom actually makes a visible difference.
 
 ## Reading the sheet
 
-Everything you draw in ductus gracefully appears together on a single sheet. If you ever want a peek behind the curtain, simply pass `--debug` to `ductus build` (or toggle the debug option in the playground), and ductus will thoughtfully draw a coordinate grid right underneath your work. Our debug figures throughout this book also take advantage of this, just like this rendering of our earlier wave:
+Everything you draw in ductus  appears together on a single sheet. If you ever want a peek behind the curtain, simply pass `--debug` to `ductus build` (or toggle the debug option in the playground), and ductus will thoughtfully draw a coordinate grid right underneath your work. Our debug figures throughout this book also take advantage of this, just like this rendering of our earlier wave:
 
 ```ductus hide
 u = 100;

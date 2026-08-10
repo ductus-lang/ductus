@@ -44,12 +44,12 @@ Here's some fine print worth knowing:
 
 - `directionpoint` cares about the **orientation** of the tangent, not just whether it's parallel. For instance, 0° means the path is traveling rightward. This is super handy for common tasks like finding where a pen's thin stroke crosses a certain direction.
 - When we say "First" for both `directionpoint` and `intersection`, we mean the point with the least position along the first path. This involves checking its segments in path order, and then the earliest time within a segment. `directionpoint` also offers an optional index, allowing you to count matches in that same order, starting from 0. So, `directionpoint(p, d, 0)` is simply another way to write `directionpoint(p, d)`. If a match happens to land exactly on a joint (or on a closed path's start point), it counts as a single match.
-- `intersection` delivers exact results when applied to two line segments. This is where those classic METAFONT "whatever" idioms—like a stem meeting a diagonal or a serif gracefully touching a stem—really shine.
+- `intersection` delivers exact results when applied to two line segments. This is where those classic METAFONT "whatever" idioms—like a stem meeting a diagonal or a serif  touching a stem—really shine.
 - Keep in mind that zero-length segments (like what you'd find with `roundrect` when its radius is 0) don't have a tangent and won't show up in these queries.
 
 ## Shape constructors
 
-Meet `circle`, `ellipse`, `roundrect`, and `superellipse`—these delightful functions return closed, counterclockwise path values. They're so important, they even get their very own [next chapter](shape-constructors.md) to shine in.
+Meet `circle`, `ellipse`, `roundrect`, and `superellipse`—these  functions return closed, counterclockwise path values. They're so important, they even get their very own [next chapter](shape-constructors.md) to shine in.
 
 ## Sketch commands
 

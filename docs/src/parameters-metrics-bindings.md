@@ -73,7 +73,7 @@ So, that `bulge` value of 0.0407 font units, when compared to a radius of 150, p
 ```ductus set="size=460"
 ```
 
-The figure you see above displays the very same file, but this time with `--set size=460` applied. If you were to run `ductus inspect dot.ductus --set size=460` yourself, you'd observe `r` at 230 and `bulge` neatly scaled up right alongside it, still maintaining that consistent 0.027 %.
+The figure you see above displays the very same file, but this time with `--set size=460` applied. If you were to run `ductus inspect dot.ductus --set size=460` yourself, you'd observe `r` at 230 and `bulge`  scaled up right alongside it, still maintaining that consistent 0.027 %.
 
 > **Try it** — load this file in the playground and drag `size` while
 > watching the inspector. `bulge` moves, but its share of `r` never
@@ -83,4 +83,4 @@ The figure you see above displays the very same file, but this time with `--set 
 
 ## Immutability, and why
 
-Here's an important principle: every single binding in ductus — whether it's a parameter, a metric, a top-level declaration, or glyph-local — is designed for single-assignment. Trying to rebind a name within the same scope will actually result in an error. Of course, inner scopes, like those within glyph bodies or macro bodies, are allowed to shadow names from outer scopes. When you combine this immutability with ductus's single-pass evaluation, it makes reasoning about your ductus file delightfully straightforward. Any value you see can be traced back to one specific line, evaluated just once, using values that were clearly defined above it. So, if something ever seems amiss, you know there's exactly one place you need to investigate.
+Here's an important principle: every single binding in ductus — whether it's a parameter, a metric, a top-level declaration, or glyph-local — is designed for single-assignment. Trying to rebind a name within the same scope will actually result in an error. Of course, inner scopes, like those within glyph bodies or macro bodies, are allowed to shadow names from outer scopes. When you combine this immutability with ductus's single-pass evaluation, it makes reasoning about your ductus file  straightforward. Any value you see can be traced back to one specific line, evaluated just once, using values that were clearly defined above it. So, if something ever seems amiss, you know there's exactly one place you need to investigate.

@@ -28,7 +28,7 @@ Now, a quick heads-up: trying to add `point + number` directly will lead to an e
 
 ## Mediation
 
-Prepare to meet ductus's secret weapon: `t[a, b]`. This wonderful expression calculates a value that's `t` of the way from `a` to `b`. It works beautifully for both numbers and points. Seriously, this is ductus's most-used expression. You'll find yourself reaching for it constantly:
+Prepare to meet ductus's secret weapon: `t[a, b]`. This wonderful expression calculates a value that's `t` of the way from `a` to `b`. It works  for both numbers and points. Seriously, this is ductus's most-used expression. You'll find yourself reaching for it constantly:
 
 ```ductus norender
 0.5[a, b]              # the midpoint
@@ -36,7 +36,7 @@ Prepare to meet ductus's secret weapon: `t[a, b]`. This wonderful expression cal
 (w / (w + v))[a, b]    # t can be any numeric expression
 ```
 
-To get a feel for it, try reading `t[a, b]` aloud as "*t* between *a* and *b*". Since ductus wisely avoids traditional indexing, this postfix bracket notation is delightfully unambiguous. When you're working with points, mediation truly shines, making sure your construction lines stay tidy. Just imagine it ruling a perfect ladder between two rails, all without you ever needing to name a single intermediate coordinate. It's really quite elegant:
+To get a feel for it, try reading `t[a, b]` aloud as "*t* between *a* and *b*". Since ductus wisely avoids traditional indexing, this postfix bracket notation is  unambiguous. When you're working with points, mediation truly shines, making sure your construction lines stay tidy. Just imagine it ruling a perfect ladder between two rails, all without you ever needing to name a single intermediate coordinate. It's really quite elegant:
 
 ```ductus
 u = 100;

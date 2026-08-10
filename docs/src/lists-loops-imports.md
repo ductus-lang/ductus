@@ -68,7 +68,7 @@ A few quick rules to keep in mind about importing:
 - **Include-once** per canonical file: No need to worry about duplicate evaluations. Even if you import the same file via different paths, ductus will only evaluate it once. Also, do keep an eye out for import cycles; those will trigger an error.
 - **Relative to the importing file**, which is super handy. This setup means a library can confidently import its own internal helpers, no matter where your main project file decides to call home.
 - **Errors carry the file name** — If something goes wrong, say a binding is broken in an imported file, ductus will let you know by reporting the error against that specific file. It helps keep debugging clear.
-- **The playground rejects imports** for now: Just a heads-up that the playground isn't quite ready for imports yet. That's because file resolution is handled by the host environment, and, well, your browser doesn't have a filesystem to browse. The CLI, on the other hand, handles them beautifully, resolving paths relative to your source file.
+- **The playground rejects imports** for now: Just a heads-up that the playground isn't quite ready for imports yet. That's because file resolution is handled by the host environment, and, well, your browser doesn't have a filesystem to browse. The CLI, on the other hand, handles them , resolving paths relative to your source file.
 
 So, there you have it. Between `def` for defining things and `import` for bringing in outside resources, you've got ductus's entire story for reusing your work. Think of it this way: macros are perfect for sharing clever constructions right within a single file, while imports are designed for sharing entire files across a whole family of designs.
 

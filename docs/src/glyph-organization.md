@@ -1,6 +1,6 @@
 # Glyph organization
 
-Up until now, we've thought of a glyph as a name paired with its contours. But as you start building an entire *font* full of them, some important organizational questions pop up. You might wonder: what's a proper name for a glyph, what essential bits go inside its definition, and how exactly do a bunch of files collaborate on a shared design. Luckily, Ductus's answers to these questions are nothing new – they're all concepts you've already bumped into, just neatly arranged.
+Up until now, we've thought of a glyph as a name paired with its contours. But as you start building an entire *font* full of them, some important organizational questions pop up. You might wonder: what's a proper name for a glyph, what essential bits go inside its definition, and how exactly do a bunch of files collaborate on a shared design. Luckily, Ductus's answers to these questions are nothing new – they're all concepts you've already bumped into, just  arranged.
 
 ## Names and codepoints
 
@@ -18,14 +18,14 @@ When it comes to the glyph's body, only four specific kinds of statements actual
 
 - `advance = expr;` — This one is essential: it sets the horizontal space your glyph takes up.
 - `contour name = path;` — These define the actual 'ink' that gets filled, and remember, they always need to end with `cycle` to close the shape.
-- `guide name = path;` — Think of guides as your trusty construction geometry: things like skeletons, diagonals, or those helpful alignment lines. They're never filled with ink and you'll only see them in the debug view. Since guide names are just regular path bindings, you can poke around with them using `directionpoint` and other handy tools. Essentially, a guide is a piece of documentation that your compiler thoughtfully checks and your tooling beautifully draws for you.
-- `anchor name = point;` — These create named positions, perfect for attaching marks. Imagine where an accent might gracefully perch over this glyph, or where a matra gently clips on. Ductus itself simply records and displays these points (you'll spot them in the debug view or with `ductus inspect`), but the actual attachment magic happens with the font compiler further down the line.
+- `guide name = path;` — Think of guides as your trusty construction geometry: things like skeletons, diagonals, or those helpful alignment lines. They're never filled with ink and you'll only see them in the debug view. Since guide names are just regular path bindings, you can poke around with them using `directionpoint` and other handy tools. Essentially, a guide is a piece of documentation that your compiler thoughtfully checks and your tooling  draws for you.
+- `anchor name = point;` — These create named positions, perfect for attaching marks. Imagine where an accent might  perch over this glyph, or where a matra gently clips on. Ductus itself simply records and displays these points (you'll spot them in the debug view or with `ductus inspect`), but the actual attachment magic happens with the font compiler further down the line.
 
 ## Sharing a design: one file, then several
 
-When you keep related glyphs together in a single file, they naturally share everything defined above them – that's just how scoping works its charm. Take a peek at the playground's `latin_set.ductus` file, for instance. It crafts an entire broad-nib lowercase alphabet this very way: a single `params` block, one shared pen, and then glyph after delightful glyph.
+When you keep related glyphs together in a single file, they naturally share everything defined above them – that's just how scoping works its charm. Take a peek at the playground's `latin_set.ductus` file, for instance. It crafts an entire broad-nib lowercase alphabet this very way: a single `params` block, one shared pen, and then glyph after  glyph.
 
-But what happens when one file grows a bit too big to manage comfortably? That's where `import` (a friend you met in the language chapters) steps in as your go-to organizational superhero. You can neatly tuck away your axes, metrics, stroke weights, and construction macros into a dedicated 'foundation' file, and then simply have each glyph file – or even an entire family file – import it. Here's a glimpse at our example foundation for this chapter:
+But what happens when one file grows a bit too big to manage comfortably? That's where `import` (a friend you met in the language chapters) steps in as your go-to organizational superhero. You can  tuck away your axes, metrics, stroke weights, and construction macros into a dedicated 'foundation' file, and then simply have each glyph file – or even an entire family file – import it. Here's a glimpse at our example foundation for this chapter:
 
 ```ductus norender
 # examples/family.ductus
@@ -78,7 +78,7 @@ glyph c : U+0063 {
 
 The sheet will present both glyphs, carefully advanced and nestled side by side, exactly as they appear in your source file. The 'c' cleverly reuses the 'o's bowl, simply choosing not to follow the path down the right side. It's the same set of nodes, just a different contour story. This perfectly illustrates the pattern from the macros chapter – where macros kindly hand back geometry, and callers then get to craft their own paths – now doing some fantastic family-scale heavy lifting.
 
-So, for a real-world font family, here's a layout that tends to work beautifully:
+So, for a real-world font family, here's a layout that tends to work :
 
 ```text
 family.ductus          # imports everything below; ductus build family.ductus
@@ -93,7 +93,7 @@ A neat detail: `import` works as an include-once mechanism and resolves paths re
 
 ## Anchors and guides in the debug view
 
-In the debug rendering, you'll see everything the glyph body declared beautifully labeled. Take a look at those spine guides, each individual node, and the 'o's `top` anchor gracefully floating above its ring.
+In the debug rendering, you'll see everything the glyph body declared  labeled. Take a look at those spine guides, each individual node, and the 'o's `top` anchor  floating above its ring.
 
 ```ductus glyph=o debug
 ```

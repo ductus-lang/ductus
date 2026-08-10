@@ -48,10 +48,10 @@ In ductus, a contour is fundamentally defined as **one path expression**. This m
 
 This design choice isn't accidental; it's quite deliberate. Think about it: path concatenation often requires a whole set of rules for merging the 'seam.' You'd need to decide whose direction constraint wins, whether a junction should be smooth or a sharp corner, and all those rules would silently operate, invisible at every single joint. Ductus takes a different route. Here, the caller explicitly defines each junction because, after all, they are crafting the entire path themselves. This keeps what a macro computes wonderfully separate from how the contour ultimately uses those values.
 
-You'll see this principle again in Part III, where macros return *nodes* for precisely the same reason. Take the `bowl()` macro, for instance: it hands you four key 'skeleton' points, and then the glyph itself gets to decide exactly how its contours gracefully travel through them.
+You'll see this principle again in Part III, where macros return *nodes* for precisely the same reason. Take the `bowl()` macro, for instance: it hands you four key 'skeleton' points, and then the glyph itself gets to decide exactly how its contours  travel through them.
 
 Macros can absolutely call other macros. Imagine building a fancy serif from smaller corner pieces, or crafting an entire letter part out of those serifs. However, there are a couple of ground rules: recursion is not allowed, and just like `params` and `pen` blocks, macro definitions must live at the top level of your code.
 
 ## Scope
 
-A macro body operates within its own ordinary scope. This means it comfortably sees all top-level bindings—like your `params`, `metrics`, and anything else defined earlier on. Its own parameters will gracefully shadow any outer names, and any local variables within—that's everything you don't explicitly export—will simply vanish once you hit that closing brace. It's a tidy system: nothing leaks out. What you don't choose to export simply ceases to exist once you step beyond those protective braces.
+A macro body operates within its own ordinary scope. This means it comfortably sees all top-level bindings—like your `params`, `metrics`, and anything else defined earlier on. Its own parameters will  shadow any outer names, and any local variables within—that's everything you don't explicitly export—will simply vanish once you hit that closing brace. It's a tidy system: nothing leaks out. What you don't choose to export simply ceases to exist once you step beyond those protective braces.

@@ -41,12 +41,12 @@ glyph o : U+006F {
 
 Here's everything `ductus build --debug` (or the playground's debug toggle) will draw for you, laid out from back to front:
 
-- **The grid** — Think of it as your trusty graph paper, marked out in font units. You'll see fine lines every 10 units, heavier ones every 50, and the heaviest lines every 100. There's also a major line neatly pinned to the baseline and to each glyph's origin, making it easy to read coordinates directly.
+- **The grid** — Think of it as your trusty graph paper, marked out in font units. You'll see fine lines every 10 units, heavier ones every 50, and the heaviest lines every 100. There's also a major line  pinned to the baseline and to each glyph's origin, making it easy to read coordinates directly.
 - **Metrics lines** — These helpful horizontal lines mark out every renderer-meaningful metric, like `x`, `cap`, `asc`, `desc`, and overshoot. Each is labeled at the margin, and the baseline stands out with a heavier line.
 - **Guides** — Your `guide` paths appear as graceful gray spines, unfilled, tracing the paths you've laid out.
 - **Nodes** — You'll spot a bright pink marker for each skeleton node, complete with an arrow to show its `dir`. Plus, there's a blue dot for every derived point, like `left`, `right`, and `tip`/`tail` when the node has a pen. If a stroke bank looks a bit off, compare it against these dots first. Remember, the dots are exact, while the bank between them is fitted.
 - **On-curve points and handles** — Here's where the rubber meets the road. Every point the contours pass through is shown, along with the fitted control handles as thin gray struts. This is where the fitter's decisions truly become visible.
-- **Anchors** — Anchors pop up as neatly labeled mauve markers, just like the `top` you see above the ring.
+- **Anchors** — Anchors pop up as  labeled mauve markers, just like the `top` you see above the ring.
 
 This careful layering helps you answer that age-old question — *is the problem my skeleton, my derived points, or the fit?* You can check each step in turn: is the guide looking right, are the node dots where they should be, and then, finally, take a close look at those handles.
 
@@ -54,7 +54,7 @@ This careful layering helps you answer that age-old question — *is the problem
 
 Consider this your little field guide to common mishaps. Everything on it appears somewhere earlier in this book — and more than one entry was met the hard way while the book's own figures were being drawn:
 
-- **A fat crossing where a stroke should pinch** — Oh, that frustrating moment when a stroke should be gracefully pinching, but instead you get a chunky crossing. This often means a thin crossing without a witness node. If the debug view shows no node dot anywhere near the waist, the `directionpoint` witness from the pens chapter is usually the perfect fix.
+- **A fat crossing where a stroke should pinch** — Oh, that frustrating moment when a stroke should be  pinching, but instead you get a chunky crossing. This often means a thin crossing without a witness node. If the debug view shows no node dot anywhere near the waist, the `directionpoint` witness from the pens chapter is usually the perfect fix.
 - **An inner bank that folds over itself** — Sometimes an inner bank gets a little ambitious and folds right over itself. This typically happens when the stroke width pushes past the skeleton's radius of curvature, a classic trap from the pressure chapter. You'll see the outline crossing itself near the tightest turn. The solution is often to add more samples or reduce the weight in that tricky spot.
 - **A cap that bulges past its stroke** — Ever notice a cap looking a bit too proud, bulging past its stroke? That's usually a traced terminal on a flat pen. The fix is to simply switch to `tipcap`/`tailcap`.
 - **A counter that fills solid** — When a counter decides to go rogue and fill itself solid, it's often because both contours are winding in the same direction. The renderer will actually warn you about this one, saying `nested contours share a winding direction`. The solution, as covered in the nodes chapter, is to reverse the inner traversal.
@@ -62,7 +62,7 @@ Consider this your little field guide to common mishaps. Everything on it appear
 
 ## Probing numbers
 
-While the debug view helps you spot *where* things are, probe bindings are your go-to for figuring out *how big* they are. Any measurement worth checking is certainly worth a binding. It costs just one line of code, shows up neatly in `ductus inspect` and the playground inspector, and even tracks along with your sliders:
+While the debug view helps you spot *where* things are, probe bindings are your go-to for figuring out *how big* they are. Any measurement worth checking is certainly worth a binding. It costs just one line of code, shows up  in `ductus inspect` and the playground inspector, and even tracks along with your sliders:
 
 ```ductus norender
 glyph o {

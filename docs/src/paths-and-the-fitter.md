@@ -8,7 +8,7 @@ At the heart of ductus, you'll find paths: an ordered list of on-curve points, e
 p = a {up} .. b .. {theta} c -- d .. e{corner} .. cycle;
 ```
 
-- `a .. b` — This creates a lovely smooth curve joint, with the solver gracefully choosing the tangents for you.
+- `a .. b` — This creates a lovely smooth curve joint, with the solver  choosing the tangents for you.
 - `a -- b` — Just a good old straight line.
 - `a {theta} ..` — Here, you're setting a specific direction constraint for the path *leaving* `a`. Similarly, `.. {theta} b` constrains the direction *entering* `b`. Feel free to put any numeric expression in degrees inside those braces — `{up}` does the trick because `up` is defined as 90 degrees, and `{angle(b - a)}` is a clever way to aim one point directly at another.
 - `e{corner}` — This marks a free corner, meaning each side of the point gets fitted independently, with no smoothness flowing across it. You can also create a corner by giving a point *different* entering and leaving direction constraints; the fitter will then honor those exact tangents.
@@ -34,7 +34,7 @@ Believe it or not, that's a circle accurate to a remarkable 0.027 % of its radiu
 
 ## The one gotcha: squashed circles
 
-Now, this same delightful property comes with a small but important caveat. While the fitter's handle lengths are spot-on for circles at every angle, this precision comes at a cost: it means the fit isn't affine-equivariant. What does that mean? Well, transforming a curve *after* it's fitted will give you a different result than fitting the points *after* they've been transformed. In practical terms, this little quirk usually shows up in just one scenario: creating an ellipse by simply scaling a circle.
+Now, this same  property comes with a small but important caveat. While the fitter's handle lengths are spot-on for circles at every angle, this precision comes at a cost: it means the fit isn't affine-equivariant. What does that mean? Well, transforming a curve *after* it's fitted will give you a different result than fitting the points *after* they've been transformed. In practical terms, this little quirk usually shows up in just one scenario: creating an ellipse by simply scaling a circle.
 
 | aspect ratio | error, as a share of the long radius |
 |---|---|
@@ -65,13 +65,13 @@ draw(crest + (-15, -15) -- crest + (15, 15));
 draw(crest + (-15, 15) -- crest + (15, -15));
 ```
 
-`direction(p, t)` acts as the inverse of `directionpoint`, revealing the tangent angle at a specific moment in time. It's important to remember that `directionpoint` looks for a match in *orientation*, not just parallelism — so 0° means moving rightward, while 180° indicates a leftward journey. If no such point can be found, or if you try to query past the path's end, it will gracefully let you know with an error.
+`direction(p, t)` acts as the inverse of `directionpoint`, revealing the tangent angle at a specific moment in time. It's important to remember that `directionpoint` looks for a match in *orientation*, not just parallelism — so 0° means moving rightward, while 180° indicates a leftward journey. If no such point can be found, or if you try to query past the path's end, it will  let you know with an error.
 
 For a wonderfully wavy path, you might find several points sharing the same tangent. No worries, an optional 0-based index is there to help you pick out the later ones. Looking at our example path above, `directionpoint(p, 0)` will happily find the crest, and `directionpoint(p, 0, 1)` will pinpoint the trough that comes right after it. Just be mindful not to ask for more matches than actually exist, as that would result in an error.
 
 ## intersection
 
-Say hello to `intersection(p, q)`, which helpfully returns the very first point where two paths decide to cross each other — with "first" always referring to the earliest point along path `p`. When it comes to two line segments, this function is perfectly exact, and it gracefully handles all those workhorse scenarios that METAFONT's `whatever` solver made famous: for instance, where exactly does a diagonal line cross a stem?
+Say hello to `intersection(p, q)`, which helpfully returns the very first point where two paths decide to cross each other — with "first" always referring to the earliest point along path `p`. When it comes to two line segments, this function is perfectly exact, and it  handles all those workhorse scenarios that METAFONT's `whatever` solver made famous: for instance, where exactly does a diagonal line cross a stem?
 
 ```ductus
 u = 100;
@@ -86,4 +86,4 @@ draw(hit + (-15, -15) -- hit + (15, 15));
 draw(hit + (-15, 15) -- hit + (15, -15));
 ```
 
-Because these clever queries employ the very same fitter as the renderer, you can trust that a curved path is always 'cut' precisely where it's *drawn*. It's a wonderful principle: what you measure is truly what you see. You'll find Part III relies on this constantly — `directionpoint` becomes your go-to for finding perfect pen waists, and `intersection` is invaluable for building elegant joints. For now, just tuck away this delightful thought: a path in ductus isn't just a line on a page; it's a rich source of information you can always inquire about.
+Because these clever queries employ the very same fitter as the renderer, you can trust that a curved path is always 'cut' precisely where it's *drawn*. It's a wonderful principle: what you measure is truly what you see. You'll find Part III relies on this constantly — `directionpoint` becomes your go-to for finding perfect pen waists, and `intersection` is invaluable for building elegant joints. For now, just tuck away this  thought: a path in ductus isn't just a line on a page; it's a rich source of information you can always inquire about.

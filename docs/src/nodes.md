@@ -31,7 +31,7 @@ draw(a.left {a.dir} .. {b.dir} b.left);     # each bank echoes it
 draw(a.right {a.dir} .. {b.dir} b.right);
 ```
 
-These banks are simply ordinary curves, passing through ordinary points. The neat trick is that they intelligently reuse the node's direction as their own constraint, which is precisely what makes them glide so gracefully parallel to the skeleton. Now, let's close off those ends, and voilà, we have a complete contour:
+These banks are simply ordinary curves, passing through ordinary points. The neat trick is that they intelligently reuse the node's direction as their own constraint, which is precisely what makes them glide so  parallel to the skeleton. Now, let's close off those ends, and voilà, we have a complete contour:
 
 ```ductus
 u = 100;
@@ -44,11 +44,11 @@ fill(a.right {a.dir} .. {b.dir} b.right
 
 Picture this path: we journey out along the right bank, then take a straight shot across the far end, cruise back along the left bank (notice how every direction is cleverly reversed with `+ 180`), and finally, complete the loop by crossing the near end with `cycle`. Those two neat, straight crossings are what we call *cut terminals*. They're the most straightforward way a stroke can end, and we'll dive much deeper into them in a dedicated chapter later on.
 
-It's important to notice what ductus *didn't* do here. It didn't perform any complex curve offsetting. Instead, it precisely offset four *points* and then skillfully fitted curves right through them. If a truly parallel curve and our fitted bank ever have a minor disagreement, the solution is delightfully simple, just like many other things in ductus: we simply add a witness point. The pens chapter will explain this in fine detail.
+It's important to notice what ductus *didn't* do here. It didn't perform any complex curve offsetting. Instead, it precisely offset four *points* and then skillfully fitted curves right through them. If a truly parallel curve and our fitted bank ever have a minor disagreement, the solution is  simple, just like many other things in ductus: we simply add a witness point. The pens chapter will explain this in fine detail.
 
 ## Asymmetric width
 
-By default, `width w` beautifully distributes the stroke evenly, assigning `w/2` to each bank. But what if you need more control? `width (wl, wr)` lets you specify the banks separately. In fact, `width w` is just a neat shorthand for `width (w/2, w/2)`. This lovely asymmetry is precisely how we articulate off-axis stress in our designs. Let's observe the same elegant C-shaped stroke, first with its weight perfectly centered, and then with that weight playfully pushed towards the outer bank:
+By default, `width w`  distributes the stroke evenly, assigning `w/2` to each bank. But what if you need more control? `width (wl, wr)` lets you specify the banks separately. In fact, `width w` is just a neat shorthand for `width (w/2, w/2)`. This lovely asymmetry is precisely how we articulate off-axis stress in our designs. Let's observe the same elegant C-shaped stroke, first with its weight perfectly centered, and then with that weight playfully pushed towards the outer bank:
 
 ```ductus
 u = 100;
@@ -70,14 +70,14 @@ Notice that both of these strokes maintain a thickness of 60 units, and their un
 
 ## The nib axis
 
-Now, let's explore one more intriguing clause. Normally, width spreads out perpendicular to the direction of travel, as shown by `unitvec(dir + 90)` in our earlier formulas. But with `nib phi`, you gain the delightful ability to override that default axis:
+Now, let's explore one more intriguing clause. Normally, width spreads out perpendicular to the direction of travel, as shown by `unitvec(dir + 90)` in our earlier formulas. But with `nib phi`, you gain the  ability to override that default axis:
 
 ```ductus norender
 node k = (x, y) dir theta width w nib phi;
 # k.left = k.pos + wl * unitvec(phi)  — phi, not theta + 90
 ```
 
-Imagine a *fixed* nib axis, one that remains steadfast regardless of the stroke's travel direction. This effectively simulates a broad pen: the stroke becomes wonderfully thick when it travels across the axis, and elegantly thin when it glides along it. No complex pen machinery needed here, just the same familiar bowl, but this time with every node's nib axis gracefully pinned to 30°:
+Imagine a *fixed* nib axis, one that remains steadfast regardless of the stroke's travel direction. This effectively simulates a broad pen: the stroke becomes wonderfully thick when it travels across the axis, and elegantly thin when it glides along it. No complex pen machinery needed here, just the same familiar bowl, but this time with every node's nib axis  pinned to 30°:
 
 ```ductus
 u = 100;
@@ -98,7 +98,7 @@ node b = (4u, 2.4u) dir up width 70 nib 30;
 fill(a.right -- b.right -- b.left -- a.left -- cycle);
 ```
 
-Take a look at the upright stroke nestled next to our bowl. It beautifully showcases another signature of broad-pen behavior: its cut ends neatly align with the nib axis, perfectly capturing the entry angle a broad pen would naturally leave. The bowl, however, subtly hints at a fascinating challenge. Somewhere along its path, between two nodes, the travel direction crosses the nib axis. At precisely that point, a true stroke would gracefully thin to *nothing*. The good news is, the upcoming pens chapter will teach us how to articulate this behavior perfectly.
+Take a look at the upright stroke nestled next to our bowl. It  showcases another signature of broad-pen behavior: its cut ends  align with the nib axis, perfectly capturing the entry angle a broad pen would naturally leave. The bowl, however, subtly hints at a fascinating challenge. Somewhere along its path, between two nodes, the travel direction crosses the nib axis. At precisely that point, a true stroke would  thin to *nothing*. The good news is, the upcoming pens chapter will teach us how to articulate this behavior perfectly.
 
 ## Building the o
 
@@ -120,7 +120,7 @@ hair = contrast * stem;
 
 `stem` defines our lovely thick stroke, while `hair` handles the delicate thin one. And `over`? That's our clever overshoot value, determining just how much a round shape needs to gently extend beyond the flat metrics to *appear* perfectly aligned.
 
-Our skeleton is beautifully formed by four nodes arranged on an ellipse, gracefully traveling counterclockwise. It moves across the top going leftward, sweeps down the left side, glides along the bottom heading rightward, and finally rises up the right side. Horizontal movements are assigned the `hair` thickness, while vertical movements take on the `stem` thickness. This simple distinction is the secret to all the delightful contrast in our design.
+Our skeleton is  formed by four nodes arranged on an ellipse,  traveling counterclockwise. It moves across the top going leftward, sweeps down the left side, glides along the bottom heading rightward, and finally rises up the right side. Horizontal movements are assigned the `hair` thickness, while vertical movements take on the `stem` thickness. This simple distinction is the secret to all the  contrast in our design.
 
 ```ductus glyph=o debug
 glyph o : U+006F {
@@ -170,7 +170,7 @@ Without the debug overlay:
 ```ductus glyph=o
 ```
 
-And here's the magic: because every single number in our design gracefully traces back to our initial parameters, the entire design space comes along for the ride, absolutely free. For example, setting `weight = 850` gives us:
+And here's the magic: because every single number in our design  traces back to our initial parameters, the entire design space comes along for the ride, absolutely free. For example, setting `weight = 850` gives us:
 
 ```ductus glyph=o set="weight=850"
 ```
@@ -182,7 +182,7 @@ Or perhaps a low contrast look at `contrast = 1.0`, where `hair` and `stem` char
 
 We've created eight distinct points and two flowing contours, all dynamically at every instance. This truly embodies the 'skeleton-as-scaffolding' principle introduced in our first chapter, bringing it vividly to life. You defined just four positions and four widths, and the nodes, in their wisdom, effortlessly positioned everything else.
 
-> **Try it** — the playground ships this `o` among its examples. Go ahead, drag `weight` and `contrast` to their limits in the playground and watch the debug view. You'll see the edge-point dots gracefully slide, the guide line gently breathe and reshape, and yet, not a single point will ever mysteriously appear or disappear.
+> **Try it** — the playground ships this `o` among its examples. Go ahead, drag `weight` and `contrast` to their limits in the playground and watch the debug view. You'll see the edge-point dots  slide, the guide line gently breathe and reshape, and yet, not a single point will ever mysteriously appear or disappear.
 
 ## The winding convention
 
@@ -193,7 +193,7 @@ contour outer = n.right .. w.right .. s.right .. e.right .. cycle;
 contour inner = n.left  .. e.left  .. s.left  .. w.left  .. cycle;
 ```
 
-Our skeleton journeys along in a pleasing counterclockwise direction. This means the `right` bank naturally forms the outside of our ring, while the `left` bank gracefully defines the inside. Notice that the outer contour follows the exact order of our skeleton — `n, w, s, e` — and it too is counterclockwise. Now, for the inner contour, we smartly walk the *left* points in **reverse** order — `n, e, s, w`. This clever reversal makes it clockwise, which is precisely the orientation the nonzero fill rule expects for a perfect counter. So, here's a handy rule to tuck away for future reference:
+Our skeleton journeys along in a pleasing counterclockwise direction. This means the `right` bank naturally forms the outside of our ring, while the `left` bank  defines the inside. Notice that the outer contour follows the exact order of our skeleton — `n, w, s, e` — and it too is counterclockwise. Now, for the inner contour, we smartly walk the *left* points in **reverse** order — `n, e, s, w`. This clever reversal makes it clockwise, which is precisely the orientation the nonzero fill rule expects for a perfect counter. So, here's a handy rule to tuck away for future reference:
 
 > Traverse a closed skeleton counterclockwise: the `right` points in
 > order form the outer contour, and the `left` points in reverse order
@@ -203,10 +203,10 @@ Our skeleton journeys along in a pleasing counterclockwise direction. This means
 
 ## The designer owns every point
 
-Here's a liberating thought: derived points are, at heart, just ordinary points. This means you can do wonderful things: `w.right + (3, 0)` will gently nudge the left flank of the `o` three units to the right, all without disturbing the original node. You could even entirely replace `s.right` with a carefully hand-placed point, which is a perfectly normal edit. And because a nudge is itself an expression, it can be beautifully parametric, just like everything else in ductus:
+Here's a liberating thought: derived points are, at heart, just ordinary points. This means you can do wonderful things: `w.right + (3, 0)` will gently nudge the left flank of the `o` three units to the right, all without disturbing the original node. You could even entirely replace `s.right` with a carefully hand-placed point, which is a perfectly normal edit. And because a nudge is itself an expression, it can be  parametric, just like everything else in ductus:
 
 ```ductus norender
 contour outer = n.right .. w.right + (3, 0) .. s.right .. e.right .. cycle;
 ```
 
-Nodes themselves are also quite transformable. Functions like `shifted`, `rotated`, and their companions will gracefully move the node's position and, at the same time, adjust its direction (and even its nib axis). `scaled`, of course, thoughtfully scales the width as well. So, when a macro like our `bowl()` example returns nodes, it generously hands the caller everything they might need: the position, the direction, the thickness, and both derived banks, all perfectly ready to be either artfully written through or, if inspiration strikes, confidently overruled.
+Nodes themselves are also quite transformable. Functions like `shifted`, `rotated`, and their companions will  move the node's position and, at the same time, adjust its direction (and even its nib axis). `scaled`, of course, thoughtfully scales the width as well. So, when a macro like our `bowl()` example returns nodes, it generously hands the caller everything they might need: the position, the direction, the thickness, and both derived banks, all perfectly ready to be either artfully written through or, if inspiration strikes, confidently overruled.
