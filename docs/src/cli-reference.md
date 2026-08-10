@@ -9,6 +9,25 @@ ductus check file.ductus
 This command is all about parsing. It quickly checks your `file.ductus` for syntax errors, pointing out the first one it finds with handy line and column numbers. If everything looks good, you'll simply see `OK`. Because it doesn't do any heavy lifting like evaluation or rendering, it's super fast — perfect for running every time you hit save.
 
 ```sh
+ductus format file.ductus [more.ductus ...] [--check]
+```
+
+This command rewrites your source files, in place, into the one canonical `ductus` style — so you can stop thinking about layout and let the formatter agree with your collaborators for you. The rules are simple: two spaces per indent level, one space around `=` and every operator, and ranges stay tight (`30..45`). Paths get the signature treatment: a short one stays on a single line, but the moment a statement passes 80 columns it breaks at *every* joint, each `..` or `--` leading its own line:
+
+```text
+  contour bowl = {up} a.left
+      .. w1.left {w1.dir}
+      .. b.left {b.dir}
+      -- c.left
+      .. d.left
+      -- cycle;
+```
+
+Your comments — own-line ones, trailing ones, even the ones between path joints — all survive, and formatting never changes what your file means. One firm safety rule: a file with syntax errors is refused untouched, so a broken parse can never mangle your code. Fix the error `format` points at, then run it again.
+
+- `--check` — Writes nothing at all; it just exits with a failure listing every file that would change. Perfect for CI, right next to `ductus check`.
+
+```sh
 ductus build file.ductus [--glyph NAME] [--set PARAM=VALUE ...] [--debug] [-o OUT.svg]
 ```
 
@@ -25,7 +44,7 @@ ductus inspect file.ductus [--set PARAM=VALUE ...] [--glyph NAME]
 
 Curious about the nitty-gritty details of your evaluated file? This command spills all the numeric beans, presenting every number as plain text. You'll see parameters complete with their ranges, metrics, and top-level bindings presented in source order. After that, it dives into each glyph's advance, its numeric bindings (yes, even your handy [probes](debugging.md#probing-numbers) are included), the point counts for each contour and guide, and all your anchor positions.
 
-A quick note on imports: they always find their way by looking relative to your source file's directory. Speaking of handy tools, the online playground actually uses the very same evaluator (compiled right into WebAssembly). It comes equipped with neat sliders for your `params`, an inspector that mirrors what you get with `ductus inspect`, and a convenient debug toggle. However, do remember that it can't handle `import` statements — browsers, bless their hearts, just don't have access to a filesystem.
+A quick note on imports: they always find their way by looking relative to your source file's directory. Speaking of handy tools, the online playground actually uses the very same evaluator (compiled right into WebAssembly). It comes equipped with neat sliders for your `params`, an inspector that mirrors what you get with `ductus inspect`, a convenient debug toggle, and the same formatter behind a `format` button (or Ctrl+Shift+F). However, do remember that it can't handle `import` statements — browsers just don't have access to a filesystem.
 
 ## A file, completely
 
