@@ -13,9 +13,9 @@ params {
   pen_height = 12 in 2..40;
 }
 
-metrics { upm = 1000; x = 500; cap = 700; asc = 750; desc = -220; }
+metrics { upm = 1000; u=100; x = 500; cap = 700; asc = 750; desc = -220; }
 
-pen nib {
+pen broad_nib_pen {
   width  = pen_width;
   height = pen_height;
   angle  = pen_angle;
@@ -26,31 +26,24 @@ It's all about the *pen* here. Its three defining axes — the angle it's held a
 
 ```ductus acc glyph=o debug
 glyph o : U+006F {
-  advance = 560;
-  c = (advance / 2, x / 2);
-  rx = 190;
-  ry = x / 2 + 10;
+  advance =  5u;
+  node m = (2.5u, 0) dir left pen broad_nib_pen;
+  node n = (0, 3u) dir up pen broad_nib_pen;
+  node o = (2.5u, 6u) dir right pen broad_nib_pen;
+  node p = (5u, 3u) dir down pen broad_nib_pen;
 
-  node b = c + (0, -ry) dir right pen nib;
-  node r = c + (rx, 0)  dir up    pen nib;
-  node t = c + (0, ry)  dir left  pen nib;
-  node l = c + (-rx, 0) dir down  pen nib;
+  guide skel = m.pos .. n.pos .. o.pos .. p.pos .. cycle;
 
-  guide skel = b.pos .. r.pos .. t.pos .. l.pos .. cycle;
+  # Thin-crossing witness nodes: banks are exactly `height` apart there,
+  # and the query keeps them on the crossing as pen_angle moves.
+  node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
+  node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
 
-  # The travel sweeps every direction once, so it crosses the pen's
-  # axis twice: once at pen_angle, once at pen_angle + 180. Without a
-  # node at each crossing the banks would bridge the thin spots fat.
-  node w1 = directionpoint(skel, pen_angle) dir pen_angle pen nib;
-  node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen nib;
-
-  contour outer =
-      b.right .. {w1.dir} w1.right .. r.right .. t.right
-   .. {w2.dir} w2.right .. l.right .. cycle;
-
-  contour inner =
-      b.left .. {w2.dir + 180} w2.left .. l.left .. t.left
-   .. r.left .. {w1.dir + 180} w1.left .. cycle;
+  contour c1 =  m.right .. n.right .. {w1.dir} w1.right .. o.right
+    .. p.right .. {w2.dir} w2.right .. cycle;
+  contour c2 = m.left .. {w2.dir + 180} w2.left .. p.left .. o.left
+     .. {w1.dir + 180} w1.left .. n.left .. m.left
+   ..cycle;
 }
 ```
 
