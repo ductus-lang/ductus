@@ -35,6 +35,15 @@ enum Command {
         #[arg(short, long, default_value = "output.svg")]
         output: PathBuf,
     },
+    /// Rewrite source files into the canonical format.
+    Format {
+        /// Paths to .ductus files
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
+        /// Write nothing; fail when a file is not formatted
+        #[arg(long)]
+        check: bool,
+    },
     /// Evaluate a source file and print its numbers: params, metrics,
     /// derived bindings, and each glyph's advance, bindings and geometry.
     Inspect {
@@ -69,6 +78,28 @@ fn run(cli: Cli) -> Result<String, String> {
             ductus_core::parse::parse(&source)
                 .map_err(|error| format!("{}: {}", file.display(), error))?;
             Ok(format!("{}: OK", file.display()))
+        }
+        Command::Format { files, check } => {
+            let mut changed = Vec::new();
+            for file in &files {
+                let source = read(file)?;
+                let formatted = ductus_core::format::format(&source)
+                    .map_err(|error| format!("{}: {}", file.display(), error))?;
+                if formatted == source {
+                    continue;
+                }
+                if !check {
+                    std::fs::write(file, &formatted)
+                        .map_err(|error| format!("error writing {}: {}", file.display(), error))?;
+                }
+                changed.push(file.display().to_string());
+            }
+            match (check, changed.is_empty()) {
+                (true, false) => Err(format!("not formatted:\n{}", changed.join("\n"))),
+                (true, true) => Ok("all files formatted".to_string()),
+                (false, true) => Ok("no changes".to_string()),
+                (false, false) => Ok(format!("reformatted:\n{}", changed.join("\n"))),
+            }
         }
         Command::Inspect { file, set, glyph } => {
             let document = evaluate(&file, &set)?;

@@ -6,6 +6,7 @@
 pub mod ast;
 pub mod doc;
 pub mod eval;
+pub mod format;
 pub mod lower;
 pub mod parse;
 pub mod render;
