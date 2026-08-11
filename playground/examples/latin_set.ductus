@@ -1,20 +1,38 @@
-# Simple Latin set.
-# Roman Design - xheight = 4 nibs, caps=7 nibs. Angle is 30
+# Foundational-hand lowercase Latin set.
+#
+# The model is Edward Johnston's foundational hand: a broad nib held at
+# a constant angle of 30 degrees. All proportions are in nib widths:
+#   x-height       = 4 nib widths  (metric `x`)
+#   ascender / cap = 7 nib widths  (metrics `asc`, `cap`)
+#   descender      = 3 nib widths  (metric `desc`)
+#
+# Each glyph is written in the order the pen writes it. Entry strokes
+# rise at the nib angle, stems pull down, arches start inside the stem,
+# and exit strokes leave at the nib angle.
+#
+# Conventions:
+#   - Node names follow stroke order: a, b, c, ... along one stroke;
+#     a1, b1, ... / a2, b2, ... when a glyph has several strokes.
+#   - Nodes found with directionpoint() queries are named w1, w2, ...
+#   - The skeleton starts at x = 0, so ink can bleed about half a
+#     stroke width left of the origin. Advances account for that.
 
 params {
-  # Both thin crossings must exist on the skeleton: the second needs
-  # tangent pen_angle + 180 within the p..q leg's 270..215 sweep.
+  # The directionpoint() queries below must find their tangents on each
+  # skeleton across this whole range. Checked by building the corners.
   pen_angle = 30 in 30..45;
-  pen_width = 100 in 100..150;
+  # cap = 7 nib widths; 140 keeps cap inside the em (7 * 140 = 980).
+  pen_width = 100 in 100..140;
 }
 
 metrics {
-  upem = 1000;
-  u = 1000 / 10; # desc = 3 asc = 7
-  x = 4pen_width;
-  cap = 7pen_width;
-  over = 10 + pen_width / 200;
-  pen_height = 0.1 * pen_width;
+  upm = 1000;
+  nibs = pen_width; # one nib width: the design unit
+  x = 4nibs;
+  cap = 7nibs;
+  asc = cap;
+  desc = -3nibs;
+  pen_height = 0.1nibs;
 }
 
 pen broad_nib_pen {
@@ -23,102 +41,118 @@ pen broad_nib_pen {
   angle = pen_angle;
 }
 
-glyph a {
-  advance = x;
+glyph a : U+0061 {
+  advance = 1.2x;
   w = 0.7x;
-  node m = (0, 0.6x) dir up pen broad_nib_pen;
-  node n = (m.pos.x + w / 2, x) dir right pen broad_nib_pen;
-  node o = (w, 0.67x) dir down pen broad_nib_pen;
-  node p = (o.pos.x, 0.33x) dir down pen broad_nib_pen;
-  node q = (p.pos.x + pen_width / 2, 0) dir right pen broad_nib_pen;
-  node r = (q.pos.x + pen_width, 0.2x) dir pen_angle pen broad_nib_pen;
 
-  guide skel = m.pos .. n.pos .. o.pos {down} .. p.pos .. q.pos .. r.pos;
+  # Stroke 1: entry arc over the top, down the right stem, out the tail.
+  node a1 = (0, 0.6x) dir up pen broad_nib_pen;
+  node b1 = (a1.pos.x + w / 2, x) dir right pen broad_nib_pen;
+  node c1 = (w, 0.67x) dir down pen broad_nib_pen;
+  node d1 = (c1.pos.x, 0.33x) dir down pen broad_nib_pen;
+  node e1 = (d1.pos.x + nibs / 2, 0) dir right pen broad_nib_pen;
+  node f1 = (e1.pos.x + nibs, 0.2x) dir pen_angle pen broad_nib_pen;
 
+  guide skel = a1.pos .. b1.pos .. c1.pos {down} .. d1.pos .. e1.pos .. f1.pos;
+
+  # w1: thin crossing on the entry arc (tangent = pen_angle).
+  # w2: full-width point on the shoulder, where travel is perpendicular
+  #     to the nib axis; it pins the bank at the stroke's widest spot.
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
   node w2 = directionpoint(skel, pen_angle + 270, 0) dir pen_angle + 270 pen broad_nib_pen;
 
-  contour c1 = m.right
+  contour main = a1.right
       .. {w1.dir} w1.right
-      #.. n.right
       .. w2.right
-      #.. o.right {o.dir}
-      .. p.right
-      .. q.right
-      .. r.right
-      -- r.left
-      .. q.left
-      .. p.left
-      .. o.left {o.dir + 180}
+      .. d1.right
+      .. e1.right
+      .. f1.right
+      -- f1.left
+      .. e1.left
+      .. d1.left
+      .. c1.left {c1.dir + 180}
       .. w2.left {w2.dir + 180}
-      .. n.left
+      .. b1.left
       .. w1.left
-      .. m.left
+      .. a1.left
       -- cycle;
 
-  node a = o.pos dir 190 pen broad_nib_pen;
-  node b = (m.pos.x, 0.2x) dir down pen broad_nib_pen;
-  node c = (n.pos.x, 0) dir 15 pen broad_nib_pen;
-  node d = p.pos dir pen_angle pen broad_nib_pen;
+  # Stroke 2: the bowl, from the right shoulder down and around to the
+  # stem. It is pulled left and down, the way the pen writes it.
+  node a2 = c1.pos dir 190 pen broad_nib_pen;
+  node b2 = (a1.pos.x, 0.2x) dir down pen broad_nib_pen;
+  node c2 = (b1.pos.x, 0) dir 15 pen broad_nib_pen;
+  node d2 = d1.pos dir pen_angle pen broad_nib_pen;
 
-  guide skel_bowl = a.pos {a.dir} .. b.pos {b.dir} .. c.pos .. d.pos;
-  node w4 = directionpoint(skel_bowl, 215) dir 215 pen broad_nib_pen;
-  contour c2 = a.right {a.dir}
-      .. w4.right {w4.dir}
-      .. b.right {b.dir}
-      .. c.right
-      .. d.right
-      -- d.left
-      .. c.left {c.dir + 180}
-      .. b.left {b.dir + 180}
-      .. w4.left {w4.dir + 180}
-      .. a.left {a.dir + 180}
+  guide skel_bowl = a2.pos {a2.dir} .. b2.pos {b2.dir} .. c2.pos .. d2.pos;
+
+  # w3: thin crossing on the bowl's left side (tangent = pen_angle + 180);
+  # the query keeps it on the crossing as pen_angle moves.
+  node w3 = directionpoint(skel_bowl, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
+
+  contour bowl = a2.right {a2.dir}
+      .. w3.right {w3.dir}
+      .. b2.right {b2.dir}
+      .. c2.right
+      .. d2.right
+      -- d2.left
+      .. c2.left {c2.dir + 180}
+      .. b2.left {b2.dir + 180}
+      .. w3.left {w3.dir + 180}
+      .. a2.left {a2.dir + 180}
       -- cycle;
 }
 
-glyph c {
-  advance = 0.7x;
+glyph c : U+0063 {
+  advance = 0.85x;
   w = 0.8x;
-  node m = (0.5x, 0) dir left pen broad_nib_pen;
-  node n = (0, x / 2) dir up pen broad_nib_pen;
-  node o = (m.pos.x, x) dir right pen broad_nib_pen;
-  node p = (w, x / 2) dir down pen broad_nib_pen;
 
-  guide skel = m.pos .. n.pos .. o.pos .. p.pos .. cycle;
+  # The skeleton is a closed ring; the ink covers only part of it.
+  # The stroke runs counterclockwise, from the upper terminal to the
+  # lower one, against the skeleton's own order.
+  node a = (0.5x, 0) dir left pen broad_nib_pen;
+  node b = (0, x / 2) dir up pen broad_nib_pen;
+  node c = (a.pos.x, x) dir right pen broad_nib_pen;
+  node d = (w, x / 2) dir down pen broad_nib_pen;
 
-  # Thin-crossing witness nodes: banks are exactly `height` apart there,
-  # and the query keeps them on the crossing as pen_angle moves.
+  guide skel = a.pos .. b.pos .. c.pos .. d.pos .. cycle;
+
+  # w1: the upper terminal, on the upper-right shoulder.
+  # w2: the thin crossing on the upper-left arc (tangent = pen_angle).
+  # w3: the lower terminal; its dir runs along the nib axis, so the end
+  #     cut is the pen's thin edge.
+  # w4: an extra sample on the lower-left arc.
   node w1 = directionpoint(skel, pen_angle + 290) dir pen_angle + 290 pen broad_nib_pen;
-  node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
-  node w3 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
-  node w4 = directionpoint(skel, pen_angle + 215) dir pen_angle + 180 pen broad_nib_pen;
+  node w2 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
+  node w3 = directionpoint(skel, pen_angle + 215) dir pen_angle + 180 pen broad_nib_pen;
+  node w4 = directionpoint(skel, 120) dir 120 pen broad_nib_pen;
 
-  node n1 = directionpoint(skel, 120) dir 120 pen broad_nib_pen;
-  contour c1 = {w1.dir} w1.right
-      #.. o.right {o.dir + 180}
-      .. w3.right {w3.dir + 180}
-      .. n1.right
-      .. m.right
-      #.. {w2.dir + 180} w2.right
+  contour main = {w1.dir} w1.right
+      .. w2.right {w2.dir + 180}
       .. w4.right
-      -- w4.left
-      #.. w2.left
-      .. m.left
-      .. n1.left
-      .. w3.left {w3.dir}
-      .. o.left
+      .. a.right
+      .. w3.right
+      -- w3.left
+      .. a.left
+      .. w4.left
+      .. w2.left {w2.dir}
+      .. c.left
       .. {w1.dir} w1.left
       -- cycle;
 }
 
-glyph e {
-  advance = 0.9x;
+glyph e : U+0065 {
+  advance = x;
   w = 0.8x;
+
+  # One stroke: out along the bar, up over the shoulder, down the left
+  # side, along the bottom, out the tail. The skeleton returns to the
+  # bar's start (d sits on a), which closes the eye.
   node a = (0, 0.4x) dir right pen broad_nib_pen;
   node b = (0.9w, 0.8x) dir up pen broad_nib_pen;
   node c = (w / 2, x) dir left pen broad_nib_pen;
   node d = a.pos dir down pen broad_nib_pen;
-  node e = (c.pos.x, 0) dir down pen broad_nib_pen;
+  node e = (c.pos.x, 0) dir right pen broad_nib_pen;
   node f = (1.1w, x / 4) dir pen_angle pen broad_nib_pen;
 
   guide skel = a.pos {right}
@@ -127,12 +161,14 @@ glyph e {
       .. d.pos
       .. e.pos {right}
       .. f.pos;
-  node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
+
+  # w1: the bar's left terminal, on the descending left side (tangent
+  #     300); its dir follows the nib axis, so the cut is thin.
+  # w2: the thin crossing on the left side (tangent = pen_angle + 180).
+  node w1 = directionpoint(skel, 300) dir pen_angle pen broad_nib_pen;
   node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
-  node w3 = directionpoint(skel, pen_angle, 1) dir pen_angle pen broad_nib_pen;
-  node a1 = directionpoint(skel, 300) dir pen_angle pen broad_nib_pen;
-  contour contour1 = a1.right {pen_angle}
-      #..w1.right
+
+  contour main = w1.right {pen_angle}
       .. b.right {up}
       .. c.right
       .. w2.right {w2.dir}
@@ -140,123 +176,133 @@ glyph e {
       .. e.right
       .. f.right
       -- f.left
-      #..w3.left{w3.dir+180}
       .. e.left
       .. d.left
-      #..w2.left
       .. c.left
       .. b.left {down}
-      #..w1.left
+      .. w1.left
+      -- cycle;
+}
+
+glyph f : U+0066 {
+  advance = 1.4x;
+  w = x;
+
+  # Stroke 1: the hook and the stem. The stem stands at x = 2 nibs so
+  # the bar can start at the origin.
+  node a1 = (2nibs + 2 / 3 * w, cap - nibs) dir up pen broad_nib_pen;
+  node b1 = (2nibs + w / 3, cap) dir left pen broad_nib_pen;
+  node c1 = (2nibs, cap - 2nibs) dir down pen broad_nib_pen;
+  node d1 = (c1.pos.x, 0) dir down pen broad_nib_pen;
+
+  guide skel = a1.pos .. b1.pos .. c1.pos -- d1.pos;
+
+  contour stem = a1.right
+      .. b1.right {left}
+      .. c1.right {down}
+      .. d1.right {down}
+      -- d1.left {up}
+      .. c1.left {up}
+      .. b1.left {right}
       .. a1.left
       -- cycle;
-}
 
-glyph f {
-  advance = 0.6x;
-  w = x;
-  node a = (2 / 3 * w, cap - u) dir up pen broad_nib_pen;
-  node b = (a.pos.x / 2, cap) dir left pen broad_nib_pen;
-  node c = (0, cap - 2u) dir down pen broad_nib_pen;
-  node d = (c.pos.x, 0) dir down pen broad_nib_pen;
+  # Stroke 2: the bar, crossing the stem at the x-height.
+  node a2 = (0, x) dir pen_angle pen broad_nib_pen;
+  node b2 = (a2.pos.x + x / 4, a2.pos.y + nibs / 2) dir right pen broad_nib_pen;
+  node c2 = (b2.pos.x + 2nibs, a2.pos.y) dir right pen broad_nib_pen;
+  node d2 = (c2.pos.x + nibs, c2.pos.y + nibs / 2) dir pen_angle pen broad_nib_pen;
 
-  guide skel = a.pos .. b.pos .. c.pos -- d.pos;
-  contour c1 = a.right
-      .. b.right {left}
-      .. c.right {down}
-      .. d.right {down}
-      -- d.left {up}
-      .. c.left {up}
-      .. b.left {right}
-      .. a.left
-      -- cycle;
+  guide skel_bar = a2.pos .. b2.pos .. c2.pos {right} .. d2.pos;
 
-  node cc = (-2u, x) dir pen_angle pen broad_nib_pen;
-  node p = (cc.pos.x + x / 4, cc.pos.y + u / 2) dir right pen broad_nib_pen;
-
-  node s = (p.pos.x + 2u, cc.pos.y) dir right pen broad_nib_pen;
-  node t = (s.pos.x + u, s.pos.y + u / 2) dir pen_angle pen broad_nib_pen;
-  guide arm = cc.pos .. p.pos .. s.pos {right} .. t.pos;
-
-  node w1 = directionpoint(arm, pen_angle) dir pen_angle pen broad_nib_pen;
-  # node w2 = directionpoint(arm, pen_angle, 1) dir pen_angle pen broad_nib_pen;
-  contour contour2 = cc.right
-      .. p.right
-      .. s.right
-      .. t.right
-      -- t.left
-      .. s.left
-      .. p.left
-      .. cc.left
+  contour bar = a2.right
+      .. b2.right
+      .. c2.right
+      .. d2.right
+      -- d2.left
+      .. c2.left
+      .. b2.left
+      .. a2.left
       -- cycle;
 }
 
-glyph h {
-  advance = 0.8x;
+glyph h : U+0068 {
+  advance = 1.3x;
   w = x;
-  node a = (2 / 3 * w, cap - u) dir up pen broad_nib_pen;
-  node b = (a.pos.x / 2, cap) dir left pen broad_nib_pen;
-  node c = (0, cap - 2u) dir down pen broad_nib_pen;
-  node d = (c.pos.x, 0) dir down pen broad_nib_pen;
 
-  guide skel = a.pos .. b.pos .. c.pos -- d.pos;
-  contour c1 = a.right
-      .. b.right {left}
-      .. c.right {down}
-      .. d.right {down}
-      -- d.left {up}
-      .. c.left {up}
-      .. b.left {right}
-      .. a.left
+  # Stroke 1: the ascender stem, entered from a small hook at the top.
+  node a1 = (2 / 3 * w, cap - nibs) dir up pen broad_nib_pen;
+  node b1 = (a1.pos.x / 2, cap) dir left pen broad_nib_pen;
+  node c1 = (0, cap - 2nibs) dir down pen broad_nib_pen;
+  node d1 = (c1.pos.x, 0) dir down pen broad_nib_pen;
+
+  guide skel = a1.pos .. b1.pos .. c1.pos -- d1.pos;
+
+  contour stem = a1.right
+      .. b1.right {left}
+      .. c1.right {down}
+      .. d1.right {down}
+      -- d1.left {up}
+      .. c1.left {up}
+      .. b1.left {right}
+      .. a1.left
       -- cycle;
 
-  node cc = c.pos + (0, -x * 2 / 3) dir pen_angle pen broad_nib_pen;
-  node p = (cc.pos.x + x / 2, x) dir right pen broad_nib_pen;
-  node q = p.pos + (1u, -x / 3) dir down pen broad_nib_pen;
-  node r = q.pos + (0, -x / 3) dir down pen broad_nib_pen;
-  node s = r.pos + (u, -x / 3) dir right pen broad_nib_pen;
-  node t = s.pos + 0.67(u, u) dir pen_angle pen broad_nib_pen;
-  guide arm = cc.pos
-      .. p.pos
-      .. q.pos {down}
-      .. r.pos
-      .. s.pos {right}
-      .. t.pos;
+  # Stroke 2: the arch. It starts inside the stem, swells over the
+  # shoulder, pulls down, and exits at the nib angle.
+  node a2 = c1.pos + (0, -x * 2 / 3) dir pen_angle pen broad_nib_pen;
+  node b2 = (a2.pos.x + x / 2, x) dir right pen broad_nib_pen;
+  node c2 = b2.pos + (1nibs, -x / 3) dir down pen broad_nib_pen;
+  node d2 = c2.pos + (0, -x / 3) dir down pen broad_nib_pen;
+  node e2 = d2.pos + (nibs, -x / 3) dir right pen broad_nib_pen;
+  node f2 = e2.pos + 0.67(nibs, nibs) dir pen_angle pen broad_nib_pen;
 
-  node w1 = directionpoint(arm, pen_angle) dir pen_angle pen broad_nib_pen;
-  node w2 = directionpoint(arm, pen_angle, 1) dir pen_angle pen broad_nib_pen;
-  contour c2 = cc.right
+  guide skel_arch = a2.pos
+      .. b2.pos
+      .. c2.pos {down}
+      .. d2.pos
+      .. e2.pos {right}
+      .. f2.pos;
+
+  # w1, w2: thin crossings on the arch's rise and on the exit.
+  node w1 = directionpoint(skel_arch, pen_angle) dir pen_angle pen broad_nib_pen;
+  node w2 = directionpoint(skel_arch, pen_angle, 1) dir pen_angle pen broad_nib_pen;
+
+  contour arch = a2.right
       .. w1.right {w1.dir}
-      #..p.right
-      .. q.right {down}
-      .. r.right {down}
-      .. s.right
+      .. c2.right {down}
+      .. d2.right {down}
+      .. e2.right
       .. w2.right
-      .. t.right
-      -- t.left
-      #.. s.left{left}
+      .. f2.right
+      -- f2.left
       .. w2.left
-      .. r.left {up}
-      .. q.left {up}
-      .. p.left
+      .. d2.left {up}
+      .. c2.left {up}
+      .. b2.left
       .. w1.left {w1.dir + 180}
-      .. cc.left
+      .. a2.left
       -- cycle;
 }
 
-glyph i {
-  advance = 0.5x;
+glyph i : U+0069 {
+  advance = 0.85x;
 
-  node a = (0, x - u) dir pen_angle pen broad_nib_pen;
-  node b = (pen_width, x) dir right pen broad_nib_pen;
-  node c = (b.pos.x + pen_width / 2, x - u) dir down pen broad_nib_pen;
-  node d = (c.pos.x, u) dir down pen broad_nib_pen;
-  node e = (d.pos.x + pen_width / 2, 0) dir down pen broad_nib_pen;
-  node f = (e.pos.x + pen_width, u) dir pen_angle pen broad_nib_pen;
+  # One stroke: entry arc, stem, exit flick.
+  node a = (0, x - nibs) dir pen_angle pen broad_nib_pen;
+  node b = (nibs, x) dir right pen broad_nib_pen;
+  node c = (b.pos.x + nibs / 2, x - nibs) dir down pen broad_nib_pen;
+  node d = (c.pos.x, nibs) dir down pen broad_nib_pen;
+  node e = (d.pos.x + nibs / 2, 0) dir down pen broad_nib_pen;
+  node f = (e.pos.x + nibs, nibs) dir pen_angle pen broad_nib_pen;
+
   guide skel = a.pos .. b.pos .. c.pos {down} .. {down} d.pos .. e.pos .. f.pos;
+
+  # w1: thin underside of the entry arc. w2: thin crossing on the exit.
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
   node w2 = directionpoint(skel, pen_angle, 1) dir pen_angle pen broad_nib_pen;
 
-  contour c1 = a.right
+  contour main = a.right
       .. b.right
       .. c.right {c.dir}
       .. d.right {d.dir}
@@ -265,7 +311,6 @@ glyph i {
       .. f.right
       -- f.left
       .. w2.left {w2.dir + 180}
-      #.. e.left
       .. d.left {d.dir + 180}
       .. c.left {c.dir + 180}
       .. b.left
@@ -274,19 +319,24 @@ glyph i {
       -- cycle;
 }
 
-glyph l {
-  advance = 0.5x;
+glyph l : U+006C {
+  advance = 0.85x;
 
-  node a = (0, cap - u) dir pen_angle pen broad_nib_pen;
-  node b = (pen_width, cap) dir right pen broad_nib_pen;
-  node c = (b.pos.x + pen_width / 2, cap - u) dir down pen broad_nib_pen;
-  node d = (c.pos.x, u) dir down pen broad_nib_pen;
-  node e = (d.pos.x + pen_width / 2, 0) dir down pen broad_nib_pen;
-  node f = (e.pos.x + pen_width, u) dir pen_angle pen broad_nib_pen;
-  guide skel = a.pos .. b.pos .. c.pos {down} .. d.pos {down} .. e.pos .. f.pos;
+  # One stroke, the same movement as i, from the ascender line.
+  node a = (0, cap - nibs) dir pen_angle pen broad_nib_pen;
+  node b = (nibs, cap) dir right pen broad_nib_pen;
+  node c = (b.pos.x + nibs / 2, cap - nibs) dir down pen broad_nib_pen;
+  node d = (c.pos.x, nibs) dir down pen broad_nib_pen;
+  node e = (d.pos.x + nibs / 2, 0) dir down pen broad_nib_pen;
+  node f = (e.pos.x + nibs, nibs) dir pen_angle pen broad_nib_pen;
+
+  guide skel = a.pos .. b.pos .. c.pos {down} .. {down} d.pos .. e.pos .. f.pos;
+
+  # w1: thin underside of the entry arc. w2: thin crossing on the exit.
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
   node w2 = directionpoint(skel, pen_angle, 1) dir pen_angle pen broad_nib_pen;
-  contour c1 = a.right
+
+  contour main = a.right
       .. b.right
       .. c.right {c.dir}
       .. d.right {d.dir}
@@ -295,7 +345,6 @@ glyph l {
       .. f.right
       -- f.left
       .. w2.left {w2.dir + 180}
-      #.. e.left
       .. d.left {d.dir + 180}
       .. c.left {c.dir + 180}
       .. b.left
@@ -304,244 +353,272 @@ glyph l {
       -- cycle;
 }
 
-glyph m {
-  advance = 1.8x;
-  node a = (0, x - u) dir pen_angle pen broad_nib_pen;
-  node b = (u, x) dir right pen broad_nib_pen;
-  node c = (2u, 0.67x) dir down pen broad_nib_pen;
-  node d = (c.pos.x, 0) dir down pen broad_nib_pen;
-
-  guide skel = a.pos .. b.pos {right} .. c.pos -- d.pos;
-  node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
-
+glyph m : U+006D {
+  advance = 2.55x;
   w = x;
-  contour contour1 = a.right
+
+  # Stroke 1: entry arc and the first leg.
+  node a1 = (0, x - nibs) dir pen_angle pen broad_nib_pen;
+  node b1 = (nibs, x) dir right pen broad_nib_pen;
+  node c1 = (2nibs, 0.67x) dir down pen broad_nib_pen;
+  node d1 = (c1.pos.x, 0) dir down pen broad_nib_pen;
+
+  guide skel = a1.pos .. b1.pos {right} .. c1.pos -- d1.pos;
+
+  # w1: thin crossing on the entry arc.
+  node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
+
+  contour stem = a1.right
       .. w1.right {w1.dir}
-      #..b.right
-      .. c.right {down}
-      .. d.right
-      -- d.left {up}
-      .. c.left {up}
-      .. b.left {left}
+      .. c1.right {down}
+      .. d1.right
+      -- d1.left {up}
+      .. c1.left {up}
+      .. b1.left {left}
       .. w1.left
-      .. a.left
+      .. a1.left
       -- cycle;
 
-  node c1 = c.pos dir pen_angle pen broad_nib_pen;
-  node e = (c1.pos.x + w / 2, x) dir right pen broad_nib_pen;
-  node f = e.pos + (1u, -x / 3) dir down pen broad_nib_pen;
-  node g = (f.pos.x, 0) dir down pen broad_nib_pen;
+  # Stroke 2: the first arch, starting inside the first leg. Its guide
+  # begins with the stem's own leg so the branch tangent is real.
+  node a2 = c1.pos dir pen_angle pen broad_nib_pen;
+  node b2 = (a2.pos.x + w / 2, x) dir right pen broad_nib_pen;
+  node c2 = b2.pos + (1nibs, -x / 3) dir down pen broad_nib_pen;
+  node d2 = (c2.pos.x, 0) dir down pen broad_nib_pen;
 
-  guide mid_arch = d.pos -- c.pos .. e.pos {right} .. f.pos {down} .. g.pos;
-  node w21 = directionpoint(mid_arch, pen_angle, 0) dir pen_angle pen broad_nib_pen;
+  guide skel_arch1 = d1.pos
+      -- c1.pos
+      .. b2.pos {right}
+      .. c2.pos {down}
+      .. d2.pos;
 
-  contour c2 = c1.right
-      .. w21.right {w21.dir}
-      .. e.right
-      .. f.right {down}
-      .. g.right
-      -- g.left
-      .. f.left {up}
-      .. e.left
-      .. w21.left
-      .. c1.left
+  # w2: thin crossing on the arch's rise.
+  node w2 = directionpoint(skel_arch1, pen_angle, 0) dir pen_angle pen broad_nib_pen;
+
+  contour arch1 = a2.right
+      .. w2.right {w2.dir}
+      .. b2.right
+      .. c2.right {down}
+      .. d2.right
+      -- d2.left
+      .. c2.left {up}
+      .. b2.left
+      .. w2.left
+      .. a2.left
       -- cycle;
 
-  node o = f.pos dir pen_angle pen broad_nib_pen;
-  node p = (o.pos.x + w / 2, x) dir right pen broad_nib_pen;
-  node q = p.pos + (1u, -x / 4) dir down pen broad_nib_pen;
-  node r = q.pos + (0, -x / 2) dir down pen broad_nib_pen;
-  node s = (r.pos.x + u, pen_width * sin(pen_angle) * 0.25) dir right pen broad_nib_pen;
-  node u = s.pos + 0.67(u, u) dir pen_angle pen broad_nib_pen;
+  # Stroke 3: the second arch, with the exit flick.
+  node a3 = c2.pos dir pen_angle pen broad_nib_pen;
+  node b3 = (a3.pos.x + w / 2, x) dir right pen broad_nib_pen;
+  node c3 = b3.pos + (1nibs, -x / 4) dir down pen broad_nib_pen;
+  node d3 = c3.pos + (0, -x / 2) dir down pen broad_nib_pen;
+  node e3 = (d3.pos.x + nibs, nibs * sin(pen_angle) * 0.25) dir right pen broad_nib_pen;
+  node f3 = e3.pos + 0.67(nibs, nibs) dir pen_angle pen broad_nib_pen;
 
-  guide arm = o.pos
-      .. p.pos {right}
-      .. q.pos {down}
-      .. {down} r.pos
-      .. s.pos {right}
-      .. u.pos;
-  node w31 = directionpoint(arm, pen_angle, 0) dir pen_angle pen broad_nib_pen;
-  node w32 = directionpoint(arm, pen_angle, 1) dir pen_angle pen broad_nib_pen;
-  contour contour3 = o.right
-      .. w31.right {w31.dir}
-      .. p.right
-      .. q.right
-      .. r.right
-      .. s.right
-      .. w32.right
-      .. u.right
-      -- u.left
-      #.. s.left
-      .. w32.left
-      .. r.left
-      .. q.left
-      .. p.left
-      .. w31.left
-      .. o.left
+  guide skel_arch2 = a3.pos
+      .. b3.pos {right}
+      .. c3.pos {down}
+      .. {down} d3.pos
+      .. e3.pos {right}
+      .. f3.pos;
+
+  # w3, w4: thin crossings on the arch's rise and on the exit.
+  node w3 = directionpoint(skel_arch2, pen_angle, 0) dir pen_angle pen broad_nib_pen;
+  node w4 = directionpoint(skel_arch2, pen_angle, 1) dir pen_angle pen broad_nib_pen;
+
+  contour arch2 = a3.right
+      .. w3.right {w3.dir}
+      .. b3.right
+      .. c3.right
+      .. d3.right
+      .. e3.right
+      .. w4.right
+      .. f3.right
+      -- f3.left
+      .. w4.left
+      .. d3.left
+      .. c3.left
+      .. b3.left
+      .. w3.left
+      .. a3.left
       -- cycle;
 }
 
-glyph n {
-  advance = 1.4x;
-  node a = (0, x - u) dir pen_angle pen broad_nib_pen;
-  node b = (u, x) dir right pen broad_nib_pen;
-  node c = (2u, 0.67x) dir down pen broad_nib_pen;
-  node d = (c.pos.x, 0) dir down pen broad_nib_pen;
+glyph n : U+006E {
+  advance = 1.8x;
 
-  guide skel = a.pos .. b.pos {right} .. c.pos -- d.pos;
+  # Stroke 1: entry arc and the stem.
+  node a1 = (0, x - nibs) dir pen_angle pen broad_nib_pen;
+  node b1 = (nibs, x) dir right pen broad_nib_pen;
+  node c1 = (2nibs, 0.67x) dir down pen broad_nib_pen;
+  node d1 = (c1.pos.x, 0) dir down pen broad_nib_pen;
+
+  guide skel = a1.pos .. b1.pos {right} .. c1.pos -- d1.pos;
+
+  # w1: thin crossing on the entry arc.
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
 
-  contour c1 = a.right
-      #..w1.right
-      .. b.right
-      .. c.right {down}
-      .. d.right
-      -- d.left {up}
-      .. c.left {up}
-      .. b.left {left}
+  contour stem = a1.right
+      .. b1.right
+      .. c1.right {down}
+      .. d1.right
+      -- d1.left {up}
+      .. c1.left {up}
+      .. b1.left {left}
       .. w1.left
-      .. a.left
+      .. a1.left
       -- cycle;
 
-  node o = c.pos dir pen_angle pen broad_nib_pen;
-  node p = (c.pos.x + x / 2, x) dir right pen broad_nib_pen;
-  node q = p.pos + (u, -x / 3) dir down pen broad_nib_pen;
-  node r = q.pos + (0, -x / 3) dir down pen broad_nib_pen;
-  node s = (r.pos.x + u, pen_width * sin(pen_angle) * 0.25) dir right pen broad_nib_pen;
-  node u = s.pos + 0.67(u, u) dir pen_angle pen broad_nib_pen;
+  # Stroke 2: the arch, starting inside the stem, with the exit flick.
+  node a2 = c1.pos dir pen_angle pen broad_nib_pen;
+  node b2 = (c1.pos.x + x / 2, x) dir right pen broad_nib_pen;
+  node c2 = b2.pos + (nibs, -x / 3) dir down pen broad_nib_pen;
+  node d2 = c2.pos + (0, -x / 3) dir down pen broad_nib_pen;
+  node e2 = (d2.pos.x + nibs, nibs * sin(pen_angle) * 0.25) dir right pen broad_nib_pen;
+  node f2 = e2.pos + 0.67(nibs, nibs) dir pen_angle pen broad_nib_pen;
 
-  guide arm = c.pos
-      .. p.pos {right}
-      .. q.pos {down}
-      .. r.pos
-      .. s.pos {right}
-      .. u.pos;
-  node w2 = directionpoint(arm, pen_angle, 0) dir pen_angle pen broad_nib_pen;
-  node w3 = directionpoint(arm, pen_angle, 1) dir pen_angle pen broad_nib_pen;
-  contour c2 = o.right
+  guide skel_arch = a2.pos
+      .. b2.pos {right}
+      .. c2.pos {down}
+      .. d2.pos
+      .. e2.pos {right}
+      .. f2.pos;
+
+  # w2, w3: thin crossings on the arch's rise and on the exit.
+  node w2 = directionpoint(skel_arch, pen_angle, 0) dir pen_angle pen broad_nib_pen;
+  node w3 = directionpoint(skel_arch, pen_angle, 1) dir pen_angle pen broad_nib_pen;
+
+  contour arch = a2.right
       .. w2.right {w2.dir}
-      .. p.right
-      .. q.right
-      .. r.right
-      .. s.right
+      .. b2.right
+      .. c2.right
+      .. d2.right
+      .. e2.right
       .. w3.right
-      .. u.right
-      -- u.left
-      #.. s.left
+      .. f2.right
+      -- f2.left
       .. w3.left
-      .. r.left
-      .. q.left
-      .. p.left
+      .. d2.left
+      .. c2.left
+      .. b2.left
       .. w2.left
-      .. o.left
+      .. a2.left
       -- cycle;
 }
 
 glyph o : U+006F {
-  advance = 0.8x;
+  advance = 1.15x;
   w = 0.9x;
-  node m = (w / 2, 0) dir left pen broad_nib_pen;
-  node n = (0, x / 2) dir up pen broad_nib_pen;
-  node o = (w / 2, x) dir right pen broad_nib_pen;
-  node p = (w, x / 2) dir down pen broad_nib_pen;
 
-  guide skel = m.pos .. n.pos .. o.pos .. p.pos .. cycle;
+  # A closed ring. The left bank is the outer contour; the right bank,
+  # walked in reverse, is the counter.
+  node a = (w / 2, 0) dir left pen broad_nib_pen;
+  node b = (0, x / 2) dir up pen broad_nib_pen;
+  node c = (w / 2, x) dir right pen broad_nib_pen;
+  node d = (w, x / 2) dir down pen broad_nib_pen;
 
-  # Thin-crossing witness nodes: banks are exactly `height` apart there,
-  # and the query keeps them on the crossing as pen_angle moves.
+  guide skel = a.pos .. b.pos .. c.pos .. d.pos .. cycle;
+
+  # Thin-crossing witnesses: the banks are exactly pen height apart
+  # where travel meets the nib axis; the queries track pen_angle.
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
   node w2 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
 
-  contour c1 = m.right
-      .. n.right
-      .. {w1.dir} w1.right
-      .. o.right
-      .. p.right
-      .. {w2.dir} w2.right
-      .. cycle;
-  contour c2 = m.left
+  contour outer = a.left
       .. {w2.dir + 180} w2.left
-      .. p.left
-      .. o.left
+      .. d.left
+      .. c.left
       .. {w1.dir + 180} w1.left
-      .. n.left
-      .. m.left
+      .. b.left
+      .. cycle;
+  contour inner = a.right
+      .. b.right
+      .. {w1.dir} w1.right
+      .. c.right
+      .. d.right
+      .. {w2.dir} w2.right
       .. cycle;
 }
 
-glyph r {
-  advance = x;
-  node a = (0, x - u) dir pen_angle pen broad_nib_pen;
-  node b = (pen_width, x) dir right pen broad_nib_pen;
-  node c = (b.pos.x + pen_width / 2, 0.67x) dir down pen broad_nib_pen;
-  node d = (c.pos.x, 0) dir down pen broad_nib_pen;
+glyph r : U+0072 {
+  advance = 1.2x;
 
-  guide skel = a.pos .. b.pos .. c.pos -- d.pos;
+  # Stroke 1: entry arc and the stem.
+  node a1 = (0, x - nibs) dir pen_angle pen broad_nib_pen;
+  node b1 = (nibs, x) dir right pen broad_nib_pen;
+  node c1 = (b1.pos.x + nibs / 2, 0.67x) dir down pen broad_nib_pen;
+  node d1 = (c1.pos.x, 0) dir down pen broad_nib_pen;
+
+  guide skel = a1.pos .. b1.pos .. c1.pos -- d1.pos;
+
+  # w1: thin crossing on the entry arc.
   node w1 = directionpoint(skel, pen_angle) dir pen_angle pen broad_nib_pen;
 
-  contour cont1 = a.right
-      #.. w1.right
-      .. b.right
-      .. c.right {down}
-      .. d.right
-      -- d.left {up}
-      .. c.left {up}
-      .. b.left
+  contour stem = a1.right
+      .. b1.right
+      .. c1.right {down}
+      .. d1.right
+      -- d1.left {up}
+      .. c1.left {up}
+      .. b1.left
       .. w1.left
-      .. a.left
+      .. a1.left
       -- cycle;
 
-  node c1 = c.pos dir pen_angle pen broad_nib_pen;
-  node p = (c.pos.x + x / 2, x) dir right pen broad_nib_pen;
-  node q = p.pos + 0.66(1u, -1u) dir down pen broad_nib_pen;
+  # Stroke 2: the arm, ending in a hanging thin tip. Its guide begins
+  # with the stem's own leg so the branch tangent is real.
+  node a2 = c1.pos dir pen_angle pen broad_nib_pen;
+  node b2 = (c1.pos.x + x / 2, x) dir right pen broad_nib_pen;
+  node c2 = b2.pos + 0.66(1nibs, -1nibs) dir down pen broad_nib_pen;
 
-  guide arm = d.pos -- c.pos .. p.pos .. q.pos {down};
-  node w2 = directionpoint(arm, pen_angle, 0) dir pen_angle pen broad_nib_pen;
+  guide skel_arm = d1.pos -- c1.pos .. b2.pos .. c2.pos {down};
 
-  contour cont2 = c1.right
+  # w2: thin crossing on the arm's rise.
+  node w2 = directionpoint(skel_arm, pen_angle, 0) dir pen_angle pen broad_nib_pen;
+
+  contour arm = a2.right
       .. w2.right {w2.dir}
-      .. p.right
-      .. q.right
-      -- q.left
-      .. p.left
+      .. b2.right
+      .. c2.right
+      -- c2.left
+      .. b2.left
       .. w2.left
-      .. c1.left
+      .. a2.left
       -- cycle;
 }
 
 glyph s : U+0073 {
-  advance = 4u;
+  advance = 0.9x;
   w = x * 0.67;
-  # skeleton, travelling from the upper terminal to the lower one
-  node a = (w - 0.1u, x - u / 2) dir up pen broad_nib_pen;
+
+  # One stroke, from the upper terminal to the lower one.
+  node a = (w - 0.1nibs, x - nibs / 2) dir up pen broad_nib_pen;
   node b = (w / 2, x) dir left pen broad_nib_pen;
-  node c = (0.1u, .75x) dir down pen broad_nib_pen;
+  node c = (0.1nibs, 0.75x) dir down pen broad_nib_pen;
   node d = (b.pos.x, x / 2) dir right pen broad_nib_pen;
   node e = (a.pos.x, x / 4) dir down pen broad_nib_pen;
   node f = (b.pos.x, 0) dir left pen broad_nib_pen;
   node g = (0, x / 4) dir 130 pen broad_nib_pen;
 
-  guide skeleton = a.pos
+  guide skel = a.pos
       .. b.pos {left}
       .. c.pos
       .. d.pos {right}
       .. e.pos {down}
       .. f.pos
       .. g.pos;
-  # Thin-crossing witness nodes: banks are exactly `height` apart there,
-  # and the query keeps them on the crossing as pen_angle moves.
 
-  node w1 = directionpoint(skeleton, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
-  node w2 = directionpoint(skeleton, pen_angle + 180, 1) dir pen_angle + 180 pen broad_nib_pen;
+  # w1, w2: thin crossings where travel opposes the nib axis; the
+  # queries track pen_angle. Terminal tangents follow the skeleton.
+  node w1 = directionpoint(skel, pen_angle + 180) dir pen_angle + 180 pen broad_nib_pen;
+  node w2 = directionpoint(skel, pen_angle + 180, 1) dir pen_angle + 180 pen broad_nib_pen;
 
-  # Terminal tangents are pinned to the skeleton's direction there.
   contour main = a.right
       .. b.right
       .. {w1.dir} w1.right
       .. c.right
       .. d.right
       .. e.right {e.dir}
-      #  .. w2.right
       .. f.right {f.dir}
       .. g.right
       -- g.left
@@ -550,7 +627,6 @@ glyph s : U+0073 {
       .. e.left
       .. d.left
       .. c.left {c.dir + 180}
-      #.. w1.left{w1.dir+180}
       .. b.left {b.dir + 180}
       .. a.left
       -- cycle;
