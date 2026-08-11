@@ -1,6 +1,6 @@
 import { basicSetup } from "codemirror";
 import { Decoration, EditorView, keymap } from "@codemirror/view";
-import { Compartment, EditorState, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
+import { Compartment, EditorState, Prec, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
 import { setDiagnostics } from "@codemirror/lint";
 import { catppuccinLatte, catppuccinMocha } from "@catppuccin/codemirror";
 import { Pane } from "tweakpane";
@@ -65,11 +65,20 @@ function buildDecorations(highlights) {
 const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
 const editorTheme = new Compartment();
 
+// drawSelection() (part of basicSetup) draws the selection on a layer behind
+// the text, so the opaque active-line background in the catppuccin theme
+// hides the selection on that line. Overlay each flavor's surface0 color with
+// alpha instead, the way CodeMirror's own base theme does.
+const activeLineFix = (surface0) =>
+  Prec.high(EditorView.theme({ ".cm-activeLine": { backgroundColor: `${surface0}66` } }));
+const mochaTheme = [catppuccinMocha, activeLineFix("#313244")];
+const latteTheme = [catppuccinLatte, activeLineFix("#ccd0da")];
+
 const view = new EditorView({
   parent: document.querySelector("#editor"),
   extensions: [
     basicSetup,
-    editorTheme.of(darkScheme.matches ? catppuccinMocha : catppuccinLatte),
+    editorTheme.of(darkScheme.matches ? mochaTheme : latteTheme),
     // ductus uses `#` line comments. Without a Language there is no languageData,
     // so toggleComment (Ctrl+/) has no comment token to work with; supply it.
     EditorState.languageData.of(() => [{ commentTokens: { line: "#" } }]),
@@ -87,7 +96,7 @@ const view = new EditorView({
 
 darkScheme.addEventListener("change", (event) => {
   view.dispatch({
-    effects: editorTheme.reconfigure(event.matches ? catppuccinMocha : catppuccinLatte),
+    effects: editorTheme.reconfigure(event.matches ? mochaTheme : latteTheme),
   });
 });
 
