@@ -1,0 +1,6 @@
+# The playground's highlighter runs tree-sitter queries whose stack use
+# grows with file size. The default wasm stack is 1 MiB and overflows
+# near 44 KB of source; give wasm builds the 8 MiB a native main thread
+# has.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "link-arg=-zstack-size=8388608"]
