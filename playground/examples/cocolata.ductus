@@ -1,0 +1,162 @@
+
+# Cocolata design
+params {
+  weight = 400 in 100..900;
+  width = 100 in 80..120;
+  contrast = 2 in 0.1..2;
+  pen_angle = 60 in 0..90;
+}
+
+metrics {
+  upm = 1000;
+  
+  u = upm / 10;
+  cap = 750;
+  asc = 750;
+  desc = -250;
+  over = 0.1 * u;
+  x = 2/3*asc;
+  mw = x * width * 0.01;
+}
+
+stem = 0.075 * (weight - 100 + 1);
+
+pen brush {
+  width = stem;
+  height = stem * contrast;
+  angle = pen_angle;
+}
+
+glyph tha : U+0D24 {
+  node a = (mw / 10, over) dir 120 pen brush;
+  node b = (0, (x - over) / 2) dir up pen brush;
+  node c = (mw / 2, x - over) dir right pen brush;
+  node d = (c.pos.x + mw / 3, 0.4x) dir -90 pen brush;
+  node e = (d.pos.x - mw / 4, over) dir left pen brush;
+  node f = (d.pos.x - mw / 2, x / 2) dir up pen brush;
+  node g = (d.pos.x + mw / 4, 0.8x) dir right pen brush;
+  node h = (1.25mw , g.pos.y / 2) dir down pen brush;
+  node i = (h.pos.x - mw / 10, over) dir 240 pen brush;
+  guide skeleton = a.pos
+      .. b.pos
+      .. c.pos
+      .. d.pos
+      .. e.pos
+      .. f.pos
+      .. g.pos
+      .. h.pos
+      .. i.pos;
+
+  # Make the y-extrema handles horizontal. For this find the points where
+  # the spline is at 'right(0)' degrees.
+  node g_ = directionpoint(skeleton, 0, 1) dir right pen brush;
+  node w1 = directionpoint(skeleton, 180 - pen_angle, 0) dir 180 - pen_angle pen brush;
+
+  contour main = a.tailcap
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.right
+      .. w1.right
+      .. f.right
+      .. g_.right
+      .. h.right
+      .. i.tipcap
+      .. h.left
+      .. g_.left
+      .. f.left
+      .. w1.left
+      .. e.left
+      .. d.left
+      .. c.left
+      .. b.left
+      .. cycle;
+
+  advance = h.right.x;
+}
+
+glyph Ra : U+0D31 {
+  node a = (mw / 10, over) dir 120 pen brush;
+  node b = (0, (x - over) / 2) dir up pen brush;
+  node c = (mw / 2, x - over) dir right pen brush;
+  node d = (c.pos.x + mw / 3, 0.45x) dir -90 pen brush;
+  node e = (d.pos.x - mw / 10, over) dir 240 pen brush;
+
+  guide skeleton = a.pos .. b.pos .. c.pos .. d.pos .. e.pos;
+
+  contour main = a.tailcap
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.tipcap
+      .. d.left {d.dir + 180}
+      .. c.left
+      .. b.left
+      .. cycle;
+  advance = d.right.x;
+}
+
+glyph ra : U+0D30 {
+  node a = (mw / 10, over) dir 120 pen brush;
+  node b = (0, (x - over) / 2) dir up pen brush;
+  node c = (mw / 2, x - over) dir right pen brush;
+  node d = (c.pos.x + mw / 3, 0.4x) dir -90 pen brush;
+  node e = (d.pos.x - mw / 4, over) dir left pen brush;
+  node f = (d.pos.x - mw / 2, x / 2) dir up pen brush;
+  node g = (e.pos.x, 0.66x) dir right pen brush;
+
+  guide skeleton = a.pos .. b.pos .. c.pos .. d.pos .. e.pos .. f.pos .. g.pos;
+
+ 
+  contour main = a.tailcap
+      .. b.right
+      .. c.right
+      .. d.right
+      .. e.right
+      
+      .. f.right
+      .. g.tipcap
+      .. f.left
+      
+      .. e.left
+      .. d.left
+      .. c.left
+      .. b.left
+      .. cycle;
+  advance = d.right.x;
+}
+
+glyph na : U+0D28 {
+  node a = (mw / 10, over) dir 120 pen brush;
+  node b = (0, (x - over) / 2) dir up pen brush;
+  node c = (mw / 4, x - over) dir right pen brush;
+  node d1 = (c.pos.x + mw / 3, 0.3x) dir -100 pen brush;
+  node d2 = (c.pos.x + mw / 3, 0.3x) dir 80 pen brush;
+  node e = (d1.pos.x + mw / 3, 0.9x) dir right pen brush;
+  node f = (e.pos.x + mw / 3, e.pos.y / 2) dir down pen brush;
+  node g = (f.pos.x - mw / 10, 0) dir 240 pen brush;
+
+  guide skeleton = a.pos
+      .. b.pos
+      .. c.pos
+      .. {down} d1.pos {up}
+      .. e.pos
+      .. f.pos
+      .. g.pos;
+
+  contour left = a.tailcap
+      .. b.right
+      .. c.right
+      .. d1.tipcap
+      .. c.left
+      .. b.left
+      .. cycle;
+  contour right = d2.tailcap
+      .. e.right {e.dir}
+      .. f.right {f.dir}
+      .. g.tipcap
+      .. f.left {f.dir + 180}
+      .. e.left {e.dir + 180}
+      .. cycle;
+  advance = f.right.x;
+}
