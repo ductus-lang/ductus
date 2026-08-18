@@ -423,3 +423,60 @@ glyph t {
       .. b.left
       -- cycle;
 }
+
+
+glyph L {
+  advance = 60u;
+  guide spineA = (10u, cap) {down}
+      .. (30u, 0.55cap)
+      .. (50u, 0.75cap) {up}
+      .. (30u, cap);
+
+  a1 = press(spineA, 0, 1);
+  b1 = press(spineA, 1, 1);
+  c1 = press(spineA, 2, 1);
+  d1 = press(spineA, 3, 1);
+
+  # Right bank out, around the d terminal, left bank back, closing over
+  # the a terminal. The caps are exact half-ellipses: they splice in with
+  # their own endpoints and tangents, so the banks just connect to them.
+  contour outlineA = a1.tailcap
+      .. b1.right {b1.dir}
+      .. c1.right {c1.dir}
+      .. d1.tipcap
+      .. c1.left {c1.dir + 180}
+      .. b1.left {b1.dir + 180}
+      .. cycle;
+  guide spineB = (30u, cap) {down}
+      .. (30u, cap / 2)
+      .. (10u, 0) {left}
+      .. (0, 6u)
+      .. (10u, 15u)
+      .. (30u, 0)
+      .. (50u, 5u)
+      .. (40u, 20u);
+
+  a2 = press(spineB, 0, 1);
+  b2 = press(spineB, 1, 1);
+  c2 = press(spineB, 2, 1);
+  d2 = press(spineB, 3, 1);
+  e2 = press(spineB, 4, 1);
+  f2 = press(spineB, 5, 1);
+  g2 = press(spineB, 6, 1);
+  h2 = press(spineB, 7, 1);
+  contour outlineB = a2.tailcap
+      .. b2.right {b2.dir}
+      .. c2.right {c2.dir}
+      .. d2.right {d2.dir}
+      .. e2.right {e2.dir}
+      .. f2.right {f2.dir}
+      .. g2.right {g2.dir}
+      .. h2.tipcap
+      .. g2.left {g2.dir + 180}
+      .. f2.left {f2.dir + 180}
+      .. e2.left {e2.dir + 180}
+      .. d2.left {d2.dir + 180}
+      .. c2.left {c2.dir + 180}
+      .. b2.left {b2.dir + 180}
+      .. cycle;
+}
