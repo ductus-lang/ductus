@@ -277,9 +277,9 @@ fn analyze_inner(source: &str) -> Analysis {
 
 /// Byte-range highlight spans, one per captured leaf, sorted by position.
 ///
-/// When several patterns claim the same range, the earliest pattern in
-/// `highlights.scm` wins — the ordering the query was written and validated
-/// with. Captured nodes are leaves, so conflicts are always identical ranges.
+/// When several patterns claim the same range, the latest pattern in
+/// `highlights.scm` wins — the Neovim rule the query is ordered for.
+/// Captured nodes are leaves, so conflicts are always identical ranges.
 fn highlight_spans(tree: &Tree, source: &str) -> Vec<(usize, usize, String)> {
     let query = highlight_query();
     let names = query.capture_names();
@@ -294,15 +294,19 @@ fn highlight_spans(tree: &Tree, source: &str) -> Vec<(usize, usize, String)> {
             if start == end {
                 continue; // skip zero-width nodes (e.g. captured MISSING tokens)
             }
-            let claim = claimed
-                .entry((start, end))
-                .or_insert((usize::MAX, String::new()));
-            if m.pattern_index < claim.0 {
-                *claim = (
+            if claimed
+                .get(&(start, end))
+                .is_some_and(|(index, _)| *index > m.pattern_index)
+            {
+                continue;
+            }
+            claimed.insert(
+                (start, end),
+                (
                     m.pattern_index,
                     names[capture.index as usize].replace('.', "-"),
-                );
-            }
+                ),
+            );
         }
     }
 
