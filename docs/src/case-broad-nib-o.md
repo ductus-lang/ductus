@@ -15,11 +15,7 @@ params {
 
 metrics { upm = 1000; u=100; x = 500; cap = 700; asc = 750; desc = -220; }
 
-pen broad_nib_pen {
-  width  = pen_width;
-  height = pen_height;
-  angle  = pen_angle;
-}
+broad_nib_pen = pen(pen_width, pen_height, pen_angle);
 ```
 
 It's all about the *pen* here. Its three defining axes — the angle it's held at, its generous breadth, and how distinct it is from a mere razor-thin line — truly steer the show. The glyph itself, you'll find, is quite content to let the pen do most of the talking. It's a simple setup: just four nodes  arranged on a counterclockwise skeleton, each one holding onto that very same pen.

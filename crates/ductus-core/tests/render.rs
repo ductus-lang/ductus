@@ -19,10 +19,10 @@ metrics { upm = 1000; x = 500; cap = 700; asc = 750; desc = -220; over = 10 + we
 stem = 40 + 0.14 * weight;
 hair = contrast * stem;
 def bowl(c, rx, ry) -> (n, w, s, e) {
-  node n = c + (0,  ry) dir left  width hair;
-  node w = c + (-rx, 0) dir down  width stem;
-  node s = c + (0, -ry) dir right width hair;
-  node e = c + (rx, 0)  dir up    width stem;
+  node n = c + (0,  ry) dir left  pen pen(hair);
+  node w = c + (-rx, 0) dir down  pen pen(stem);
+  node s = c + (0, -ry) dir right pen pen(hair);
+  node e = c + (rx, 0)  dir up    pen pen(stem);
 }
 glyph o : U+006F {
   advance = 2 stem + 380;

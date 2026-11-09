@@ -16,11 +16,7 @@ metrics {
   u = 100;
 }
 
-pen nib {
-  width = pen_width;
-  height = pen_height;
-  angle = pen_angle;
-}
+nib = pen(pen_width, pen_height, pen_angle);
 
 glyph N : U+004E {
   advance = 7u;

@@ -19,11 +19,7 @@ metrics {
 # The nib at full pressure: an ellipse. Its .left/.right are the true
 # contact points of the moving ellipse, so the banks are envelope edges,
 # and .tip/.tail trace its round ends for the terminals.
-pen brush {
-  width = pen_width;
-  height = pen_height;
-  angle = pen_angle;
-}
+brush = pen(pen_width, pen_height, pen_angle);
 
 glyph L {
   advance = 50u;

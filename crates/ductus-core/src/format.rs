@@ -40,7 +40,7 @@ fn is_trailing(previous: Option<Node>, comment: Node) -> bool {
 fn is_block(kind: &str) -> bool {
     matches!(
         kind,
-        "params_block" | "metrics_block" | "pen_block" | "def_declaration" | "glyph_block"
+        "params_block" | "metrics_block" | "def_declaration" | "glyph_block"
     )
 }
 
@@ -194,11 +194,6 @@ impl<'a> Formatter<'a> {
             }
             "params_block" => self.braced(format!("{pad}params {{"), node, &[], indent),
             "metrics_block" => self.braced(format!("{pad}metrics {{"), node, &[], indent),
-            "pen_block" => {
-                let name = self.field(node, "name");
-                let header = format!("{pad}pen {} {{", self.text(name));
-                self.braced(header, node, &[name], indent)
-            }
             "def_declaration" => self.def_declaration(node, indent),
             "glyph_block" => self.glyph_block(node, indent),
             // Unknown statement kinds stay as written.
@@ -225,7 +220,7 @@ impl<'a> Formatter<'a> {
         let position = self.expr(self.field(node, "position"));
         let mut out = format!("{pad}node {name} = {position}");
         // Clause keywords equal their grammar field names.
-        for clause in ["dir", "width", "nib", "pen"] {
+        for clause in ["dir", "pen"] {
             if let Some(clause_node) = node.child_by_field_name(clause) {
                 let value = self.expr(self.parts(clause_node)[0]);
                 out.push_str(&format!(" {clause} {value}"));
@@ -562,8 +557,8 @@ mod tests {
     #[test]
     fn def_and_destructuring() {
         assert_eq!(
-            formatted("def f(a,b)->(n,s){node n=a dir up width w;}\n(n,s)=f(1,2);"),
-            "def f(a, b) -> (n, s) {\n  node n = a dir up width w;\n}\n\n(n, s) = f(1, 2);\n"
+            formatted("def f(a,b)->(n,s){node n=a dir up pen pen(w);}\n(n,s)=f(1,2);"),
+            "def f(a, b) -> (n, s) {\n  node n = a dir up pen pen(w);\n}\n\n(n, s) = f(1, 2);\n"
         );
     }
 

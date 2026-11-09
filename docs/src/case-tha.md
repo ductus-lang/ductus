@@ -28,7 +28,7 @@ You'll notice right away that the letter's right half is a perfect mirror image 
 
 ```ductus norender acc
 def mirror(n, axis) -> m {
-  node m = (2 * axis - n.pos.x, n.pos.y) dir -n.dir width n.width;
+  node m = (2 * axis - n.pos.x, n.pos.y) dir -n.dir pen pen(n.width);
 }
 ```
 
@@ -53,11 +53,11 @@ glyph tha : U+0D24 {
   # Left half of the skeleton, travelling from the tip into the letter:
   # curl up over the left shoulder, down around the left bowl, in to
   # the centre.
-  node a = (ax, 0)                            dir 150   width term;
-  node b = (wx, 0.48 * x)                     dir up    width term;
-  node c = (0.5[wx, lcx], x + hair / 2 - over) dir right width hair;
-  node d = (mid + 2gap, b.pos.y)              dir down  width hair;
-  node e = (mid, over)                        dir left  width hair;
+  node a = (ax, 0)                            dir 150   pen pen(term);
+  node b = (wx, 0.48 * x)                     dir up    pen pen(term);
+  node c = (0.5[wx, lcx], x + hair / 2 - over) dir right pen pen(hair);
+  node d = (mid + 2gap, b.pos.y)              dir down  pen pen(hair);
+  node e = (mid, over)                        dir left  pen pen(hair);
 
   # Right half by symmetry.
   f = mirror(d, mid);
@@ -94,7 +94,7 @@ Let's unpack three key insights, presented in order of their significance.
 
 **One contour, eighteen-plus points, still just two banks.** Our skeleton elegantly snakes from tip to tip, passing through nine distinct nodes. The contour then traces its path outward along the right bank,  curves around the right cap, and returns along the left bank, before completing its journey around the left cap. It’s the very same shape we explored with the pressure chapter's strokes, now brought to life at letter scale.
 
-**The caps are ordinary points.** It's interesting to note that these are simply `width` nodes. You won't find a dedicated pen, or any special `tip` or `tipcap` features here. Instead, a round cap is thoughtfully constructed from its fundamental essence: a point positioned half a width beyond the tip (look for `acap` and `icap`), with its entry and exit precisely guided along pinned semicircle tangents. This adherence to Ductus's 'no-cap-machinery' principle means we achieve this with just two bindings and four constraints. And, as a  bonus, the taper into the cap (using `term`, which is thinner than `hair`) was completely free for us to design exactly as we wished.
+**The caps are ordinary points.** These nodes use plain round pens, and although a round pen offers `tip` and `tipcap`, you won't find them here. Instead, a round cap is thoughtfully constructed from its fundamental essence: a point positioned half a width beyond the tip (look for `acap` and `icap`), with its entry and exit precisely guided along pinned semicircle tangents. This adherence to Ductus's 'no-cap-machinery' principle means we achieve this with just two bindings and four constraints. And, as a  bonus, the taper into the cap (using `term`, which is thinner than `hair`) was completely free for us to design exactly as we wished.
 
 Our construction view offers a clear glimpse of the skeleton,  snaking its way through both bowls, alongside the helpful node dots that precisely place every single bank point.
 

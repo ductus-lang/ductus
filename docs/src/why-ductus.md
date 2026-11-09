@@ -24,10 +24,10 @@ stem = 40 + 0.14 * weight;
 hair = contrast * stem;
 
 def bowl(c, rx, ry) -> (n, w, s, e) {
-  node n = c + (0,  ry) dir left  width hair;
-  node w = c + (-rx, 0) dir down  width stem;
-  node s = c + (0, -ry) dir right width hair;
-  node e = c + (rx, 0)  dir up    width stem;
+  node n = c + (0,  ry) dir left  pen pen(hair);
+  node w = c + (-rx, 0) dir down  pen pen(stem);
+  node s = c + (0, -ry) dir right pen pen(hair);
+  node e = c + (rx, 0)  dir up    pen pen(stem);
 }
 
 glyph o : U+006F {
@@ -62,10 +62,10 @@ In ductus, we consider the filled contour to be the star of the show, the primar
 
 ## Skeleton as scaffolding, not geometry
 
-While ductus is quite knowledgeable about strokes, it politely declines to draw them for you. Instead, a *node* acts as a smart skeleton point, carrying crucial information like the stroke's local direction and width, and then conveniently exposing its precisely calculated edge points:
+While ductus is quite knowledgeable about strokes, it politely declines to draw them for you. Instead, a *node* acts as a smart skeleton point, carrying crucial information like the stroke's local direction and its pen, and then conveniently exposing its precisely calculated edge points:
 
 ```ductus norender
-node w = center + (-rx, 0) dir down width stem;
+node w = center + (-rx, 0) dir down pen pen(stem);
 # w.left and w.right are now points, exactly stem/2 from w.pos
 ```
 

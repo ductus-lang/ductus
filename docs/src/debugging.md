@@ -19,10 +19,10 @@ glyph o : U+006F {
   ry = x / 2 + over - hair / 2;
   rx = advance / 2 - 55 - stem / 2;
 
-  node n = center + (0,  ry) dir left  width hair;
-  node w = center + (-rx, 0) dir down  width stem;
-  node s = center + (0, -ry) dir right width hair;
-  node e = center + (rx, 0)  dir up    width stem;
+  node n = center + (0,  ry) dir left  pen pen(hair);
+  node w = center + (-rx, 0) dir down  pen pen(stem);
+  node s = center + (0, -ry) dir right pen pen(hair);
+  node e = center + (rx, 0)  dir up    pen pen(stem);
 
   guide spine = n.pos .. w.pos .. s.pos .. e.pos .. cycle;
 

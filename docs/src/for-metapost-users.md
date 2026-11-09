@@ -25,8 +25,8 @@ Some concepts have taken on a slightly different form in ductus, thoughtfully re
 | MetaPost | ductus | why |
 |---|---|---|
 | `x1 = whatever[z2, z3]; ...` equations | `intersection(p, q)` | no linear solver; the type-design uses of `whatever` are path intersections, which are explicit and exact on lines |
-| `penpos1(w, phi)` | `node n = ... dir theta width w nib phi;` | the node also carries travel direction, and derives `n.left`/`n.right` exactly |
-| `pickup pencircle xscaled w yscaled h rotated phi` | `pen name { width = w; height = h; angle = phi; }` | a pen derives edge points; it never strokes anything |
+| `penpos1(w, phi)` | `node n = ... dir theta pen pen(w, 0, phi);` | the node also carries travel direction, and derives `n.left`/`n.right` exactly |
+| `pickup pencircle xscaled w yscaled h rotated phi` | `name = pen(w, h, phi);` | a pen derives edge points; it never strokes anything |
 | `penstroke` / `draw` with a pen | write both banks through derived points | outline-first: the contour is the artifact, and [terminals](terminals-and-caps.md) are outline too |
 | `fill` / `unfill` | contours with opposite winding | nonzero rule; `unfill` is a `reversed` counter |
 | `p & q` concatenation | macros return points; one path expression per contour | no seam-merging rules to learn — the [macros chapter](macros.md) argues this out |

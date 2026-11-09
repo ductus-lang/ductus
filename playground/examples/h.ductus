@@ -26,9 +26,9 @@ glyph h : U+0068 {
   xr = advance - 85 - stem; # right stem, left edge
   ys = 0.62 * x; # shoulder springs from the stem here
 
-  node p = (xl + stem / 2, ys) dir up width stem;
-  node q = (0.52[xl + stem, xr], x + over - sh / 2) dir right width sh;
-  node r = (xr + stem / 2, 0.55 * x) dir down width stem;
+  node p = (xl + stem / 2, ys) dir up pen pen(stem);
+  node q = (0.52[xl + stem, xr], x + over - sh / 2) dir right pen pen(sh);
+  node r = (xr + stem / 2, 0.55 * x) dir down pen pen(stem);
 
   guide arch = p.pos .. q.pos .. r.pos;
 

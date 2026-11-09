@@ -1,4 +1,4 @@
-# The va bowl drawn with an ellipse pen instead of per-node width/nib.
+# The va bowl drawn with an ellipse pen instead of a razor.
 # The pen's height keeps the stroke from collapsing to zero where the
 # travel direction crosses the pen axis, and terminals trace the pen
 # shape through .tip / .tail.
@@ -13,11 +13,7 @@ params {
   pen_angle = 30 in 0..180;
 }
 
-pen main {
-  width = pen_width;
-  height = pen_height;
-  angle = pen_angle;
-}
+main = pen(pen_width, pen_height, pen_angle);
 
 glyph va : U+006F {
   advance = 15u;

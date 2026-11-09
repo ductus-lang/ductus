@@ -25,13 +25,13 @@ glyph s : U+0073 {
   advance = stem + 350;
 
   # skeleton, travelling from the upper terminal to the lower one
-  node a = (advance - 52, x - 118) dir 150 width term;
-  node b = (advance * 0.47, x + over - hair / 2) dir 180 width hair;
-  node c = (45 + mid / 2, x * 0.72) dir 270 width mid;
-  node d = (advance * 0.5, x / 2) dir 305 width spine;
-  node e = (advance - 45 - mid / 2, x * 0.28) dir 270 width mid;
-  node f = (advance * 0.53, hair / 2 - over) dir 180 width hair;
-  node g = (52, 118) dir 130 width term;
+  node a = (advance - 52, x - 118) dir 150 pen pen(term);
+  node b = (advance * 0.47, x + over - hair / 2) dir 180 pen pen(hair);
+  node c = (45 + mid / 2, x * 0.72) dir 270 pen pen(mid);
+  node d = (advance * 0.5, x / 2) dir 305 pen pen(spine);
+  node e = (advance - 45 - mid / 2, x * 0.28) dir 270 pen pen(mid);
+  node f = (advance * 0.53, hair / 2 - over) dir 180 pen pen(hair);
+  node g = (52, 118) dir 130 pen pen(term);
 
   guide skeleton = a.pos .. b.pos .. c.pos .. d.pos .. e.pos .. f.pos .. g.pos;
 

@@ -450,7 +450,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-ductus"
 version = "0.1.0"
-source = "git+https://github.com/ductus-lang/tree-sitter-ductus.git#628ecc98e5fcf54f5ae2e5bbc5d778f989d901cd"
+source = "git+https://github.com/ductus-lang/tree-sitter-ductus.git#fb4a93bc87d6286e55ebcdfbd1767ee226436c39"
 dependencies = [
  "cc",
  "tree-sitter-language",

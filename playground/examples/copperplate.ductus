@@ -20,24 +20,16 @@ hair = shade / contrast;
 aw = 0.66x; # arch width: the run of one letter part
 sb = 0.18x; # sidebearing
 
-# The nib at full pressure: an ellipse. Its .left/.right are the true
-# contact points of the moving ellipse, so the banks are envelope edges,
-# and .tip/.tail trace its round ends for the terminals.
-pen brush {
-  width = shade;
-  height = aspect * shade / 100;
-  angle = 0;
-}
-
-# A pressure sample: a node on the pen path at segment time `t`, the whole
-# nib scaled by pressure — 0 for a shut pen, 1 for full weight. Width and
-# height shrink together, so aspect and angle never change, and a shut pen
-# still prints a hairline-sized ellipse, not a point. The node is built at
-# the origin because `scaled` works about the origin, then shifted out.
+# A pressure sample: a node on the pen path at segment time `t`, drawn by
+# an elliptical nib whose size follows pressure — 0 for a shut pen, 1 for
+# full weight. Width and height shrink together, so aspect and angle never
+# change, and a shut pen still prints a hairline-sized ellipse, not a
+# point. Its .left/.right are the true contact points of the moving
+# ellipse, so the banks are envelope edges, and .tip/.tail trace its round
+# ends for the terminals.
 def press(path, t, pressure) -> n {
-  squeeze = (hair + pressure * (shade - hair)) / shade;
-  node m = (0, 0) dir direction(path, t) pen brush;
-  n = m scaled squeeze shifted point(path, t);
+  w = hair + pressure * (shade - hair);
+  node n = point(path, t) dir direction(path, t) pen pen(w, aspect * w / 100, 0);
 }
 
 glyph entrance {

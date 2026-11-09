@@ -47,6 +47,16 @@ Here's some fine print worth knowing:
 - `intersection` delivers exact results when applied to two line segments. This is where those classic METAFONT "whatever" idioms—like a stem meeting a diagonal or a serif  touching a stem—really shine.
 - Keep in mind that zero-length segments (like what you'd find with `roundrect` when its radius is 0) don't have a tangent and won't show up in these queries.
 
+## Pens
+
+| function | returns | errors when |
+|---|---|---|
+| `pen(w)` | a round pen, `w` across | `w <= 0` |
+| `pen(w, h)` | an ellipse: full major axis `w` along 0°, full minor axis `h` | `w <= 0` or `h < 0` |
+| `pen(w, h, angle)` | the same ellipse with its major axis at `angle` | `w <= 0` or `h < 0` |
+
+`h = 0` gives a razor. The [pens chapter](pens.md) covers the whole family.
+
 ## Shape constructors
 
 Meet `circle`, `ellipse`, `roundrect`, and `superellipse`—these  functions return closed, counterclockwise path values. They're so important, they even get their very own [next chapter](shape-constructors.md) to shine in.

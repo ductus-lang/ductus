@@ -83,7 +83,7 @@ So, for a real-world font family, here's a layout that tends to work :
 ```text
 family.ductus          # imports everything below; ductus build family.ductus
 foundation.ductus      # params, metrics, stroke weights
-pens.ductus            # pen blocks
+pens.ductus            # shared pens
 constructions.ductus   # bowl(), arch(), serif() macros
 latin.ductus           # glyph blocks
 malayalam.ductus       # glyph blocks

@@ -34,10 +34,10 @@ stem = 40 + 0.14 * weight;
 hair = contrast * stem;
 
 def bowl(c, rx, ry) -> (n, w, s, e) {
-  node n = c + (0,  ry) dir left  width hair;
-  node w = c + (-rx, 0) dir down  width stem;
-  node s = c + (0, -ry) dir right width hair;
-  node e = c + (rx, 0)  dir up    width stem;
+  node n = c + (0,  ry) dir left  pen pen(hair);
+  node w = c + (-rx, 0) dir down  pen pen(stem);
+  node s = c + (0, -ry) dir right pen pen(hair);
+  node e = c + (rx, 0)  dir up    pen pen(stem);
 }
 
 glyph o : U+006F {
@@ -82,7 +82,7 @@ fn evaluates_the_o_example() {
     assert_eq!(glyph.anchors.len(), 1);
     assert_eq!(glyph.nodes.len(), 4, "bowl nodes are visible in the glyph scope");
 
-    // Topmost outer point: n.right with dir=left (nib 270) is
+    // Topmost outer point: n.right with dir=left (left normal 270) is
     // n.pos - hair/2 * unitvec(270) = n.pos + (0, hair/2), and the skeleton
     // radius keeps the outline extreme at x + over.
     let outer = &glyph.contours[0].1;

@@ -3,14 +3,15 @@
 Up until now, we've been crafting outlines point by point. But here's the thing: type is fundamentally about *strokes*. Think of an `o` as a lovely round stroke, or an `l` as a crisp straight one. Each stroke carries its own direction and thickness, long before it takes on its final outline. And in ductus, a **node** is how we elegantly capture all of that information:
 
 ```ductus norender
-node n = (x, y) dir theta width w;
+node n = (x, y) dir theta pen pen(w);
 ```
 
-Essentially, a node is a special skeleton point that holds vital information about an imaginary stroke. It knows the local direction of travel (`dir`, measured in degrees) and the stroke's total thickness (`width`). It's a foundational concept, but it never actually appears on its own. Instead, its true power comes from its ability to *derive* other points, like so:
+Essentially, a node is a special skeleton point that holds vital information about an imaginary stroke. It knows the local direction of travel (`dir`, measured in degrees) and the pen that draws through it. `pen(w)` is the simplest pen there is: a round one, `w` units across, so the stroke is `w` thick whichever way it travels. The pens chapter covers the rest of the family. A node is a foundational concept, but it never actually appears on its own. Instead, its true power comes from its ability to *derive* other points, like so:
 
 ```ductus norender
 n.pos      # the point itself
 n.dir      # the direction, a number
+n.width    # the stroke's thickness across travel: w
 n.left     # n.pos + (w/2) * unitvec(n.dir + 90)
 n.right    # n.pos - (w/2) * unitvec(n.dir + 90)
 ```
@@ -23,8 +24,8 @@ So, how do we actually create outlines with these clever points? We write them *
 
 ```ductus
 u = 100;
-node a = (u, u)      dir 55 width 90;
-node b = (5u, 2.5u)  dir 10 width 30;
+node a = (u, u)      dir 55 pen pen(90);
+node b = (5u, 2.5u)  dir 10 pen pen(30);
 
 draw(a.pos {a.dir} .. {b.dir} b.pos);       # the skeleton
 draw(a.left {a.dir} .. {b.dir} b.left);     # each bank echoes it
@@ -35,8 +36,8 @@ These banks are simply ordinary curves, passing through ordinary points. The nea
 
 ```ductus
 u = 100;
-node a = (u, u)      dir 55 width 90;
-node b = (5u, 2.5u)  dir 10 width 30;
+node a = (u, u)      dir 55 pen pen(90);
+node b = (5u, 2.5u)  dir 10 pen pen(30);
 
 fill(a.right {a.dir} .. {b.dir} b.right
   -- b.left {b.dir + 180} .. {a.dir + 180} a.left -- cycle);
@@ -46,46 +47,24 @@ Picture this path: we journey out along the right bank, then take a straight sho
 
 It's important to notice what ductus *didn't* do here. It didn't perform any complex curve offsetting. Instead, it precisely offset four *points* and then skillfully fitted curves right through them. If a truly parallel curve and our fitted bank ever have a minor disagreement, the solution is  simple, just like many other things in ductus: we simply add a witness point. The pens chapter will explain this in fine detail.
 
-## Asymmetric width
+## A fixed axis
 
-By default, `width w`  distributes the stroke evenly, assigning `w/2` to each bank. But what if you need more control? `width (wl, wr)` lets you specify the banks separately. In fact, `width w` is just a neat shorthand for `width (w/2, w/2)`. This lovely asymmetry is precisely how we articulate off-axis stress in our designs. Let's observe the same elegant C-shaped stroke, first with its weight perfectly centered, and then with that weight playfully pushed towards the outer bank:
-
-```ductus
-u = 100;
-
-def bowl(cx, wl, wr) -> outline {
-  node n = (cx, 2.4u)        dir left  width (wl, wr);
-  node w = (cx - 1.2u, 1.2u) dir down  width (wl, wr);
-  node s = (cx, 0)           dir right width (wl, wr);
-
-  outline = n.right .. w.right .. s.right
-         -- s.left .. w.left .. n.left -- cycle;
-}
-
-fill(bowl(1.5u, 30, 30));
-fill(bowl(4.5u, 5, 55));
-```
-
-Notice that both of these strokes maintain a thickness of 60 units, and their underlying skeletons are absolutely identical. However, on the right, you'll see almost the entire stroke extends beyond its skeleton. This clearly illustrates that the skeleton doesn't always have to sit perfectly in the middle of the stroke, and there's no rule saying it must.
-
-## The nib axis
-
-Now, let's explore one more intriguing clause. Normally, width spreads out perpendicular to the direction of travel, as shown by `unitvec(dir + 90)` in our earlier formulas. But with `nib phi`, you gain the  ability to override that default axis:
+A round pen spreads the stroke perpendicular to the direction of travel, as shown by `unitvec(dir + 90)` in our earlier formulas. Give `pen` a height of 0 and an angle, and you get a *razor*: a flat pen whose edge stays pinned to that angle, whatever the travel direction:
 
 ```ductus norender
-node k = (x, y) dir theta width w nib phi;
-# k.left = k.pos + wl * unitvec(phi)  — phi, not theta + 90
+node k = (x, y) dir theta pen pen(w, 0, phi);
+# k.left = k.pos + (w/2) * unitvec(phi)  — phi, not theta + 90
 ```
 
-Imagine a *fixed* nib axis, one that remains steadfast regardless of the stroke's travel direction. This effectively simulates a broad pen: the stroke becomes wonderfully thick when it travels across the axis, and elegantly thin when it glides along it. No complex pen machinery needed here, just the same familiar bowl, but this time with every node's nib axis  pinned to 30°:
+A fixed axis like this simulates a broad pen: the stroke becomes wonderfully thick when it travels across the axis, and elegantly thin when it glides along it. Here is the same familiar bowl, with every node's razor pinned to 30°:
 
 ```ductus
 u = 100;
 
 def bowl(cx) -> outline {
-  node n = (cx, 2.4u)        dir left  width 70 nib 30;
-  node w = (cx - 1.2u, 1.2u) dir down  width 70 nib 30;
-  node s = (cx, 0)           dir right width 70 nib 30;
+  node n = (cx, 2.4u)        dir left  pen pen(70, 0, 30);
+  node w = (cx - 1.2u, 1.2u) dir down  pen pen(70, 0, 30);
+  node s = (cx, 0)           dir right pen pen(70, 0, 30);
 
   outline = n.right .. w.right .. s.right
          -- s.left .. w.left .. n.left -- cycle;
@@ -93,12 +72,12 @@ def bowl(cx) -> outline {
 
 fill(bowl(1.5u));
 
-node a = (4u, 0)    dir up width 70 nib 30;
-node b = (4u, 2.4u) dir up width 70 nib 30;
+node a = (4u, 0)    dir up pen pen(70, 0, 30);
+node b = (4u, 2.4u) dir up pen pen(70, 0, 30);
 fill(a.right -- b.right -- b.left -- a.left -- cycle);
 ```
 
-Take a look at the upright stroke nestled next to our bowl. It  showcases another signature of broad-pen behavior: its cut ends  align with the nib axis, perfectly capturing the entry angle a broad pen would naturally leave. The bowl, however, subtly hints at a fascinating challenge. Somewhere along its path, between two nodes, the travel direction crosses the nib axis. At precisely that point, a true stroke would  thin to *nothing*. The good news is, the upcoming pens chapter will teach us how to articulate this behavior perfectly.
+Take a look at the upright stroke nestled next to our bowl. It  showcases another signature of broad-pen behavior: its cut ends  align with the pen's axis, perfectly capturing the entry angle a broad pen would naturally leave. The bowl, however, subtly hints at a fascinating challenge. Somewhere along its path, between two nodes, the travel direction crosses the pen's axis. At precisely that point, a true stroke would  thin to *nothing*. The good news is, the upcoming pens chapter will teach us how to articulate this behavior perfectly.
 
 ## Building the o
 
@@ -131,10 +110,10 @@ glyph o : U+006F {
   ry = x / 2 + over - hair / 2;
   rx = advance / 2 - 55 - stem / 2;
 
-  node n = center + (0,  ry) dir left  width hair;
-  node w = center + (-rx, 0) dir down  width stem;
-  node s = center + (0, -ry) dir right width hair;
-  node e = center + (rx, 0)  dir up    width stem;
+  node n = center + (0,  ry) dir left  pen pen(hair);
+  node w = center + (-rx, 0) dir down  pen pen(stem);
+  node s = center + (0, -ry) dir right pen pen(hair);
+  node e = center + (rx, 0)  dir up    pen pen(stem);
 
   guide spine = n.pos .. w.pos .. s.pos .. e.pos .. cycle;
 }
@@ -151,10 +130,10 @@ glyph o : U+006F {
   ry = x / 2 + over - hair / 2;
   rx = advance / 2 - 55 - stem / 2;
 
-  node n = center + (0,  ry) dir left  width hair;
-  node w = center + (-rx, 0) dir down  width stem;
-  node s = center + (0, -ry) dir right width hair;
-  node e = center + (rx, 0)  dir up    width stem;
+  node n = center + (0,  ry) dir left  pen pen(hair);
+  node w = center + (-rx, 0) dir down  pen pen(stem);
+  node s = center + (0, -ry) dir right pen pen(hair);
+  node e = center + (rx, 0)  dir up    pen pen(stem);
 
   guide spine = n.pos .. w.pos .. s.pos .. e.pos .. cycle;
 
@@ -180,7 +159,7 @@ Or perhaps a low contrast look at `contrast = 1.0`, where `hair` and `stem` char
 ```ductus glyph=o set="weight=850 contrast=1.0"
 ```
 
-We've created eight distinct points and two flowing contours, all dynamically at every instance. This truly embodies the 'skeleton-as-scaffolding' principle introduced in our first chapter, bringing it vividly to life. You defined just four positions and four widths, and the nodes, in their wisdom, effortlessly positioned everything else.
+We've created eight distinct points and two flowing contours, all dynamically at every instance. This truly embodies the 'skeleton-as-scaffolding' principle introduced in our first chapter, bringing it vividly to life. You defined just four positions and four pens, and the nodes, in their wisdom, effortlessly positioned everything else.
 
 > **Try it** — the playground ships this `o` among its examples. Go ahead, drag `weight` and `contrast` to their limits in the playground and watch the debug view. You'll see the edge-point dots  slide, the guide line gently breathe and reshape, and yet, not a single point will ever mysteriously appear or disappear.
 
@@ -209,4 +188,4 @@ Here's a liberating thought: derived points are, at heart, just ordinary points.
 contour outer = n.right .. w.right + (3, 0) .. s.right .. e.right .. cycle;
 ```
 
-Nodes themselves are also quite transformable. Functions like `shifted`, `rotated`, and their companions will  move the node's position and, at the same time, adjust its direction (and even its nib axis). `scaled`, of course, thoughtfully scales the width as well. So, when a macro like our `bowl()` example returns nodes, it generously hands the caller everything they might need: the position, the direction, the thickness, and both derived banks, all perfectly ready to be either artfully written through or, if inspiration strikes, confidently overruled.
+Nodes themselves are also quite transformable. Functions like `shifted`, `rotated`, and their companions will  move the node's position and, at the same time, adjust its direction (and the pen's angle). `scaled`, of course, thoughtfully scales the pen as well. So, when a macro like our `bowl()` example returns nodes, it generously hands the caller everything they might need: the position, the direction, the thickness, and both derived banks, all perfectly ready to be either artfully written through or, if inspiration strikes, confidently overruled.

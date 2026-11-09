@@ -9,13 +9,14 @@ params {
 
 glyph va : U+006F {
   advance = 15u;
-  node m = (3u, 0) dir 135 width nib_width nib nib_angle;
-  node n = (0, 5u) dir up width nib_width nib nib_angle;
-  node o = (5u, 10u) dir right width nib_width nib nib_angle;
-  node p = (10u, 5u) dir down width nib_width nib nib_angle;
-  node q = (7u, 0) dir 215 width nib_width nib nib_angle;
-  node r = q.pos + (7u, 0) dir right width nib_width nib nib_angle;
-  node s = r.pos + (0, 10u) dir up width nib_width nib nib_angle;
+  razor = pen(nib_width, 0, nib_angle);
+  node m = (3u, 0) dir 135 pen razor;
+  node n = (0, 5u) dir up pen razor;
+  node o = (5u, 10u) dir right pen razor;
+  node p = (10u, 5u) dir down pen razor;
+  node q = (7u, 0) dir 215 pen razor;
+  node r = q.pos + (7u, 0) dir right pen razor;
+  node s = r.pos + (0, 10u) dir up pen razor;
   guide pat = m.pos .. n.pos .. o.pos .. p.pos .. q.pos -- r.pos -- s.pos;
   contour c1 = m.right
       .. n.right

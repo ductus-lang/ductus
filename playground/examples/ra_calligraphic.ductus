@@ -13,11 +13,7 @@ params {
   pen_angle = 45 in 40..65;
 }
 
-pen main {
-  width = 150;
-  height = 10;
-  angle = pen_angle;
-}
+main = pen(150, 10, pen_angle);
 
 glyph va : U+006F {
   advance = 12u;

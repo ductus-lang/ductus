@@ -35,11 +35,7 @@ metrics {
   pen_height = 0.1nibs;
 }
 
-pen broad_nib_pen {
-  width = pen_width;
-  height = pen_height;
-  angle = pen_angle;
-}
+broad_nib_pen = pen(pen_width, pen_height, pen_angle);
 
 glyph a : U+0061 {
   advance = 1.2x;

@@ -23,7 +23,7 @@ term = 0.45[hair, stem]; # terminal thickness
 # A skeleton node on an ellipse around c: position at parameter angle t
 # (degrees), travelling counterclockwise.
 def arcnode(c, rx, ry, t, wd) -> nd {
-  node nd = c + (rx * cos(t), ry * sin(t)) dir angle((-rx * sin(t), ry * cos(t))) width wd;
+  node nd = c + (rx * cos(t), ry * sin(t)) dir angle((-rx * sin(t), ry * cos(t))) pen pen(wd);
 }
 
 glyph c : U+0063 {

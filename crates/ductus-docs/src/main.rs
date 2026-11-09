@@ -567,7 +567,7 @@ mod tests {
 
     #[test]
     fn norender_shows_code_without_compiling() {
-        let content = "```ductus norender\nnode n = q dir 45 width w;\n```";
+        let content = "```ductus norender\nnode n = q dir 45 pen pen(w);\n```";
         let html = chapter(content).unwrap();
         assert!(html.contains("ductus-standalone"));
         assert!(!html.contains("<svg"));

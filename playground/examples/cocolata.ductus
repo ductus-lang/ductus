@@ -21,11 +21,7 @@ metrics {
 
 stem = 0.075 * (weight - 100 + 1);
 
-pen brush {
-  width = stem;
-  height = stem * contrast;
-  angle = pen_angle;
-}
+brush = pen(stem, stem * contrast, pen_angle);
 
 glyph tha : U+0D24 {
   node a = (mw / 10, over) dir 120 pen brush;

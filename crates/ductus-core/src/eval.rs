@@ -29,6 +29,7 @@ const BUILTIN_FUNCTIONS: &[&str] = &[
     "direction",
     "directionpoint",
     "jointcap",
+    "pen",
     "circle",
     "ellipse",
     "roundrect",
@@ -158,7 +159,6 @@ impl Session<'_> {
                             .insert(entry.name.clone(), number);
                     }
                 }
-                Item::Pen(pen) => self.evaluator.exec_pen(pen)?,
                 Item::Def(def) => self.evaluator.register_def(def)?,
                 Item::Glyph(glyph) => {
                     if self.document.glyphs.iter().any(|g| g.name == glyph.name) {
@@ -579,97 +579,19 @@ impl Evaluator {
         }
     }
 
-    /// Evaluate a `pen` block into a first-class pen binding.
-    pub fn exec_pen(&mut self, pen: &PenDecl) -> Result<(), EvalError> {
-        let width = self.expect_number(&pen.width)?;
-        if width <= 0.0 {
-            return Err(err(
-                pen.span,
-                format!("pen '{}' needs width > 0, got {width}", pen.name),
-            ));
-        }
-        let height = match &pen.height {
-            Some(expr) => self.expect_number(expr)?,
-            None => 0.0,
-        };
-        if height < 0.0 {
-            return Err(err(
-                pen.span,
-                format!("pen '{}' needs height >= 0, got {height}", pen.name),
-            ));
-        }
-        let angle = match &pen.angle {
-            Some(expr) => self.expect_number(expr)?,
-            None => 0.0,
-        };
-        let value = PenValue {
-            a: width / 2.0,
-            b: height / 2.0,
-            angle,
-        };
-        self.define(&pen.name, Value::Pen(value), pen.span)
-    }
-
     fn eval_node(&mut self, node: &NodeDecl) -> Result<NodeValue, EvalError> {
         let pos = self.expect_point(&node.position)?;
         let dir = self.expect_number(&node.dir)?;
-
-        if let Some(pen_expr) = &node.pen {
-            let value = self.eval_expr(pen_expr)?;
-            let Value::Pen(pen) = value else {
-                return Err(err(
-                    pen_expr.span,
-                    format!("expected a pen, got {}", value.type_name()),
-                ));
-            };
-            // Edge points are the pen's support points along the left
-            // normal of travel. A razor (b = 0) is degenerate there and
-            // keeps the legacy fixed-axis rule instead.
-            let (offset, nib) = if pen.b > 0.0 {
-                let edge = pen.support(dir + 90.0);
-                (edge.length(), edge.y.atan2(edge.x).to_degrees())
-            } else {
-                (pen.a, pen.angle)
-            };
-            return Ok(NodeValue {
-                pos,
-                dir,
-                left_offset: offset,
-                right_offset: offset,
-                nib,
-                pen: Some(pen),
-            });
-        }
-
-        let width_expr = node
-            .width
-            .as_ref()
-            .expect("lowering guarantees width or pen");
-        let (left_offset, right_offset) = match self.eval_expr(width_expr)? {
-            Value::Number(total) => (total / 2.0, total / 2.0),
-            Value::Point(offsets) => (offsets.x, offsets.y),
+        let pen = match self.eval_expr(&node.pen)? {
+            Value::Pen(pen) => pen,
             other => {
                 return Err(err(
-                    width_expr.span,
-                    format!(
-                        "width expects a number or an (left, right) pair, got {}",
-                        other.type_name()
-                    ),
+                    node.pen.span,
+                    format!("expected a pen, got {}", other.type_name()),
                 ));
             }
         };
-        let nib = match &node.nib {
-            Some(expr) => self.expect_number(expr)?,
-            None => dir + 90.0,
-        };
-        Ok(NodeValue {
-            pos,
-            dir,
-            left_offset,
-            right_offset,
-            nib,
-            pen: None,
-        })
+        Ok(NodeValue { pos, dir, pen })
     }
 
     // ---- Values ------------------------------------------------------------
@@ -1011,7 +933,7 @@ impl Evaluator {
             TransformOp::Reversed => unreachable!("handled above"),
         };
 
-        // Uniform scaling also scales node widths.
+        // Uniform scaling also scales node pens.
         let width_scale = match op {
             TransformOp::Scaled => transform_angle_preserving_scale(&affine),
             _ => 1.0,
@@ -1022,14 +944,11 @@ impl Evaluator {
             Value::Node(node) => Ok(Value::Node(NodeValue {
                 pos: affine * node.pos,
                 dir: transform_angle(&affine, node.dir),
-                left_offset: node.left_offset * width_scale,
-                right_offset: node.right_offset * width_scale,
-                nib: transform_angle(&affine, node.nib),
-                pen: node.pen.map(|pen| PenValue {
-                    a: pen.a * width_scale,
-                    b: pen.b * width_scale,
-                    angle: transform_angle(&affine, pen.angle),
-                }),
+                pen: PenValue {
+                    a: node.pen.a * width_scale,
+                    b: node.pen.b * width_scale,
+                    angle: transform_angle(&affine, node.pen.angle),
+                },
             })),
             Value::Path(path) => Ok(Value::Path(PathValue {
                 points: path
@@ -1271,6 +1190,34 @@ impl Evaluator {
             }
             // The outer arc of a stroke joint; the geometry lives in
             // value.rs next to the caps it generalizes.
+            // `pen(width, height, angle)`: height defaults to width (a
+            // circle), angle to 0. Height 0 is a razor.
+            "pen" => {
+                if !(1..=3).contains(&values.len()) {
+                    return Err(err(
+                        span,
+                        format!("pen() expects 1 to 3 arguments, got {}", values.len()),
+                    ));
+                }
+                let width = number_at(0)?;
+                if width <= 0.0 {
+                    return Err(err(span, format!("pen() needs width > 0, got {width}")));
+                }
+                let height = if values.len() > 1 {
+                    number_at(1)?
+                } else {
+                    width
+                };
+                if height < 0.0 {
+                    return Err(err(span, format!("pen() needs height >= 0, got {height}")));
+                }
+                let angle = if values.len() > 2 { number_at(2)? } else { 0.0 };
+                Ok(Value::Pen(PenValue {
+                    a: width / 2.0,
+                    b: height / 2.0,
+                    angle,
+                }))
+            }
             "jointcap" => {
                 expect_arity(2)?;
                 let (Value::Node(arriving), Value::Node(leaving)) = (&values[0], &values[1])
@@ -1520,7 +1467,6 @@ mod tests {
         for item in &program.items {
             match item {
                 Item::Stmt(stmt) => evaluator.exec_statement(stmt).expect("evaluates"),
-                Item::Pen(pen) => evaluator.exec_pen(pen).expect("evaluates"),
                 Item::Def(def) => evaluator.register_def(def).expect("registers"),
                 other => panic!("test source uses unsupported item {other:?}"),
             }
@@ -1535,7 +1481,6 @@ mod tests {
         for item in &program.items {
             let result = match item {
                 Item::Stmt(stmt) => evaluator.exec_statement(stmt),
-                Item::Pen(pen) => evaluator.exec_pen(pen),
                 other => panic!("test source uses unsupported item {other:?}"),
             };
             if let Err(error) = result {
@@ -1767,24 +1712,13 @@ mod tests {
     fn node_derived_points() {
         // Travelling up with width 10: left bank is to the west.
         let evaluator = eval_ok(
-            "node n = (100, 50) dir up width 10;\nl = n.left;\nr = n.right;\nw = n.width;\np = n.pos;\nd = n.dir;\n",
+            "node n = (100, 50) dir up pen pen(10);\nl = n.left;\nr = n.right;\nw = n.width;\np = n.pos;\nd = n.dir;\n",
         );
         assert_point(point(&evaluator, "l"), 95.0, 50.0);
         assert_point(point(&evaluator, "r"), 105.0, 50.0);
         assert_close(number(&evaluator, "w"), 10.0);
         assert_point(point(&evaluator, "p"), 100.0, 50.0);
         assert_close(number(&evaluator, "d"), 90.0);
-    }
-
-    #[test]
-    fn node_with_asymmetric_width_and_nib() {
-        let evaluator = eval_ok(
-            "node m = (0, 0) dir up width (2, 8);\nl = m.left;\nr = m.right;\nnode k = (0, 0) dir up width 10 nib 45;\nkl = k.left;\n",
-        );
-        assert_point(point(&evaluator, "l"), -2.0, 0.0);
-        assert_point(point(&evaluator, "r"), 8.0, 0.0);
-        let expected = 5.0 / f64::sqrt(2.0);
-        assert_point(point(&evaluator, "kl"), expected, expected);
     }
 
     #[test]
@@ -1953,7 +1887,7 @@ mod tests {
     #[test]
     fn circle_pen_gives_constant_width() {
         let evaluator = eval_ok(
-            "pen round { width = 10; height = 10; }\n\
+            "round = pen(10);\n\
              node n = (100, 50) dir 45 pen round;\n\
              w = n.width;\nl = n.left;\nr = n.right;\n",
         );
@@ -1966,7 +1900,7 @@ mod tests {
     #[test]
     fn ellipse_pen_on_axis_edge_points() {
         let evaluator = eval_ok(
-            "pen e { width = 10; height = 4; }\n\
+            "e = pen(10, 4);\n\
              node n = (0, 0) dir right pen e;\n\
              node m = (0, 0) dir up pen e;\n\
              nw = n.width;\nnl = n.left;\n\
@@ -1983,7 +1917,7 @@ mod tests {
     #[test]
     fn ellipse_pen_oblique_direction_matches_closed_form() {
         let evaluator = eval_ok(
-            "pen e { width = 10; height = 4; }\n\
+            "e = pen(10, 4);\n\
              node n = (0, 0) dir 45 pen e;\n\
              w = n.width;\nl = n.left;\n",
         );
@@ -1997,21 +1931,28 @@ mod tests {
     }
 
     #[test]
-    fn razor_pen_matches_width_and_nib() {
+    fn razor_pen_offsets_along_its_fixed_axis() {
+        // Whatever the travel direction, a razor's banks sit at half its
+        // width along the pen angle.
         let evaluator = eval_ok(
-            "pen razor { width = 10; angle = 30; }\n\
+            "razor = pen(10, 0, 30);\n\
              node p = (0, 0) dir up pen razor;\n\
-             node q = (0, 0) dir up width 10 nib 30;\n\
-             dl = p.left - q.left;\ndr = p.right - q.right;\n",
+             node q = (0, 0) dir 75 pen razor;\n\
+             pl = p.left;\npr = p.right;\nql = q.left;\n",
         );
-        assert_point(point(&evaluator, "dl"), 0.0, 0.0);
-        assert_point(point(&evaluator, "dr"), 0.0, 0.0);
+        let (x, y) = (
+            5.0 * 30.0_f64.to_radians().cos(),
+            5.0 * 30.0_f64.to_radians().sin(),
+        );
+        assert_point(point(&evaluator, "pl"), x, y);
+        assert_point(point(&evaluator, "pr"), -x, -y);
+        assert_point(point(&evaluator, "ql"), x, y);
     }
 
     #[test]
     fn pen_tip_and_tail() {
         let evaluator = eval_ok(
-            "pen e { width = 10; height = 4; }\n\
+            "e = pen(10, 4);\n\
              node n = (100, 50) dir right pen e;\n\
              t = n.tip;\nb = n.tail;\nrt = (n rotated 90).tip;\n",
         );
@@ -2023,18 +1964,18 @@ mod tests {
 
     #[test]
     fn tip_errors_without_a_round_pen() {
-        let error = eval_err("node n = (0, 0) dir up width 10;\nt = n.tip;\n");
-        assert!(error.message.contains("pen"), "{}", error.message);
-        let error = eval_err("pen r { width = 10; }\nnode n = (0, 0) dir up pen r;\nt = n.tip;\n");
+        let error = eval_err("r = pen(10, 0);\nnode n = (0, 0) dir up pen r;\nt = n.tip;\n");
         assert!(error.message.contains("razor"), "{}", error.message);
     }
 
     #[test]
     fn pen_validation_errors() {
-        let error = eval_err("pen p { width = 0; }\n");
+        let error = eval_err("p = pen(0);\n");
         assert!(error.message.contains("width > 0"), "{}", error.message);
-        let error = eval_err("pen p { width = 10; height = -1; }\n");
+        let error = eval_err("p = pen(10, -1);\n");
         assert!(error.message.contains("height >= 0"), "{}", error.message);
+        let error = eval_err("p = pen(10, 4, 30, 1);\n");
+        assert!(error.message.contains("1 to 3"), "{}", error.message);
         let error = eval_err("node n = (0, 0) dir up pen 5;\n");
         assert!(
             error.message.contains("expected a pen"),
@@ -2046,7 +1987,7 @@ mod tests {
     #[test]
     fn pen_flows_through_a_def() {
         let evaluator = eval_ok(
-            "pen e { width = 10; height = 10; }\n\
+            "e = pen(10);\n\
              def dot(c, p) -> n { node n = c dir right pen p; }\n\
              n = dot((0, 0), e);\n\
              w = n.width;\n",
@@ -2071,7 +2012,7 @@ mod tests {
 
     #[test]
     fn node_used_directly_in_path_is_an_error() {
-        let error = eval_err("node n = (0, 0) dir up width 10;\np = n .. (5, 5);\n");
+        let error = eval_err("node n = (0, 0) dir up pen pen(10);\np = n .. (5, 5);\n");
         assert!(error.message.contains(".pos"), "{}", error.message);
     }
 
@@ -2088,9 +2029,9 @@ mod tests {
     }
 
     #[test]
-    fn transformed_node_rotates_direction_and_nib() {
+    fn transformed_node_rotates_direction_and_scales_pen() {
         let evaluator = eval_ok(
-            "node n = (100, 0) dir up width 10;\nnode m = (0, 0) dir up width 10;\nr = (n rotated 90).pos;\nd = (n rotated 90).dir;\ns = (m scaled 2).width;\n",
+            "node n = (100, 0) dir up pen pen(10);\nnode m = (0, 0) dir up pen pen(10);\nr = (n rotated 90).pos;\nd = (n rotated 90).dir;\ns = (m scaled 2).width;\n",
         );
         assert_point(point(&evaluator, "r"), 0.0, 100.0);
         assert_close(number(&evaluator, "d"), 180.0);
@@ -2240,7 +2181,7 @@ mod tests {
 
     // ---- Pen terminals -----------------------------------------------------
 
-    const CAP_PEN: &str = "pen main { width = 100; height = 30; angle = 20; }\n\
+    const CAP_PEN: &str = "main = pen(100, 30, 20);\n\
          node n = (10, 5) dir 40 pen main;\n\
          r = n.right;\nl = n.left;\ntip = n.tip;\ntail = n.tail;\n\
          front = n.tipcap;\nback = n.tailcap;\n";
@@ -2286,7 +2227,7 @@ mod tests {
         // fixed cubic back into unit-circle space; the error bound there
         // is inherited from the quarter-circle approximation.
         let evaluator = eval_ok(
-            "pen blade { width = 150; height = 2; angle = 9; }\n\
+            "blade = pen(150, 2, 9);\n\
              node n = (0, 0) dir 50 pen blade;\n\
              cap = n.tipcap;\n",
         );
@@ -2323,7 +2264,7 @@ mod tests {
         // The caps' boundary points ARE the bank ends, so the banks are
         // just the written joints between the two splices.
         let evaluator = eval_ok(
-            "pen main { width = 100; height = 30; }\n\
+            "main = pen(100, 30);\n\
              node s = (0, 0) dir up pen main;\n\
              node e = (0, 200) dir up pen main;\n\
              tc = s.tailcap;\ntip = e.tipcap;\n\
@@ -2377,13 +2318,13 @@ mod tests {
 
     #[test]
     fn cap_needs_a_pen_with_height() {
-        let error = eval_err("node m = (0, 0) dir up width 10;\ncap = m.tipcap;\n");
-        assert!(error.message.contains("pen"), "{}", error.message);
+        let error = eval_err("node m = (0, 0) dir up pen pen(10, 0);\ncap = m.tipcap;\n");
+        assert!(error.message.contains("razor"), "{}", error.message);
     }
 
     // ---- Joints --------------------------------------------------------
 
-    const JOINT_PEN: &str = "pen main { width = 100; height = 30; angle = 20; }\n\
+    const JOINT_PEN: &str = "main = pen(100, 30, 20);\n\
          node a = (10, 5) dir -55 pen main;\n\
          node b = (10, 5) dir 70 pen main;\n\
          ra = a.right;\nrb = b.right;\nla = a.left;\nlb = b.left;\n";
@@ -2431,7 +2372,7 @@ mod tests {
         // Same check as the cap version: the analytic arc must hold at
         // eccentricities where a spline fit collapses.
         let evaluator = eval_ok(
-            "pen blade { width = 150; height = 2; angle = 9; }\n\
+            "blade = pen(150, 2, 9);\n\
              node a = (0, 0) dir 50 pen blade;\n\
              node b = (0, 0) dir 155 pen blade;\n\
              arc = jointcap(a, b);\n",
@@ -2466,18 +2407,17 @@ mod tests {
 
     #[test]
     fn joint_cap_rejects_degenerate_pairs() {
-        let head = "pen main { width = 100; height = 30; }\n\
+        let head = "main = pen(100, 30);\n\
              node a = (0, 0) dir up pen main;\n";
         for (tail, expected) in [
             ("node b = (0, 0) dir up pen main;\n", "needs a turn"),
             ("node b = (0, 0) dir down pen main;\n", "180"),
             ("node b = (5, 0) dir right pen main;\n", "same position"),
             (
-                "pen other { width = 60; height = 20; }\n\
+                "other = pen(60, 20);\n\
                  node b = (0, 0) dir right pen other;\n",
                 "same pen",
             ),
-            ("node b = (0, 0) dir right width 10;\n", "pen nodes"),
         ] {
             let error = eval_err(&format!("{head}{tail}arc = jointcap(a, b);\n"));
             assert!(error.message.contains(expected), "{}", error.message);

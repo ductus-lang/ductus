@@ -74,52 +74,56 @@ impl PenValue {
     }
 }
 
-/// A skeleton node: position, direction of travel, stroke width.
+/// A skeleton node: position, direction of travel, and the pen that
+/// draws through it.
 #[derive(Debug, Clone, Copy)]
 pub struct NodeValue {
     pub pos: Point,
     /// Direction of travel, degrees.
     pub dir: f64,
-    /// Offset from `pos` to the left edge, along `nib`.
-    pub left_offset: f64,
-    /// Offset from `pos` to the right edge, against `nib`.
-    pub right_offset: f64,
-    /// Axis along which width is applied, degrees. Defaults to `dir + 90`.
-    pub nib: f64,
-    /// The pen this node was declared with, if any; needed for `tip`/`tail`.
-    pub pen: Option<PenValue>,
+    pub pen: PenValue,
 }
 
 impl NodeValue {
+    /// Offset from `pos` to the left edge. A pen with height has its
+    /// support point along the left normal of travel; a razor (`b == 0`)
+    /// is degenerate there and offsets along its fixed axis instead.
+    fn edge(&self) -> Vec2 {
+        if self.pen.b > 0.0 {
+            self.pen.support(self.dir + 90.0)
+        } else {
+            self.pen.a * unitvec(self.pen.angle)
+        }
+    }
+
     pub fn left(&self) -> Point {
-        self.pos + self.left_offset * unitvec(self.nib)
+        self.pos + self.edge()
     }
 
     pub fn right(&self) -> Point {
-        self.pos - self.right_offset * unitvec(self.nib)
+        self.pos - self.edge()
     }
 
     pub fn width(&self) -> f64 {
-        self.left_offset + self.right_offset
+        2.0 * self.edge().length()
     }
 
     /// The front of the pen: its support point along the travel direction.
-    /// None without a pen, or for a razor pen (`b == 0`) — a razor has no
-    /// defined front point.
+    /// None for a razor pen (`b == 0`) — a razor has no defined front point.
     pub fn tip(&self) -> Option<Point> {
-        let pen = self.pen?;
+        let pen = self.pen;
         (pen.b > 0.0).then(|| self.pos + pen.support(self.dir))
     }
 
     /// The back of the pen; see `tip`.
     pub fn tail(&self) -> Option<Point> {
-        let pen = self.pen?;
+        let pen = self.pen;
         (pen.b > 0.0).then(|| self.pos + pen.support(self.dir + 180.0))
     }
 
     /// The front terminal: the pen's boundary from the right bank contact,
-    /// around `tip`, to the left bank contact, as fixed cubics. None
-    /// without a pen or for a razor, like `tip`.
+    /// around `tip`, to the left bank contact, as fixed cubics. None for
+    /// a razor, like `tip`.
     pub fn tip_cap(&self) -> Option<PathValue> {
         self.cap(self.dir)
     }
@@ -141,7 +145,7 @@ impl NodeValue {
     /// affine preserves that bound at any eccentricity — precisely where
     /// spline-fitting support points in world space breaks down.
     fn cap(&self, center: f64) -> Option<PathValue> {
-        let pen = self.pen?;
+        let pen = self.pen;
         if pen.b <= 0.0 {
             return None;
         }
@@ -176,9 +180,7 @@ impl NodeValue {
     /// right turn runs from `leaving`'s left contact back to this
     /// node's.
     pub fn joint_cap(&self, leaving: &NodeValue) -> Result<PathValue, String> {
-        let (Some(pen), Some(other)) = (self.pen, leaving.pen) else {
-            return Err("jointcap() needs two pen nodes".to_string());
-        };
+        let (pen, other) = (self.pen, leaving.pen);
         if pen.b <= 0.0 {
             return Err(
                 "jointcap() needs a pen with height > 0; \

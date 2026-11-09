@@ -4,8 +4,8 @@ Ductus doesn't include automatic caps, and that's a conscious design choice, not
 
 ```ductus hide
 u = 100;
-pen main { width = 90; height = 36; angle = 20; }
-pen flat { width = 130; height = 10; angle = 110; }
+main = pen(90, 36, 20);
+flat = pen(130, 10, 110);
 ```
 
 ## Cuts
@@ -33,7 +33,7 @@ The first example demonstrates a plain, straightforward cut. In the second, we'v
 
 ## Tracing the pen: .tip and .tail
 
-Pen nodes provide you with two more handy points: `n.tip` and `n.tail`. `n.tip` represents the ellipse's support point right along the direction of travel—essentially, the front of the pen. Conversely, `n.tail` is its mirror image, found at the back. (A quick note: attempting to use these on razor or `width`/`nib` nodes will result in errors, as a zero-height pen doesn't have a distinct front or back.) The ellipse's tangent at these points is always perpendicular to the direction of travel. This crucial detail means that when you're crafting a terminal that traces the pen, you know the direction constraints for its three key points before you even begin to draw.
+Nodes provide you with two more handy points: `n.tip` and `n.tail`. `n.tip` represents the ellipse's support point right along the direction of travel—essentially, the front of the pen. Conversely, `n.tail` is its mirror image, found at the back. (A quick note: attempting to use these on razor nodes will result in errors, as a zero-height pen doesn't have a distinct front or back.) The ellipse's tangent at these points is always perpendicular to the direction of travel. This crucial detail means that when you're crafting a terminal that traces the pen, you know the direction constraints for its three key points before you even begin to draw.
 
 ```ductus norender
 ... -- b.right {b.dir} .. {b.dir + 90} b.tip .. {b.dir + 180} b.left -- ...

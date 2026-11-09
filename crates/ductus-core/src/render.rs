@@ -1187,10 +1187,7 @@ mod tests {
         let start = NodeValue {
             pos: Point::new(0.0, 0.0),
             dir: 90.0,
-            left_offset: 50.0,
-            right_offset: 50.0,
-            nib: 180.0,
-            pen: Some(pen),
+            pen,
         };
         let end = NodeValue {
             pos: Point::new(0.0, 200.0),

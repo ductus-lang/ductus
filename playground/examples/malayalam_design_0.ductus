@@ -19,11 +19,7 @@ metrics {
   over = 0.01 * upm;
 }
 
-pen brush {
-  width = weight * 0.1 * contrast;
-  height = weight * 0.1;
-  angle = pen_angle;
-}
+brush = pen(weight * 0.1 * contrast, weight * 0.1, pen_angle);
 
 stem = 40 + 0.14 * weight;
 

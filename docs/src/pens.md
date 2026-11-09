@@ -1,18 +1,14 @@
 # Pens
 
-Remember how the nodes chapter wrapped up, showing off a broad pen that was actually just a fixed `nib` axis? We also noted something interesting: if your travel path ran right along that axis, the stroke would just… disappear. Well, a proper pen, the kind you hold, has a distinct body. You can turn it on its own axis, and it will still leave a mark as wide as its nib is *thick*. Ductus's `pen` captures that idea  — it's essentially an ellipse:
+Remember how the nodes chapter wrapped up, showing off a broad pen that was actually a flat razor? We also noted something interesting: if your travel path ran right along that razor's axis, the stroke would just… disappear. Well, a proper pen, the kind you hold, has a distinct body. You can turn it on its own axis, and it will still leave a mark as wide as its nib is *thick*. Ductus's `pen` captures that idea  — it's essentially an ellipse:
 
 ```ductus norender
-pen italic {
-  width  = 120;   # full major axis; required
-  height = 12;    # full minor axis; optional, default 0
-  angle  = 30;    # major-axis orientation, degrees; default 0
-}
+italic = pen(120, 12, 30);   # width, height, angle
 
 node m = (x, y) dir theta pen italic;
 ```
 
-You'll find pen blocks hanging out at the top level, much like `params`. The values you set for a pen's fields are just regular expressions. This means they can even reference `params`, allowing your pen to  interpolate and adapt across your entire design space. And here's a neat trick: the pen's name itself is a first-class value, ready to be passed around to macros. Just a quick heads-up: when you're defining a node, you can specify **either** its `width` (perhaps with an optional `nib`) **or** a `pen` — but never both at the same time.
+`pen(width, height, angle)` takes the ellipse's full major axis, its full minor axis, and the major axis's orientation in degrees. `height` defaults to `width`, giving a round pen, and `angle` defaults to 0. The arguments are ordinary expressions, so they can reference `params`, letting your pen interpolate and adapt across your entire design space, and they can differ from node to node, as the pressure chapter will show. A pen is a first-class value: bind it to a name, pass it to a macro, or write it right in the node, as in `pen pen(hair)`. Every node takes exactly one pen.
 
 Now, it's important to understand that a pen isn't some magical stroke expansion tool. Instead, think of it as a clever rule for figuring out a node's precise edge points. Specifically, `n.left` and `n.right` transform into the exact contact points where our ellipse touches the stroke's two banks. This means you're still drawing contours through those very points, outline-first, just like you do with everything else in ductus.
 
@@ -20,18 +16,18 @@ Now, it's important to understand that a pen isn't some magical stroke expansion
 
 While the ellipse is quite versatile, three special, or "degenerate," cases actually cover most of what you'll want to do. It's helpful to think of the ellipse as part of a whole family, with these key members:
 
-- **`height = 0`** — This gives you a *razor* pen. If you define `pen x { width = w; angle = phi; }` and use it on a node, it acts precisely like specifying `width w nib phi`. It's that familiar fixed-axis nib we met in the last chapter, but now it has its very own name.
+- **`height = 0`** — This gives you a *razor* pen, `pen(w, 0, phi)`. Its banks sit at `±(w/2) * unitvec(phi)` whatever the travel direction. It's that familiar fixed-axis nib we met in the last chapter.
 - **small `height`** — Think of this as a *realistic razor*. When your travel direction aligns perfectly with the pen's axis, the stroke thickness won't vanish entirely. Instead, it  bottoms out at that small `height` value, rather than collapsing to nothing.
-- **`height = width`** — Hello, *monoline* pen. This creates a perfect circle, giving you a stroke that's wonderfully consistent and equally thick no matter which way you travel.
+- **`height = width`** — Hello, *monoline* pen, `pen(w)`. This creates a perfect circle, giving you a stroke that's wonderfully consistent and equally thick no matter which way you travel. It's the pen every node in the nodes chapter used.
 
 Let's see how the same C-stroke looks when we apply all three of these:
 
 ```ductus
 u = 100;
 
-pen razor { width = 80; angle = 25; }
-pen soft  { width = 80; height = 14; angle = 25; }
-pen round { width = 46; height = 46; }
+razor = pen(80, 0, 25);
+soft = pen(80, 14, 25);
+round = pen(46);
 
 def arc(cx, p) -> outline {
   node n = (cx, 2.4u)        dir left  pen p;
@@ -58,7 +54,7 @@ The good news is the cure follows a familiar ductus pattern: any feature that's 
 ```ductus
 u = 100;
 
-pen soft { width = 80; height = 14; angle = 25; }
+soft = pen(80, 14, 25);
 
 node n = (u, 2.4u)  dir left  pen soft;
 node w = (-0.2u, 1.2u) dir down pen soft;
@@ -73,7 +69,7 @@ fill(n.right .. {m.dir} m.right .. w.right .. s.right
 
 As we travel from top to left to bottom, the tangent passes through 205 degrees. This angle aligns with the pen's axis, pointing down-left, and it's precisely where our `m` node finds its perfect home, right between `n` and `w`. At this point, the pen's banks are exactly `height` apart, and those clever direction constraints ensure the waist becomes perfectly tangent to the path of travel. Go back and compare this with the middle stroke in our family figure: same pen, same skeleton, but with just one extra node, and what a difference it makes.
 
-This whole process elegantly mirrors how you place points at extrema when you're working with ordinary outline design. Remember, the razor pen never required a witness because its banks are always just constant translations of the skeleton. That's a unique and special property of that particular degenerate pen. It's easy to get used to this behavior, only to feel a bit baffled the first time a "real" pen leaves a crossing looking a bit thick. If that ever happens to you, consider this your friendly reminder to revisit this section.
+This whole process elegantly mirrors how you place points at extrema when you're working with ordinary outline design. Remember, the razor pen never required a witness because its banks are always just constant translations of the skeleton. The round pen doesn't need one either, since its banks stay perpendicular to travel. Those are special properties of the two degenerate pens. It's easy to get used to this behavior, only to feel a bit baffled the first time a "real" pen leaves a crossing looking a bit thick. If that ever happens to you, consider this your friendly reminder to revisit this section.
 
 ## The edge points, precisely
 
@@ -95,7 +91,7 @@ When two strokes come together at an angle, they form a joint, and it's quite ne
 ```ductus
 u = 100;
 
-pen main { width = 80; height = 16; angle = 30; }
+main = pen(80, 16, 30);
 
 node a  = (0, 0)    dir right pen main;
 node k1 = (2.2u, 0) dir right pen main;

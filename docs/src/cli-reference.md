@@ -56,16 +56,15 @@ Let's explore what a `ductus` source file can hold, diving into each level of it
 |---|---|
 | params | `params { name = default in min..max; ... }` |
 | metrics | `metrics { name = expr; ... }` — These special names (`upm`, `x`, `cap`, `asc`, `desc`) carry particular meaning for the renderer. |
-| pen | `pen name { width = expr; height = expr; angle = expr; }` |
 | binding | `name = expr;` — Remember, it's single-assignment, and that rule applies everywhere. |
-| node | `node name = point dir expr (width expr [nib expr] | pen name);` |
+| node | `node name = point dir expr pen expr;` — the `pen` expression evaluates to a pen, e.g. `pen(w)` or a name bound to one. |
 | macro | `def name(a, b) -> (x, y) { ... }` |
 | glyph | `glyph name [: U+XXXX] { ... }` |
 | import | `import "file.ductus";` — This is an include-once operation, resolves relatively, and will flag an error if it detects cycles. |
 | loop | `for i in a..b { ... }` / `for x in list { ... }` |
 | sketch | `draw(path);` `fill(path);` — You'll only find these in sketch files. |
 
-Inside a **glyph body**, things get specific. You'll definitely need an `advance = expr;` (it's required to make your glyph complete). You can also define `contour name = path;` (and remember, contours must `cycle`), `guide name = path;`, and `anchor name = point;`. Beyond those, feel free to include any bindings, nodes, loops, or macro calls you need. Just keep in mind that `def`, `pen`, `params`, and `import` are exclusively for the top level.
+Inside a **glyph body**, things get specific. You'll definitely need an `advance = expr;` (it's required to make your glyph complete). You can also define `contour name = path;` (and remember, contours must `cycle`), `guide name = path;`, and `anchor name = point;`. Beyond those, feel free to include any bindings, nodes, loops, or macro calls you need. Just keep in mind that `def`, `params`, and `import` are exclusively for the top level.
 
 A few general syntax notes: comments start with a `#` and continue all the way to the end of the line. Every statement wraps up with a semicolon `;`, and you'll be glad to know that newlines don't carry any special significance — use them freely for readability.
 
@@ -74,7 +73,7 @@ A few general syntax notes: comments start with a `#` and continue all the way t
 These words are special and are reserved for `ductus`'s internal use:
 
 ```text
-params in glyph contour guide anchor node dir width nib pen cycle
+params in glyph contour guide anchor node dir pen cycle
 corner def for if else and or not import shifted scaled xscaled
 yscaled rotated slanted reversed metrics draw fill
 ```
