@@ -18,7 +18,7 @@ jobs:
       - name: Install mdBook
         run: curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.5.4/mdbook-v0.5.4-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
       - name: Install wasm-pack
-        run: curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+        run: curl -sSf curl https://wasm-bindgen.github.io/wasm-pack/installer/init.sh -sSf | sh
       - run: cargo test --workspace
       - run: mdbook build docs
       - name: Build playground
