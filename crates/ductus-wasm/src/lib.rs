@@ -95,12 +95,14 @@ fn compile_inner(
     })?;
 
     // The playground has no filesystem; imports report a clear error.
-    let document = ductus_core::eval::evaluate(&program, &overrides, &ductus_core::eval::NoImporter)
-        .map_err(|error| ErrorInfo {
-        line: error.span.line,
-        column: error.span.column,
-        message: error.message,
-    })?;
+    let document =
+        ductus_core::eval::evaluate(&program, &overrides, &ductus_core::eval::NoImporter).map_err(
+            |error| ErrorInfo {
+                line: error.span.line,
+                column: error.span.column,
+                message: error.message,
+            },
+        )?;
 
     let options = ductus_core::render::RenderOptions {
         glyph: (!glyph.is_empty()).then(|| glyph.to_string()),
@@ -196,7 +198,7 @@ fn highlight_query() -> &'static Query {
             &tree_sitter_ductus::LANGUAGE.into(),
             tree_sitter_ductus::HIGHLIGHTS_QUERY,
         )
-            .expect("highlights.scm is a valid query")
+        .expect("highlights.scm is a valid query")
     })
 }
 
@@ -286,15 +288,20 @@ fn highlight_spans(tree: &Tree, source: &str) -> Vec<(usize, usize, String)> {
 
     let mut matches = cursor.matches(query, tree.root_node(), source.as_bytes());
     while let Some(m) = matches.next() {
-        for capture in m.captures {
+        for capture in m.captures() {
             let start = capture.node.start_byte();
             let end = capture.node.end_byte();
             if start == end {
                 continue; // skip zero-width nodes (e.g. captured MISSING tokens)
             }
-            let claim = claimed.entry((start, end)).or_insert((usize::MAX, String::new()));
+            let claim = claimed
+                .entry((start, end))
+                .or_insert((usize::MAX, String::new()));
             if m.pattern_index < claim.0 {
-                *claim = (m.pattern_index, names[capture.index as usize].replace('.', "-"));
+                *claim = (
+                    m.pattern_index,
+                    names[capture.index as usize].replace('.', "-"),
+                );
             }
         }
     }
@@ -378,7 +385,10 @@ mod tests {
 
     #[test]
     fn keyword_is_highlighted_as_keyword() {
-        assert_eq!(highlight_class("params { w = 1 in 0..2; }\n", "params"), "keyword");
+        assert_eq!(
+            highlight_class("params { w = 1 in 0..2; }\n", "params"),
+            "keyword"
+        );
     }
 
     #[test]

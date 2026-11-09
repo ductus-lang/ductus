@@ -132,7 +132,8 @@ fn process_chapter(content: &str, chapter_dir: &Path, label: &str) -> Result<Str
             i += 1;
             continue;
         };
-        let is_ductus = info == "ductus" || info.starts_with("ductus ") || info.starts_with("ductus\t");
+        let is_ductus =
+            info == "ductus" || info.starts_with("ductus ") || info.starts_with("ductus\t");
         if !is_ductus {
             // A foreign fence passes through verbatim, including any ```ductus
             // lines quoted inside it.
@@ -158,7 +159,9 @@ fn process_chapter(content: &str, chapter_dir: &Path, label: &str) -> Result<Str
             i += 1;
         }
         if i == lines.len() {
-            return Err(format!("{label}:{fence_line}: unterminated ```ductus block"));
+            return Err(format!(
+                "{label}:{fence_line}: unterminated ```ductus block"
+            ));
         }
         let block = lines[start..i].join("\n");
         i += 1; // the closing fence
@@ -173,7 +176,10 @@ fn process_chapter(content: &str, chapter_dir: &Path, label: &str) -> Result<Str
 /// A fence opener: up to three leading spaces, then three or more backticks.
 /// Returns the tick count and the trimmed info string.
 fn fence_open(line: &str) -> Option<(usize, &str)> {
-    let stripped = line.strip_prefix("   ").unwrap_or(line).trim_start_matches(' ');
+    let stripped = line
+        .strip_prefix("   ")
+        .unwrap_or(line)
+        .trim_start_matches(' ');
     if line.len() - stripped.len() > 3 {
         return None; // four spaces of indent is a code block, not a fence
     }
@@ -229,10 +235,11 @@ fn process_block(
         glyph: options.glyph.clone(),
         debug: options.debug,
     };
-    let svg = ductus_core::render::render(&document, &render_options).map_err(|error| BlockError {
-        line: None,
-        message: error.message,
-    })?;
+    let svg =
+        ductus_core::render::render(&document, &render_options).map_err(|error| BlockError {
+            line: None,
+            message: error.message,
+        })?;
     if options.acc {
         preamble.push_str(block);
         preamble.push('\n');
@@ -468,7 +475,7 @@ fn highlight(source: &str) -> String {
             continue;
         }
         html.push_str(&escape(&source[at..start]));
-        html.push_str(&format!("<span class=\"ductus-{class}\">", ));
+        html.push_str(&format!("<span class=\"ductus-{class}\">",));
         html.push_str(&escape(&source[start..end]));
         html.push_str("</span>");
         at = end;
@@ -489,7 +496,7 @@ fn highlight_spans(tree: &Tree, source: &str) -> Vec<(usize, usize, String)> {
 
     let mut matches = cursor.matches(query, tree.root_node(), source.as_bytes());
     while let Some(m) = matches.next() {
-        for capture in m.captures {
+        for capture in m.captures() {
             let start = capture.node.start_byte();
             let end = capture.node.end_byte();
             if start == end {
@@ -545,7 +552,8 @@ mod tests {
 
     #[test]
     fn text_and_foreign_fences_pass_through() {
-        let content = "# Title\n\n```rust\nfn main() {}\n```\n\n````md\n```ductus\nnot compiled\n```\n````\n";
+        let content =
+            "# Title\n\n```rust\nfn main() {}\n```\n\n````md\n```ductus\nnot compiled\n```\n````\n";
         assert_eq!(chapter(content).unwrap(), content.trim_end_matches('\n'));
     }
 
@@ -599,7 +607,10 @@ mod tests {
     fn acc_shows_the_block_and_feeds_the_next_one() {
         let content = "```ductus norender acc\nu = 100;\n```\n\n```ductus acc\ndraw((0,0) -- (u, u));\n```\n\n```ductus\nfill((0,0) -- (u,0) -- 0.5[(0,0), (u,u)] -- cycle);\n```";
         let html = chapter(content).unwrap();
-        assert!(html.contains("ductus-standalone"), "acc block is visible: {html}");
+        assert!(
+            html.contains("ductus-standalone"),
+            "acc block is visible: {html}"
+        );
         assert!(html.contains(">100<"), "acc block is visible: {html}");
         // Three ductus blocks, two of them rendered (norender acc has no pane).
         assert_eq!(html.matches("<svg").count(), 2, "{html}");
