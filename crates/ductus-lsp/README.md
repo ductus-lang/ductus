@@ -31,6 +31,12 @@ ductus lsp
 - **Signature help** for built-in functions and `def`s, with the
   argument under the cursor highlighted. A `def`'s description is the
   comment directly above it.
+- **Completion** by context: the statements that can start where a
+  statement starts (`contour`, `guide` and `anchor` only in a glyph);
+  names in scope, functions and the direction constants inside an
+  expression; fields after a `.` (`pos`, `left`, `tip`… on a node, `x`
+  and `y` on a point). Calls complete with a placeholder per argument
+  when the editor supports snippets.
 
 Imports read unsaved text from open buffers before the file on disk.
 
@@ -61,7 +67,20 @@ outline, `grr` for references, `grn` to rename, `<C-s>` in insert mode
 for signature help, and `]d` / `[d` for diagnostics. For the rest there
 are `vim.lsp.buf.definition()`, `vim.lsp.buf.workspace_symbol()` and
 `vim.lsp.buf.format()`. The workspace folder is the directory holding
-`.git`, as set by `root_markers`. To format on save:
+`.git`, as set by `root_markers`.
+
+Completion works through `<C-x><C-o>` once the server attaches. To have
+it pop up while typing, and calls expand to argument placeholders:
+
+```lua
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(args)
+    vim.lsp.completion.enable(true, args.data.client_id, args.buf, { autotrigger = true })
+  end,
+})
+```
+
+To format on save:
 
 ```lua
 vim.api.nvim_create_autocmd("BufWritePre", {

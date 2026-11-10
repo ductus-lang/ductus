@@ -11,7 +11,7 @@ use crate::syntax::{self, text};
 use ductus_core::parse::parse_lenient;
 use std::ops::Range;
 use std::path::Path;
-use tree_sitter::{Node, Tree};
+use tree_sitter::Tree;
 
 #[derive(Debug, PartialEq)]
 pub struct Signature {
@@ -68,7 +68,7 @@ pub fn signature_help(
 }
 
 /// `name(a, b)` followed by `suffix`, with each parameter's range.
-fn signature(name: &str, parameters: &[&str], suffix: &str) -> Signature {
+pub fn signature(name: &str, parameters: &[&str], suffix: &str) -> Signature {
     let mut label = format!("{name}(");
     let mut ranges = Vec::new();
     for (index, parameter) in parameters.iter().enumerate() {
@@ -113,30 +113,14 @@ fn def_signature(
         .map(|returns| format!(" -> {}", text(returns, &def_source)))
         .unwrap_or_default();
     let mut signature = signature(name, &parameters, &returns);
-    signature.doc = leading_comments(def, &def_source);
+    signature.doc = syntax::leading_comments(def, &def_source);
     Some(signature)
-}
-
-/// The comment lines directly above `node`, without their `#`.
-fn leading_comments(node: Node, source: &str) -> Option<String> {
-    let mut lines = Vec::new();
-    let mut below = node;
-    while let Some(comment) = below.prev_sibling().filter(|c| c.kind() == "comment") {
-        if comment.end_position().row + 1 < below.start_position().row {
-            break;
-        }
-        let line = text(comment, source).trim_start_matches('#');
-        lines.push(line.strip_prefix(' ').unwrap_or(line));
-        below = comment;
-    }
-    lines.reverse();
-    (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
 /// The name of the call whose argument list holds `offset`, and the
 /// 0-based index of the argument there.
 fn call_at(source: &str, offset: usize) -> Option<(String, usize)> {
-    let before = without_comments(&source[..offset]);
+    let before = syntax::without_comments(&source[..offset]);
     let bytes = before.as_bytes();
     let mut depth = 0;
     let mut argument = 0;
@@ -163,17 +147,6 @@ fn call_at(source: &str, offset: usize) -> Option<(String, usize)> {
         }
     }
     None
-}
-
-/// `text` with each line's `#` comment removed.
-fn without_comments(text: &str) -> String {
-    text.split_inclusive('\n')
-        .map(|line| match line.find('#') {
-            Some(hash) if line.ends_with('\n') => format!("{}\n", &line[..hash]),
-            Some(hash) => line[..hash].to_string(),
-            None => line.to_string(),
-        })
-        .collect()
 }
 
 /// The identifier that ends `text`, ignoring trailing whitespace.

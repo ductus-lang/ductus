@@ -9,8 +9,9 @@
 //! bindings are immutable.
 
 use crate::definition::{Target, definition};
-use crate::importer::{self, Read};
+use crate::importer::Read;
 use crate::references::references;
+use crate::scope;
 use crate::syntax::{self, text};
 use ductus_core::eval::BUILTIN_FUNCTIONS;
 use ductus_core::parse::parse_lenient;
@@ -201,9 +202,13 @@ fn clash(
     let mut roots: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
     roots.push(&binding.path);
     for root in roots {
-        let mut found = Vec::new();
-        let mut visited = HashSet::new();
-        top_level(root, name, is_def, read, &mut visited, &mut found);
+        let mut named = Vec::new();
+        scope::file_top_level(root, read, &mut HashSet::new(), &mut named);
+        let found: Vec<Target> = named
+            .into_iter()
+            .filter(|named| named.is_def == is_def && named.name == name)
+            .map(|named| named.target)
+            .collect();
         if found.contains(binding)
             && let Some(clash) = found.into_iter().find(|target| target != binding)
         {
@@ -227,53 +232,6 @@ fn scope_of(name: Node) -> Option<Node> {
             return Some(node);
         }
         node = node.parent()?;
-    }
-}
-
-/// Every top-level binding (or `def`) of `name` in `path` and what it
-/// imports, include-once.
-fn top_level(
-    path: &Path,
-    name: &str,
-    is_def: bool,
-    read: Read,
-    visited: &mut HashSet<PathBuf>,
-    found: &mut Vec<Target>,
-) {
-    if !visited.insert(path.to_path_buf()) {
-        return;
-    }
-    let Some(source) = read(path) else {
-        return;
-    };
-    let tree = parse_lenient(&source);
-    for statement in syntax::children(tree.root_node()) {
-        let names = match statement.kind() {
-            "import_statement" => {
-                if let Some(imported) = statement.child_by_field_name("path") {
-                    let file = importer::resolve(path, text(imported, &source).trim_matches('"'));
-                    top_level(&file, name, is_def, read, visited, found);
-                }
-                continue;
-            }
-            "def_declaration" if is_def => {
-                statement.child_by_field_name("name").into_iter().collect()
-            }
-            _ if !is_def => syntax::bindings(statement)
-                .into_iter()
-                .map(|binding| binding.name)
-                .collect(),
-            _ => Vec::new(),
-        };
-        found.extend(
-            names
-                .into_iter()
-                .filter(|node| text(*node, &source) == name)
-                .map(|node| Target {
-                    path: path.to_path_buf(),
-                    range: node.byte_range(),
-                }),
-        );
     }
 }
 

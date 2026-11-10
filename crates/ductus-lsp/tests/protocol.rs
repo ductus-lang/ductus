@@ -134,7 +134,21 @@ fn session() {
     );
     assert_eq!(help["activeParameter"], 1);
 
-    client.request(10, "shutdown", Value::Null);
+    let items = client.request(
+        10,
+        "textDocument/completion",
+        json!({ "textDocument": document, "position": { "line": 0, "character": 11 } }),
+    );
+    let min = items
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|item| item["label"] == "min")
+        .unwrap();
+    // This client announced no snippet support.
+    assert_eq!(min.get("insertText"), None);
+
+    client.request(11, "shutdown", Value::Null);
     client.notify("exit", Value::Null);
     thread.join().unwrap().unwrap();
 }

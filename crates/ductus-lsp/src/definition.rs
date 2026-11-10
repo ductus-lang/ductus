@@ -8,8 +8,8 @@
 //! top level is searched without that ordering restriction.
 
 use crate::importer::{self, Read};
+use crate::scope;
 use crate::syntax::{self, text};
-use ductus_core::parse::parse_lenient;
 use std::collections::HashSet;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
@@ -53,12 +53,6 @@ pub fn definition(
     }
 
     let name = text(node, source);
-    let mut search = Search {
-        name,
-        lookup: Lookup::Value,
-        read,
-        visited: HashSet::from([path.to_path_buf()]),
-    };
     match parent.kind() {
         "member_expression" if parent.child_by_field_name("property") == Some(node) => None,
         "call_expression" => find_def(tree, source, path, name, read),
@@ -85,7 +79,9 @@ pub fn definition(
                             limit = None;
                         }
                     }
-                    "source_file" => return search.top_level(scope, source, path, limit),
+                    "source_file" => {
+                        return first_top_level(scope, source, path, limit, read, name, false);
+                    }
                     _ => {}
                 }
                 child = scope;
@@ -97,13 +93,26 @@ pub fn definition(
 
 /// The `def` named `name` in the file at `path` or what it imports.
 pub fn find_def(tree: &Tree, source: &str, path: &Path, name: &str, read: Read) -> Option<Target> {
-    let mut search = Search {
-        name,
-        lookup: Lookup::Def,
-        read,
-        visited: HashSet::from([path.to_path_buf()]),
-    };
-    search.top_level(tree.root_node(), source, path, None)
+    first_top_level(tree.root_node(), source, path, None, read, name, true)
+}
+
+/// The first top-level binding (or `def`) of `name`, imports included.
+fn first_top_level(
+    root: Node,
+    source: &str,
+    path: &Path,
+    limit: Option<usize>,
+    read: Read,
+    name: &str,
+    is_def: bool,
+) -> Option<Target> {
+    let mut found = Vec::new();
+    let mut visited = HashSet::from([path.to_path_buf()]);
+    scope::top_level(root, source, path, limit, read, &mut visited, &mut found);
+    found
+        .into_iter()
+        .find(|named| named.is_def == is_def && named.name == name)
+        .map(|named| named.target)
 }
 
 /// Identifiers that are themselves the binding: definition is the name.
@@ -139,80 +148,10 @@ fn find_in<'tree>(
         .find(|binding| text(*binding, source) == name)
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum Lookup {
-    /// A binding: params, metrics, assignments, nodes.
-    Value,
-    /// A `def` name, at a call site.
-    Def,
-}
-
-struct Search<'a> {
-    name: &'a str,
-    lookup: Lookup,
-    read: Read<'a>,
-    /// Files already searched; imports are include-once and may cycle.
-    visited: HashSet<PathBuf>,
-}
-
-impl Search<'_> {
-    /// Search a file's top level in order, descending into imports where
-    /// they occur, since an import binds the imported names in place.
-    fn top_level(
-        &mut self,
-        root: Node,
-        source: &str,
-        path: &Path,
-        limit: Option<usize>,
-    ) -> Option<Target> {
-        let before = |node: Node| limit.is_none_or(|limit| node.end_byte() <= limit);
-        let target = |node: Node| Target {
-            path: path.to_path_buf(),
-            range: node.byte_range(),
-        };
-        for statement in syntax::children(root) {
-            match statement.kind() {
-                "import_statement" if before(statement) => {
-                    if let Some(found) = self.import(statement, source, path) {
-                        return Some(found);
-                    }
-                }
-                "def_declaration" if self.lookup == Lookup::Def => {
-                    let name = statement.child_by_field_name("name");
-                    if let Some(name) = name.filter(|name| text(*name, source) == self.name) {
-                        return Some(target(name));
-                    }
-                }
-                _ if self.lookup == Lookup::Value => {
-                    let found = syntax::bindings(statement)
-                        .into_iter()
-                        .filter(|binding| before(binding.declaration))
-                        .find(|binding| text(binding.name, source) == self.name);
-                    if let Some(binding) = found {
-                        return Some(target(binding.name));
-                    }
-                }
-                _ => {}
-            }
-        }
-        None
-    }
-
-    fn import(&mut self, statement: Node, source: &str, path: &Path) -> Option<Target> {
-        let imported = statement.child_by_field_name("path")?;
-        let file = importer::resolve(path, text(imported, source).trim_matches('"'));
-        if !self.visited.insert(file.clone()) {
-            return None;
-        }
-        let source = (self.read)(&file)?;
-        let tree = parse_lenient(&source);
-        self.top_level(tree.root_node(), &source, &file, None)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ductus_core::parse::parse_lenient;
     use std::collections::HashMap;
 
     const MAIN: &str = "/virtual/main.ductus";

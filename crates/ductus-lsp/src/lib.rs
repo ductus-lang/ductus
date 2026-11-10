@@ -5,12 +5,14 @@
 //! locking. Every change re-parses and re-evaluates the document.
 
 mod builtins;
+mod completion;
 mod definition;
 mod diagnostics;
 mod importer;
 mod position;
 mod references;
 mod rename;
+mod scope;
 mod signature;
 mod symbols;
 mod syntax;
@@ -21,9 +23,13 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, LogMessage,
     Notification as _, PublishDiagnostics,
 };
+use lsp_types::request::Completion;
 use lsp_types::request::{
     DocumentSymbolRequest, Formatting, GotoDefinition, PrepareRenameRequest, References, Rename,
     Request as _, SignatureHelpRequest, WorkspaceSymbolRequest,
+};
+use lsp_types::{
+    CompletionItem, CompletionOptions, CompletionParams, CompletionResponse, InsertTextFormat,
 };
 use lsp_types::{
     Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
@@ -67,6 +73,14 @@ pub fn serve(connection: Connection) -> Result<()> {
         .as_ref()
         .and_then(|general| general.position_encodings.as_deref());
     let encoding = Encoding::negotiate(offered);
+    let snippets = params
+        .capabilities
+        .text_document
+        .as_ref()
+        .and_then(|document| document.completion.as_ref())
+        .and_then(|completion| completion.completion_item.as_ref())
+        .and_then(|item| item.snippet_support)
+        .unwrap_or(false);
     #[allow(deprecated, reason = "older clients send only root_uri")]
     let roots = match params.workspace_folders {
         Some(folders) => folders
@@ -94,6 +108,10 @@ pub fn serve(connection: Connection) -> Result<()> {
                 work_done_progress_options: WorkDoneProgressOptions::default(),
             })),
             workspace_symbol_provider: Some(OneOf::Left(true)),
+            completion_provider: Some(CompletionOptions {
+                trigger_characters: Some(vec![".".to_string()]),
+                ..CompletionOptions::default()
+            }),
             signature_help_provider: Some(SignatureHelpOptions {
                 trigger_characters: Some(vec!["(".to_string(), ",".to_string()]),
                 retrigger_characters: None,
@@ -111,6 +129,7 @@ pub fn serve(connection: Connection) -> Result<()> {
     Server {
         connection,
         encoding,
+        snippets,
         roots,
         documents: HashMap::new(),
     }
@@ -127,6 +146,9 @@ struct Document {
 struct Server {
     connection: Connection,
     encoding: Encoding,
+    /// The client expands snippets: completed calls get argument
+    /// placeholders.
+    snippets: bool,
     /// Workspace folders; references and rename search their files.
     roots: Vec<PathBuf>,
     /// Open documents by canonical path, the identity imports resolve to.
@@ -175,6 +197,9 @@ impl Server {
                 .respond::<WorkspaceSymbolRequest>(request, |server, params| {
                     Ok(server.workspace_symbols(params))
                 }),
+            Completion::METHOD => {
+                self.respond::<Completion>(request, |server, params| Ok(server.completion(params)))
+            }
             SignatureHelpRequest::METHOD => self
                 .respond::<SignatureHelpRequest>(request, |server, params| {
                     Ok(server.signature_help(params))
@@ -338,6 +363,35 @@ impl Server {
             }
         }
         Some(WorkspaceSymbolResponse::Flat(found))
+    }
+
+    fn completion(&self, params: CompletionParams) -> Option<CompletionResponse> {
+        let at = params.text_document_position;
+        let (path, document) = self.document(&at.text_document.uri)?;
+        let offset = position::offset(&document.text, at.position, self.encoding);
+        let read = |path: &Path| self.read(path);
+        let items = completion::complete(&document.tree, &document.text, &path, offset, &read)
+            .into_iter()
+            .map(|item| {
+                let snippet = item.snippet.filter(|_| self.snippets);
+                CompletionItem {
+                    sort_text: Some(format!("{}{}", item.group, item.label)),
+                    insert_text_format: snippet.as_ref().map(|_| InsertTextFormat::SNIPPET),
+                    insert_text: snippet,
+                    label: item.label,
+                    kind: Some(item.kind),
+                    detail: item.detail,
+                    documentation: item.doc.map(|doc| {
+                        Documentation::MarkupContent(MarkupContent {
+                            kind: MarkupKind::Markdown,
+                            value: doc,
+                        })
+                    }),
+                    ..CompletionItem::default()
+                }
+            })
+            .collect();
+        Some(CompletionResponse::Array(items))
     }
 
     fn signature_help(&self, params: SignatureHelpParams) -> Option<SignatureHelp> {

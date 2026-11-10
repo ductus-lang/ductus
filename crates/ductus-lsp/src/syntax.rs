@@ -101,6 +101,38 @@ pub fn identifiers<'tree>(root: Node<'tree>, source: &str, name: &str) -> Vec<No
     }
 }
 
+/// `text` with every `#` comment replaced by spaces, so byte offsets
+/// still line up with `text`. A `#` inside a string (a glyph name) is
+/// taken for a comment too; strings never hold code.
+pub fn without_comments(text: &str) -> String {
+    text.split_inclusive('\n')
+        .map(|line| match line.find('#') {
+            Some(hash) => {
+                let end = line.len() - usize::from(line.ends_with('\n'));
+                let blank = " ".repeat(end - hash);
+                format!("{}{blank}{}", &line[..hash], &line[end..])
+            }
+            None => line.to_string(),
+        })
+        .collect()
+}
+
+/// The comment lines directly above `node`, without their `#`.
+pub fn leading_comments(node: Node, source: &str) -> Option<String> {
+    let mut lines = Vec::new();
+    let mut below = node;
+    while let Some(comment) = below.prev_sibling().filter(|c| c.kind() == "comment") {
+        if comment.end_position().row + 1 < below.start_position().row {
+            break;
+        }
+        let line = text(comment, source).trim_start_matches('#');
+        lines.push(line.strip_prefix(' ').unwrap_or(line));
+        below = comment;
+    }
+    lines.reverse();
+    (!lines.is_empty()).then(|| lines.join("\n"))
+}
+
 /// Named children of `node`, collected so callers can recurse freely.
 pub fn children(node: Node) -> Vec<Node> {
     let mut cursor = node.walk();
