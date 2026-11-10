@@ -10,4 +10,5 @@ kurbo = { workspace = true }
 lsp-server = "0.10.0"
 lsp-types = "0.97.0"
 serde_json = "1.0"
+crossbeam-channel = "0.5"
 percent-encoding = "2.3"

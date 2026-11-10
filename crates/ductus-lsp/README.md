@@ -48,6 +48,10 @@ ductus lsp
   and `y` on a point). Calls complete with a placeholder per argument
   when the editor supports snippets.
 
+- **Live preview** in the browser: the glyph under the cursor, rendered
+  from the unsaved buffer as you type, with the construction (nodes,
+  guides, handles) and a slider per param. See [Preview](#preview).
+
 Imports read unsaved text from open buffers before the file on disk.
 
 ## Install
@@ -106,9 +110,74 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 })
 ```
 
+## Preview
+
+The server can serve a page that shows the glyph under the cursor and
+re-renders it on every change, convenient on a second monitor. It
+listens on `http://127.0.0.1:45974/` ("glyph" on a phone keypad), or on
+a free port when that one is taken, for example by a second editor. The
+page reconnects by itself when the server restarts.
+
+The page has a glyph selector (follow the cursor, one glyph, or all), a
+construction toggle, and a slider per param; slider values apply to the
+preview only. While the code has an error, the last rendering stays,
+dimmed, under the error.
+
+Neovim needs a command to open the page and an autocmd that tells the
+server where the cursor is:
+
+```lua
+-- Live preview: :DuctusPreview opens it; the page follows the cursor.
+local function ductus_client(bufnr)
+  return vim.lsp.get_clients({ bufnr = bufnr, name = "ductus" })[1]
+end
+
+vim.api.nvim_create_user_command("DuctusPreview", function()
+  local client = ductus_client(0)
+  if not client then
+    return
+  end
+  local position = vim.lsp.util.make_position_params(0, client.offset_encoding)
+  local command = { title = "Preview", command = "ductus.preview", arguments = { position } }
+  client:exec_cmd(command, { bufnr = 0 }, function(err, answer)
+    if err then
+      vim.notify(err.message, vim.log.levels.ERROR)
+    elseif answer.viewers == 0 then
+      vim.ui.open(answer.url)
+    else
+      vim.notify("Ductus preview: " .. answer.url)
+    end
+  end)
+end, {})
+
+vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
+  pattern = "*.ductus",
+  callback = function(args)
+    local client = ductus_client(args.buf)
+    if client then
+      client:notify("ductus/focus", vim.lsp.util.make_position_params(0, client.offset_encoding))
+    end
+  end,
+})
+```
+
+`:DuctusPreview` opens the page, or only prints its address when a page
+is already connected. To use another port, pass it when configuring the
+server:
+
+```lua
+vim.lsp.config("ductus", {
+  -- …
+  init_options = { previewPort = 8080 },
+})
+```
+
+The page is served to `127.0.0.1` only, and requests naming any other
+host are refused.
+
 ## Timing
 
-The server logs how long each check takes. To see the messages, raise
+The server logs how long each check and each preview render takes. To see the messages, raise
 the log level and open the log:
 
 ```lua

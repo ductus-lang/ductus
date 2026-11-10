@@ -2,7 +2,8 @@
 //!
 //! A synchronous, single-threaded server on `lsp-server`: messages are
 //! handled one at a time in arrival order, so the open documents need no
-//! locking. Every change re-parses and re-evaluates the document.
+//! locking. Every change re-parses and re-evaluates the document. The live
+//! preview's HTTP threads only pass settings in and frames out.
 
 mod builtins;
 mod completion;
@@ -12,6 +13,7 @@ mod hints;
 mod hover;
 mod importer;
 mod position;
+mod preview;
 mod references;
 mod rename;
 mod scope;
@@ -26,7 +28,7 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, LogMessage,
     Notification as _, PublishDiagnostics,
 };
-use lsp_types::request::{Completion, HoverRequest, InlayHintRequest};
+use lsp_types::request::{Completion, ExecuteCommand, HoverRequest, InlayHintRequest};
 use lsp_types::request::{
     DocumentSymbolRequest, Formatting, GotoDefinition, PrepareRenameRequest, References, Rename,
     Request as _, SignatureHelpRequest, WorkspaceSymbolRequest,
@@ -48,12 +50,15 @@ use lsp_types::{
     SignatureHelpOptions, SignatureHelpParams, SignatureInformation, SymbolInformation,
     WorkspaceSymbolParams, WorkspaceSymbolResponse,
 };
+use lsp_types::{ExecuteCommandOptions, ExecuteCommandParams};
 use lsp_types::{
     Hover, HoverContents, HoverParams, HoverProviderCapability, InlayHint, InlayHintLabel,
     InlayHintParams,
 };
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, utf8_percent_encode};
 use position::Encoding;
+use preview::{Focus, Preview, Rendered, Settings};
+use serde_json::json;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -61,6 +66,11 @@ use std::time::Instant;
 use tree_sitter::Tree;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
+
+/// Starts the live preview and answers `{ url, viewers }`.
+const PREVIEW_COMMAND: &str = "ductus.preview";
+/// From the client: the cursor moved, `TextDocumentPositionParams`.
+const FOCUS_NOTIFICATION: &str = "ductus/focus";
 
 /// Serve over stdin/stdout until the client asks to exit.
 pub fn run() -> Result<()> {
@@ -102,6 +112,14 @@ pub fn serve(connection: Connection) -> Result<()> {
             .collect(),
     };
 
+    let preview_port = params
+        .initialization_options
+        .as_ref()
+        .and_then(|options| options.get("previewPort"))
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|port| u16::try_from(port).ok())
+        .unwrap_or(preview::DEFAULT_PORT);
+
     let result = InitializeResult {
         capabilities: ServerCapabilities {
             position_encoding: Some(encoding.kind()),
@@ -126,6 +144,10 @@ pub fn serve(connection: Connection) -> Result<()> {
                 retrigger_characters: None,
                 work_done_progress_options: WorkDoneProgressOptions::default(),
             }),
+            execute_command_provider: Some(ExecuteCommandOptions {
+                commands: vec![PREVIEW_COMMAND.to_string()],
+                work_done_progress_options: WorkDoneProgressOptions::default(),
+            }),
             ..ServerCapabilities::default()
         },
         server_info: Some(ServerInfo {
@@ -135,14 +157,21 @@ pub fn serve(connection: Connection) -> Result<()> {
     };
     connection.initialize_finish(id, serde_json::to_value(result)?)?;
 
+    let (settings_sender, settings) = crossbeam_channel::unbounded();
     Server {
         connection,
         encoding,
         snippets,
         roots,
         documents: HashMap::new(),
+        preview_port,
+        settings_sender,
+        preview: None,
+        settings: Settings::default(),
+        focus: None,
+        last_render: None,
     }
-    .main_loop()
+    .main_loop(settings)
 }
 
 struct Document {
@@ -170,23 +199,50 @@ struct Server {
     roots: Vec<PathBuf>,
     /// Open documents by canonical path, the identity imports resolve to.
     documents: HashMap<PathBuf, Document>,
+    /// Where the preview listens, unless taken.
+    preview_port: u16,
+    /// Handed to the preview's HTTP threads for the page's settings.
+    settings_sender: crossbeam_channel::Sender<Settings>,
+    /// The live preview, once started.
+    preview: Option<Preview>,
+    settings: Settings,
+    focus: Option<Focus>,
+    /// Shown, dimmed, while the focused glyph has errors.
+    last_render: Option<Rendered>,
 }
 
 impl Server {
-    fn main_loop(mut self) -> Result<()> {
-        while let Ok(message) = self.connection.receiver.recv() {
-            match message {
-                Message::Request(request) => {
-                    if self.connection.handle_shutdown(&request)? {
+    fn main_loop(mut self, settings: crossbeam_channel::Receiver<Settings>) -> Result<()> {
+        let messages = self.connection.receiver.clone();
+        loop {
+            crossbeam_channel::select! {
+                recv(messages) -> message => {
+                    let Ok(message) = message else {
                         return Ok(());
+                    };
+                    match message {
+                        Message::Request(request) => {
+                            if self.connection.handle_shutdown(&request)? {
+                                return Ok(());
+                            }
+                            if request.method == ExecuteCommand::METHOD {
+                                self.execute_command(request)?;
+                            } else {
+                                self.request(request)?;
+                            }
+                        }
+                        Message::Notification(notification) => self.notification(notification)?,
+                        Message::Response(_) => {}
                     }
-                    self.request(request)?;
                 }
-                Message::Notification(notification) => self.notification(notification)?,
-                Message::Response(_) => {}
+                recv(settings) -> received => {
+                    if let Ok(received) = received {
+                        self.settings = received;
+                        self.refresh_preview(false)?;
+                    }
+                }
             }
         }
-        Ok(())
     }
 
     // ---- Requests ----------------------------------------------------------
@@ -515,6 +571,147 @@ impl Server {
         })
     }
 
+    // ---- Preview -----------------------------------------------------------
+
+    /// `ductus.preview`: focus on the position given as the argument, start
+    /// the preview if needed, and answer where it is.
+    fn execute_command(&mut self, request: Request) -> Result<()> {
+        let params: ExecuteCommandParams = match serde_json::from_value(request.params) {
+            Ok(params) => params,
+            Err(error) => {
+                let code = ErrorCode::InvalidParams as i32;
+                let response = Response::new_err(request.id, code, error.to_string());
+                self.connection.sender.send(response.into())?;
+                return Ok(());
+            }
+        };
+        if params.command != PREVIEW_COMMAND {
+            let code = ErrorCode::InvalidParams as i32;
+            let message = format!("unknown command {}", params.command);
+            self.connection
+                .sender
+                .send(Response::new_err(request.id, code, message).into())?;
+            return Ok(());
+        }
+        let at = params.arguments.into_iter().next();
+        if let Some(at) = at.and_then(|at| serde_json::from_value(at).ok()) {
+            self.focus_on(&at);
+        }
+        if self.preview.is_none() {
+            match Preview::start(self.preview_port, self.settings_sender.clone()) {
+                Ok(preview) => {
+                    self.log(format!("preview at {}", preview.url()))?;
+                    self.preview = Some(preview);
+                }
+                Err(error) => {
+                    let code = ErrorCode::RequestFailed as i32;
+                    let message = format!("cannot start the preview: {error}");
+                    self.connection
+                        .sender
+                        .send(Response::new_err(request.id, code, message).into())?;
+                    return Ok(());
+                }
+            }
+        }
+        self.refresh_preview(false)?;
+        let preview = self.preview.as_ref().expect("started above");
+        let answer = json!({ "url": preview.url(), "viewers": preview.viewers() });
+        self.connection
+            .sender
+            .send(Response::new_ok(request.id, answer).into())?;
+        Ok(())
+    }
+
+    /// Move the focus for a cursor at `at`; true when it changed.
+    fn focus_on(&mut self, at: &TextDocumentPositionParams) -> bool {
+        let Some((path, document)) = self.document(&at.text_document.uri) else {
+            return false;
+        };
+        let offset = position::offset(&document.text, at.position, self.encoding);
+        let focus = preview::refocus(
+            self.focus.as_ref(),
+            &path,
+            &document.tree,
+            &document.text,
+            offset,
+        );
+        let changed = focus != self.focus;
+        self.focus = focus;
+        changed
+    }
+
+    /// Render the focused glyph and send it to the page. `reuse` takes the
+    /// evaluation the focused document's own update just made, when the
+    /// params are at their defaults; otherwise, as after a change to a file
+    /// it imports, evaluate again.
+    fn refresh_preview(&mut self, reuse: bool) -> Result<()> {
+        let Some(preview) = &self.preview else {
+            return Ok(());
+        };
+        let Some(focus) = &self.focus else {
+            preview.publish(preview::waiting());
+            return Ok(());
+        };
+        let Some(document) = self.documents.get(&focus.path) else {
+            return Ok(());
+        };
+        let started = Instant::now();
+        let glyph = preview::shown(&self.settings.choice, focus);
+        let reusable = document
+            .evaluation
+            .as_ref()
+            .filter(|evaluation| reuse && !evaluation.stale && self.settings.overrides.is_empty());
+        let read = |path: &Path| self.read(path);
+        let fresh;
+        let evaluated = match reusable {
+            Some(evaluation) => Ok(&evaluation.document),
+            None => {
+                let overrides = &self.settings.overrides;
+                match diagnostics::check(
+                    &document.tree,
+                    &document.text,
+                    &focus.path,
+                    &read,
+                    overrides,
+                ) {
+                    Ok(evaluated) => {
+                        fresh = evaluated;
+                        Ok(&fresh)
+                    }
+                    Err(problems) => Err(failure(&document.text, problems)),
+                }
+            }
+        };
+        let rendered = evaluated.and_then(|evaluated| {
+            preview::render(evaluated, glyph.as_deref(), self.settings.debug).map_err(|message| {
+                preview::Failure {
+                    message,
+                    line: None,
+                }
+            })
+        });
+
+        let file = focus.path.file_name().unwrap_or_default().to_string_lossy();
+        let debug = self.settings.debug;
+        let frame = match &rendered {
+            Ok(rendered) => preview::frame(&file, glyph.as_deref(), debug, Some(rendered), None),
+            Err(failure) => {
+                let last = self.last_render.as_ref();
+                preview::frame(&file, glyph.as_deref(), debug, last, Some(failure))
+            }
+        };
+        preview.publish(frame);
+        let message = format!(
+            "previewed {file} {} in {:.1} ms",
+            glyph.as_deref().unwrap_or("(all)"),
+            started.elapsed().as_secs_f64() * 1000.0
+        );
+        if let Ok(rendered) = rendered {
+            self.last_render = Some(rendered);
+        }
+        self.log(message)
+    }
+
     // ---- Notifications -----------------------------------------------------
 
     fn notification(&mut self, notification: Notification) -> Result<()> {
@@ -546,6 +743,13 @@ impl Server {
                 }
                 self.publish(uri, Vec::new(), None)
             }
+            FOCUS_NOTIFICATION => {
+                let at: TextDocumentPositionParams = serde_json::from_value(notification.params)?;
+                if self.focus_on(&at) {
+                    self.refresh_preview(false)?;
+                }
+                Ok(())
+            }
             _ => Ok(()),
         }
     }
@@ -571,7 +775,13 @@ impl Server {
 
         let document = &self.documents[&path];
         let read = |path: &Path| self.read(path);
-        let checked = diagnostics::check(&document.tree, &document.text, &path, &read);
+        let checked = diagnostics::check(
+            &document.tree,
+            &document.text,
+            &path,
+            &read,
+            &HashMap::new(),
+        );
         let elapsed = started.elapsed();
 
         let document = self.documents.get_mut(&path).expect("inserted above");
@@ -612,7 +822,9 @@ impl Server {
             "checked {} in {:.1} ms",
             path.display(),
             elapsed.as_secs_f64() * 1000.0
-        ))
+        ))?;
+        let focused = self.focus.as_ref().is_some_and(|focus| focus.path == path);
+        self.refresh_preview(focused)
     }
 
     // ---- Helpers -----------------------------------------------------------
@@ -695,6 +907,20 @@ impl Server {
         let notification = Notification::new(N::METHOD.to_string(), params);
         self.connection.sender.send(notification.into())?;
         Ok(())
+    }
+}
+
+/// The first problem, as the preview shows it.
+fn failure(text: &str, problems: Vec<diagnostics::Problem>) -> preview::Failure {
+    match problems.into_iter().next() {
+        Some(problem) => preview::Failure {
+            line: Some(text[..problem.range.start].matches('\n').count() + 1),
+            message: problem.message,
+        },
+        None => preview::Failure {
+            message: "evaluation failed".to_string(),
+            line: None,
+        },
     }
 }
 

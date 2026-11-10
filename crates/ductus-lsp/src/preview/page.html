@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ductus preview</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: monospace;
+      --rule: color-mix(in srgb, currentColor 20%, transparent);
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: grid;
+      grid-template: "header header" auto "glyph settings" 1fr / 1fr 16rem;
+    }
+
+    header {
+      grid-area: header;
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      padding: 0.5rem 1rem;
+      border-block-end: 1px solid var(--rule);
+
+      h1 {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      output {
+        margin-inline-start: auto;
+        font-size: 0.85rem;
+        opacity: 0.7;
+      }
+    }
+
+    main {
+      grid-area: glyph;
+      position: relative;
+      min-height: 0;
+      padding: 1rem;
+
+      figure {
+        margin: 0;
+        height: 100%;
+
+        svg {
+          width: 100%;
+          height: 100%;
+        }
+
+        &.stale {
+          opacity: 0.35;
+        }
+      }
+
+      [role="alert"] {
+        position: absolute;
+        inset: 1rem 1rem auto;
+        padding: 0.5rem 0.75rem;
+        border-inline-start: 3px solid #d33;
+        background: color-mix(in srgb, #d33 12%, Canvas);
+        font-family: ui-monospace, monospace;
+        white-space: pre-wrap;
+      }
+    }
+
+    aside {
+      grid-area: settings;
+      display: grid;
+      align-content: start;
+      gap: 1.25rem;
+      padding: 1rem;
+      border-inline-start: 1px solid var(--rule);
+
+      label {
+        display: grid;
+        gap: 0.25rem;
+
+        &:has(input[type="checkbox"]) {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        span {
+          display: flex;
+          justify-content: space-between;
+        }
+      }
+
+      fieldset {
+        display: grid;
+        gap: 0.75rem;
+        margin: 0;
+        padding: 0;
+        border: none;
+
+        legend {
+          margin-block-end: 0.5rem;
+          font-weight: 600;
+        }
+
+        button {
+          justify-self: start;
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ductus</h1>
+    <span id="title"></span>
+    <output id="status">connecting…</output>
+  </header>
+  <main>
+    <div role="alert" hidden></div>
+    <figure aria-label="Glyph"></figure>
+  </main>
+  <aside aria-label="Preview settings">
+    <label>Glyph
+      <select name="glyph">
+        <option value="follow">Follow the cursor</option>
+        <option value="all">All glyphs</option>
+      </select>
+    </label>
+    <label><input type="checkbox" name="debug" checked> Construction</label>
+    <fieldset name="params" hidden>
+      <legend>Params</legend>
+      <button type="button">Reset</button>
+    </fieldset>
+  </aside>
+
+  <script type="module">
+    const status = document.querySelector("#status");
+    const title = document.querySelector("#title");
+    const alert = document.querySelector("[role=alert]");
+    const figure = document.querySelector("figure");
+    const glyphChoice = document.querySelector("select[name=glyph]");
+    const debug = document.querySelector("input[name=debug]");
+    const params = document.querySelector("fieldset[name=params]");
+    const reset = params.querySelector("button");
+
+    // The page owns the settings and sends them on every change and on
+    // every (re)connect. glyph: null follows the cursor, "" shows all.
+    const settings = { overrides: {}, debug: true, glyph: null };
+
+    // One request in flight; changes made meanwhile go out after it.
+    let sending = false;
+    let pending = false;
+    async function send() {
+      if (sending) {
+        pending = true;
+        return;
+      }
+      sending = true;
+      try {
+        await fetch("/settings", { method: "POST", body: JSON.stringify(settings) });
+      } catch {
+        // The event stream reports the connection; it resends on reconnect.
+      } finally {
+        sending = false;
+        if (pending) {
+          pending = false;
+          send();
+        }
+      }
+    }
+
+    glyphChoice.addEventListener("change", () => {
+      const value = glyphChoice.value;
+      settings.glyph = value === "follow" ? null : value === "all" ? "" : value;
+      send();
+    });
+    debug.addEventListener("change", () => {
+      settings.debug = debug.checked;
+      send();
+    });
+    reset.addEventListener("click", () => {
+      settings.overrides = {};
+      send();
+    });
+
+    let glyphNames = "";
+    function updateGlyphs(glyphs) {
+      const names = glyphs.join("\n");
+      if (names === glyphNames) return;
+      glyphNames = names;
+      const selected = glyphChoice.value;
+      glyphChoice.querySelectorAll("option:nth-child(n + 3)").forEach((option) => option.remove());
+      glyphChoice.append(...glyphs.map((name) => new Option(name, name)));
+      glyphChoice.value = glyphs.includes(selected) || selected === "all" ? selected : "follow";
+    }
+
+    let paramShape = "";
+    function updateParams(list) {
+      params.hidden = list.length === 0;
+      const shape = JSON.stringify(list.map(({ name, min, max }) => [name, min, max]));
+      if (shape !== paramShape) {
+        paramShape = shape;
+        params.querySelectorAll("label").forEach((label) => label.remove());
+        for (const param of list) {
+          const label = document.createElement("label");
+          label.innerHTML = "<span><span></span><output></output></span><input type=range>";
+          label.querySelector("span span").textContent = param.name;
+          const input = label.querySelector("input");
+          input.name = param.name;
+          input.min = param.min;
+          input.max = param.max;
+          input.step = param.max - param.min >= 10 ? 1 : 0.01;
+          input.addEventListener("input", () => {
+            settings.overrides[param.name] = Number(input.value);
+            label.querySelector("output").value = input.value;
+            send();
+          });
+          reset.before(label);
+        }
+      }
+      // Values follow the frame, except under the pointer.
+      for (const param of list) {
+        const input = params.querySelector(`input[name="${CSS.escape(param.name)}"]`);
+        if (document.activeElement === input) continue;
+        input.value = param.value;
+        input.closest("label").querySelector("output").value = param.value;
+      }
+    }
+
+    function show(frame) {
+      title.textContent = frame.file
+        ? `${frame.file} · ${frame.glyph ?? "all glyphs"}`
+        : "";
+      if (frame.svg) {
+        figure.innerHTML = frame.svg;
+      } else {
+        figure.replaceChildren(Object.assign(document.createElement("p"), {
+          textContent: frame.message ?? "",
+        }));
+      }
+      figure.classList.toggle("stale", Boolean(frame.stale));
+      alert.hidden = !frame.error;
+      alert.textContent = frame.error
+        ? (frame.error.line ? `line ${frame.error.line}: ` : "") + frame.error.message
+        : "";
+      updateGlyphs(frame.glyphs ?? []);
+      updateParams(frame.params ?? []);
+    }
+
+    const events = new EventSource("/events");
+    events.addEventListener("open", () => {
+      status.value = "live";
+      send();
+    });
+    events.addEventListener("error", () => {
+      status.value = "reconnecting…";
+    });
+    events.addEventListener("frame", (event) => show(JSON.parse(event.data)));
+  </script>
+</body>
+</html>

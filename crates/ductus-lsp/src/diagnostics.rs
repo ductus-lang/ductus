@@ -18,7 +18,14 @@ pub struct Problem {
     pub message: String,
 }
 
-pub fn check(tree: &Tree, source: &str, path: &Path, read: Read) -> Result<Document, Vec<Problem>> {
+/// `overrides` sets params away from their defaults, as `--set` does.
+pub fn check(
+    tree: &Tree,
+    source: &str,
+    path: &Path,
+    read: Read,
+    overrides: &HashMap<String, f64>,
+) -> Result<Document, Vec<Problem>> {
     let errors = parse::syntax_errors(tree, source);
     if !errors.is_empty() {
         // Lowering an ERROR tree fails anyway; the syntax errors say why.
@@ -33,7 +40,7 @@ pub fn check(tree: &Tree, source: &str, path: &Path, read: Read) -> Result<Docum
     let program = lower::lower(tree, source)
         .map_err(|error| vec![at(tree, source, error.span, error.message)])?;
     let importer = WorkspaceImporter { root: path, read };
-    eval::evaluate(&program, &HashMap::new(), &importer)
+    eval::evaluate(&program, overrides, &importer)
         .map_err(|error| vec![at(tree, source, error.span, error.message)])
 }
 
@@ -63,12 +70,18 @@ mod tests {
     fn problems(source: &str) -> Vec<(String, String)> {
         let tree = parse_lenient(source);
         let read = |_: &Path| None;
-        check(&tree, source, Path::new("/virtual/main.ductus"), &read)
-            .err()
-            .unwrap_or_default()
-            .into_iter()
-            .map(|problem| (source[problem.range].to_string(), problem.message))
-            .collect()
+        check(
+            &tree,
+            source,
+            Path::new("/virtual/main.ductus"),
+            &read,
+            &HashMap::new(),
+        )
+        .err()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|problem| (source[problem.range].to_string(), problem.message))
+        .collect()
     }
 
     #[test]

@@ -2,6 +2,8 @@
 
 use lsp_server::{Connection, Message, Notification, Request, RequestId};
 use serde_json::{Value, json};
+use std::io::{BufRead, BufReader, Write};
+use std::net::TcpStream;
 
 const URI: &str = "file:///nonexistent/ductus-lsp/main.ductus";
 
@@ -39,6 +41,19 @@ impl Client {
     }
 }
 
+/// The first frame the preview at `url` streams.
+fn first_frame(url: &str) -> Value {
+    let address = url.trim_start_matches("http://").trim_end_matches('/');
+    let mut stream = TcpStream::connect(address).unwrap();
+    write!(stream, "GET /events HTTP/1.1\r\nHost: {address}\r\n\r\n").unwrap();
+    for line in BufReader::new(stream).lines() {
+        if let Some(data) = line.unwrap().strip_prefix("data: ") {
+            return serde_json::from_str(data).unwrap();
+        }
+    }
+    panic!("the event stream ended");
+}
+
 #[test]
 fn session() {
     let (server, client) = Connection::memory();
@@ -48,7 +63,11 @@ fn session() {
     let initialized = client.request(
         1,
         "initialize",
-        json!({ "capabilities": { "general": { "positionEncodings": ["utf-16", "utf-8"] } } }),
+        json!({
+            "capabilities": { "general": { "positionEncodings": ["utf-16", "utf-8"] } },
+            // A free port: tests must not take the default from a running editor.
+            "initializationOptions": { "previewPort": 0 },
+        }),
     );
     assert_eq!(initialized["capabilities"]["positionEncoding"], "utf-8");
     client.notify("initialized", json!({}));
@@ -170,7 +189,24 @@ fn session() {
         json!([{ "position": { "line": 1, "character": 10 }, "label": "▸ 6", "paddingLeft": true }])
     );
 
-    client.request(13, "shutdown", Value::Null);
+    client.notify(
+        "textDocument/didChange",
+        json!({ "textDocument": { "uri": URI, "version": 4 }, "contentChanges": [{ "text": "glyph o {\n  advance = 500;\n}\n" }] }),
+    );
+    client.wait_for("textDocument/publishDiagnostics");
+    let answer = client.request(
+        13,
+        "workspace/executeCommand",
+        json!({ "command": "ductus.preview", "arguments": [
+            { "textDocument": document, "position": { "line": 1, "character": 2 } }] }),
+    );
+    assert_eq!(answer["viewers"], 0);
+    let frame = first_frame(answer["url"].as_str().unwrap());
+    assert_eq!(frame["glyph"], "o");
+    assert_eq!(frame["glyphs"], json!(["o"]));
+    assert!(frame["svg"].as_str().unwrap().starts_with("<svg"));
+
+    client.request(14, "shutdown", Value::Null);
     client.notify("exit", Value::Null);
     thread.join().unwrap().unwrap();
 }
