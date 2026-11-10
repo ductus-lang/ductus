@@ -56,10 +56,23 @@ enum Command {
         #[arg(long)]
         glyph: Option<String>,
     },
+    /// Run the language server on stdin/stdout.
+    Lsp,
 }
 
 fn main() -> ExitCode {
-    match run(Cli::parse()) {
+    let cli = Cli::parse();
+    // stdout carries the protocol, so the server must not print a result.
+    if let Command::Lsp = cli.command {
+        return match ductus_lsp::run() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("ductus lsp: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
+    match run(cli) {
         Ok(message) => {
             println!("{message}");
             ExitCode::SUCCESS
@@ -122,6 +135,7 @@ fn run(cli: Cli) -> Result<String, String> {
                 .map_err(|error| format!("error writing {}: {}", output.display(), error))?;
             Ok(format!("{} -> {}", file.display(), output.display()))
         }
+        Command::Lsp => unreachable!("handled in main"),
     }
 }
 

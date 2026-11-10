@@ -6,6 +6,7 @@ members = [
   "crates/ductus-cli",
   "crates/ductus-wasm",
   "crates/ductus-docs",
+  "crates/ductus-lsp",
 ]
 
 [workspace.dependencies]
