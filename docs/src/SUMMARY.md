@@ -26,6 +26,7 @@
 
 - [Glyph organization](glyph-organization.md)
 - [Interpolation compatibility](interpolation-compatibility.md)
+- [Working in an editor](editor.md)
 - [Debugging and inspecting](debugging.md)
 - [Case studies](case-studies.md)
   - [A slab-serifed stem](case-slab.md)

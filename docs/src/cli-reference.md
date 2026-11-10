@@ -48,7 +48,7 @@ Curious about the nitty-gritty details of your evaluated file? This command spil
 ductus lsp
 ```
 
-This runs a language server over stdin and stdout, for editors that speak the Language Server Protocol. It reports syntax and evaluation errors as you type, formats, lists a file's symbols, and jumps to definitions, across imports too. You don't run it by hand; your editor starts it. The [ductus-lsp README](https://github.com/ductus-lang/ductus/tree/master/crates/ductus-lsp) shows how to set it up in Neovim.
+This runs a language server over stdin and stdout, for editors that speak the Language Server Protocol. It reports syntax and evaluation errors as you type, formats, lists a file's symbols, and jumps to definitions, across imports too. It also serves a live preview page that draws the glyph under your cursor as you type. You don't run it by hand; your editor starts it. [Working in an editor](editor.md) walks through the workflow, and the [ductus-lsp README](https://github.com/ductus-lang/ductus/tree/master/crates/ductus-lsp) has the full Neovim setup.
 
 A quick note on imports: they always find their way by looking relative to your source file's directory. Speaking of handy tools, the online playground actually uses the very same evaluator (compiled right into WebAssembly). It comes equipped with neat sliders for your `params`, an inspector that mirrors what you get with `ductus inspect`, a convenient debug toggle, and the same formatter behind a `format` button (or Ctrl+Shift+F). However, do remember that it can't handle `import` statements — browsers just don't have access to a filesystem.
 

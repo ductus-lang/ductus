@@ -101,3 +101,15 @@ html.ayu {
 .ductus-function-method { color: var(--ductus-function); }
 .ductus-variable-parameter { color: var(--ductus-parameter); }
 .ductus-property { color: var(--ductus-property); }
+
+/* A screenshot, framed like the rendered figures. */
+
+figure.screenshot {
+  margin: 1.6rem 0;
+}
+
+figure.screenshot img {
+  max-width: 100%;
+  border: 1px solid var(--table-border-color);
+  border-radius: 5px;
+}
