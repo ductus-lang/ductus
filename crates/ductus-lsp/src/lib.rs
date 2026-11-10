@@ -4,12 +4,14 @@
 //! handled one at a time in arrival order, so the open documents need no
 //! locking. Every change re-parses and re-evaluates the document.
 
+mod builtins;
 mod definition;
 mod diagnostics;
 mod importer;
 mod position;
 mod references;
 mod rename;
+mod signature;
 mod symbols;
 mod syntax;
 mod workspace;
@@ -21,7 +23,7 @@ use lsp_types::notification::{
 };
 use lsp_types::request::{
     DocumentSymbolRequest, Formatting, GotoDefinition, PrepareRenameRequest, References, Rename,
-    Request as _,
+    Request as _, SignatureHelpRequest, WorkspaceSymbolRequest,
 };
 use lsp_types::{
     Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
@@ -31,6 +33,11 @@ use lsp_types::{
     PublishDiagnosticsParams, ReferenceParams, RenameOptions, RenameParams, ServerCapabilities,
     ServerInfo, TextDocumentPositionParams, TextDocumentSyncCapability, TextDocumentSyncKind,
     TextEdit, Uri, WorkDoneProgressOptions, WorkspaceEdit,
+};
+use lsp_types::{
+    Documentation, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel, SignatureHelp,
+    SignatureHelpOptions, SignatureHelpParams, SignatureInformation, SymbolInformation,
+    WorkspaceSymbolParams, WorkspaceSymbolResponse,
 };
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, utf8_percent_encode};
 use position::Encoding;
@@ -86,6 +93,12 @@ pub fn serve(connection: Connection) -> Result<()> {
                 prepare_provider: Some(true),
                 work_done_progress_options: WorkDoneProgressOptions::default(),
             })),
+            workspace_symbol_provider: Some(OneOf::Left(true)),
+            signature_help_provider: Some(SignatureHelpOptions {
+                trigger_characters: Some(vec!["(".to_string(), ",".to_string()]),
+                retrigger_characters: None,
+                work_done_progress_options: WorkDoneProgressOptions::default(),
+            }),
             ..ServerCapabilities::default()
         },
         server_info: Some(ServerInfo {
@@ -158,6 +171,14 @@ impl Server {
                     Ok(server.prepare_rename(params))
                 }),
             Rename::METHOD => self.respond::<Rename>(request, Self::rename),
+            WorkspaceSymbolRequest::METHOD => self
+                .respond::<WorkspaceSymbolRequest>(request, |server, params| {
+                    Ok(server.workspace_symbols(params))
+                }),
+            SignatureHelpRequest::METHOD => self
+                .respond::<SignatureHelpRequest>(request, |server, params| {
+                    Ok(server.signature_help(params))
+                }),
             method => Response::new_err(
                 request.id,
                 ErrorCode::MethodNotFound as i32,
@@ -243,7 +264,7 @@ impl Server {
     fn references(&self, params: ReferenceParams) -> Option<Vec<Location>> {
         let binding = self.binding_at(&params.text_document_position)?;
         let read = |path: &Path| self.read(path);
-        let found = references::references(&binding, &self.files(&binding.path), &read);
+        let found = references::references(&binding, &self.files(Some(&binding.path)), &read);
         let include = params.context.include_declaration;
         Some(
             found
@@ -268,7 +289,7 @@ impl Server {
             .binding_at(&params.text_document_position)
             .ok_or("nothing to rename here")?;
         let read = |path: &Path| self.read(path);
-        let files = self.files(&binding.path);
+        let files = self.files(Some(&binding.path));
         let edits = rename::rename(&binding, &params.new_name, &files, &read)?;
         #[allow(clippy::mutable_key_type, reason = "WorkspaceEdit is keyed by Uri")]
         let mut changes = HashMap::new();
@@ -284,6 +305,80 @@ impl Server {
             changes.insert(self.uri(&path).ok_or("cannot name a renamed file")?, edits);
         }
         Ok(Some(WorkspaceEdit::new(changes)))
+    }
+
+    /// Top-level symbols of every workspace file whose name matches the
+    /// query. Glyph locals are left out: every glyph has an `advance`.
+    fn workspace_symbols(&self, params: WorkspaceSymbolParams) -> Option<WorkspaceSymbolResponse> {
+        let mut found = Vec::new();
+        for path in self.files(None) {
+            let Some(text) = self.read(&path) else {
+                continue;
+            };
+            let Some(uri) = self.uri(&path) else {
+                continue;
+            };
+            let tree = ductus_core::parse::parse_lenient(&text);
+            let symbols = symbols::symbols(&tree, &text)
+                .into_iter()
+                .filter(|symbol| symbol.kind != lsp_types::SymbolKind::FILE)
+                .filter(|symbol| symbols::matches(&params.query, &symbol.name));
+            for symbol in symbols {
+                let range =
+                    position::range(&text, symbol.range.start, symbol.range.end, self.encoding);
+                #[allow(deprecated, reason = "SymbolInformation has no constructor")]
+                found.push(SymbolInformation {
+                    name: symbol.name,
+                    kind: symbol.kind,
+                    tags: None,
+                    deprecated: None,
+                    location: Location::new(uri.clone(), range),
+                    container_name: None,
+                });
+            }
+        }
+        Some(WorkspaceSymbolResponse::Flat(found))
+    }
+
+    fn signature_help(&self, params: SignatureHelpParams) -> Option<SignatureHelp> {
+        let at = params.text_document_position_params;
+        let (path, document) = self.document(&at.text_document.uri)?;
+        let offset = position::offset(&document.text, at.position, self.encoding);
+        let read = |path: &Path| self.read(path);
+        let help = signature::signature_help(&document.tree, &document.text, &path, offset, &read)?;
+        let signatures = help
+            .signatures
+            .into_iter()
+            .map(|signature| SignatureInformation {
+                label: signature.label,
+                documentation: signature.doc.map(|doc| {
+                    Documentation::MarkupContent(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: doc,
+                    })
+                }),
+                // Labels are ASCII, so byte offsets are also UTF-16 offsets.
+                parameters: Some(
+                    signature
+                        .parameters
+                        .into_iter()
+                        .map(|range| ParameterInformation {
+                            label: ParameterLabel::LabelOffsets([
+                                range.start as u32,
+                                range.end as u32,
+                            ]),
+                            documentation: None,
+                        })
+                        .collect(),
+                ),
+                active_parameter: None,
+            })
+            .collect();
+        Some(SignatureHelp {
+            signatures,
+            active_signature: Some(help.active_signature as u32),
+            active_parameter: Some(help.active_parameter as u32),
+        })
     }
 
     // ---- Notifications -----------------------------------------------------
@@ -377,17 +472,24 @@ impl Server {
             .filter(|target| !target.range.is_empty())
     }
 
-    /// Files that may use a binding in `path`: the `.ductus` files under
-    /// the workspace folders (or `path`'s directory without any), the open
-    /// documents, and `path` itself.
-    fn files(&self, path: &Path) -> Vec<PathBuf> {
-        let roots = match self.roots.is_empty() {
-            true => path.parent().map(Path::to_path_buf).into_iter().collect(),
+    /// The files a workspace-wide request considers: the `.ductus` files
+    /// under the workspace folders, the open documents, and `path`. Without
+    /// workspace folders, the directories of `path` and the open documents
+    /// stand in for them.
+    fn files(&self, path: Option<&Path>) -> Vec<PathBuf> {
+        let known = || {
+            path.into_iter()
+                .chain(self.documents.keys().map(PathBuf::as_path))
+        };
+        let roots: Vec<PathBuf> = match self.roots.is_empty() {
+            true => known()
+                .filter_map(Path::parent)
+                .map(Path::to_path_buf)
+                .collect(),
             false => self.roots.clone(),
         };
         let mut files = workspace::ductus_files(&roots);
-        files.extend(self.documents.keys().cloned());
-        files.push(path.to_path_buf());
+        files.extend(known().map(Path::to_path_buf));
         files.sort();
         files.dedup();
         files

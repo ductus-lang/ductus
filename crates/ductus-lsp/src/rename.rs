@@ -122,13 +122,6 @@ pub fn rename(binding: &Target, new: &str, files: &[PathBuf], read: Read) -> Res
     Ok(edits)
 }
 
-/// Spec.md §2: keywords cannot name a binding.
-const KEYWORDS: &[&str] = &[
-    "params", "in", "glyph", "contour", "guide", "anchor", "node", "dir", "pen", "cycle", "corner",
-    "def", "for", "if", "else", "and", "or", "not", "import", "shifted", "scaled", "xscaled",
-    "yscaled", "rotated", "slanted", "reversed", "metrics", "draw", "fill",
-];
-
 /// Spec.md §2: `[a-zA-Z_][a-zA-Z0-9_]*`, and not a keyword.
 fn is_identifier(name: &str) -> bool {
     let mut characters = name.chars();
@@ -136,7 +129,7 @@ fn is_identifier(name: &str) -> bool {
         .next()
         .is_some_and(|first| first.is_ascii_alphabetic() || first == '_')
         && characters.all(|rest| rest.is_ascii_alphanumeric() || rest == '_')
-        && !KEYWORDS.contains(&name)
+        && !syntax::KEYWORDS.contains(&name)
 }
 
 fn apply(text: &str, ranges: &[Range<usize>], new: &str) -> String {

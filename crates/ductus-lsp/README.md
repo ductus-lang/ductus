@@ -21,10 +21,16 @@ ductus lsp
   the path in an `import` statement. Follows imports into other files.
 - **Find references** and **rename**, across every `.ductus` file under
   the workspace folder (hidden directories, `target/` and
-  `node_modules/` are skipped), or the file's directory when there is no
-  workspace folder. A rename that would change what any name refers to,
-  or bind a name twice in one scope, is refused with the place it would
+  `node_modules/` are skipped), or, without one, the directories of the
+  open files. A rename that would change what any name refers to, or
+  bind a name twice in one scope, is refused with the place it would
   break.
+- **Workspace symbols**: params, metrics, defs, glyphs and top-level
+  bindings of those same files, matched by subsequence (`bnp` finds
+  `broad_nib_pen`).
+- **Signature help** for built-in functions and `def`s, with the
+  argument under the cursor highlighted. A `def`'s description is the
+  comment directly above it.
 
 Imports read unsaved text from open buffers before the file on disk.
 
@@ -51,10 +57,11 @@ vim.lsp.enable("ductus")
 
 With that, `:checkhealth vim.lsp` lists the server for a `.ductus`
 buffer. Neovim's default mappings then work: `gO` for the document
-outline, `grr` for references, `grn` to rename, `]d` / `[d` for
-diagnostics, and `vim.lsp.buf.definition()` and `vim.lsp.buf.format()`
-for the rest. The workspace folder is the directory holding `.git`, as
-set by `root_markers`. To format on save:
+outline, `grr` for references, `grn` to rename, `<C-s>` in insert mode
+for signature help, and `]d` / `[d` for diagnostics. For the rest there
+are `vim.lsp.buf.definition()`, `vim.lsp.buf.workspace_symbol()` and
+`vim.lsp.buf.format()`. The workspace folder is the directory holding
+`.git`, as set by `root_markers`. To format on save:
 
 ```lua
 vim.api.nvim_create_autocmd("BufWritePre", {

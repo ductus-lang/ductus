@@ -108,7 +108,33 @@ fn session() {
     assert_eq!(edits.len(), 2, "{edit}");
     assert!(edits.iter().all(|edit| edit["newText"] == "w"));
 
-    client.request(8, "shutdown", Value::Null);
+    let symbols = client.request(8, "workspace/symbol", json!({ "query": "u" }));
+    let names: Vec<&Value> = symbols
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| &s["name"])
+        .collect();
+    assert_eq!(names, [&json!("u")]);
+
+    client.notify(
+        "textDocument/didChange",
+        json!({ "textDocument": { "uri": URI, "version": 2 }, "contentChanges": [{ "text": "x = min(1, " }] }),
+    );
+    client.wait_for("textDocument/publishDiagnostics");
+    let help = client.request(
+        9,
+        "textDocument/signatureHelp",
+        json!({ "textDocument": document, "position": { "line": 0, "character": 11 } }),
+    );
+    assert_eq!(help["signatures"][0]["label"], "min(a, b)");
+    assert_eq!(
+        help["signatures"][0]["parameters"][1]["label"],
+        json!([7, 8])
+    );
+    assert_eq!(help["activeParameter"], 1);
+
+    client.request(10, "shutdown", Value::Null);
     client.notify("exit", Value::Null);
     thread.join().unwrap().unwrap();
 }

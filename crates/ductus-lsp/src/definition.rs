@@ -61,10 +61,7 @@ pub fn definition(
     };
     match parent.kind() {
         "member_expression" if parent.child_by_field_name("property") == Some(node) => None,
-        "call_expression" => {
-            search.lookup = Lookup::Def;
-            search.top_level(tree.root_node(), source, path, None)
-        }
+        "call_expression" => find_def(tree, source, path, name, read),
         "return_spec" => {
             let body = parent.parent()?.child_by_field_name("body")?;
             find_in(body, name, None, source).and_then(here)
@@ -96,6 +93,17 @@ pub fn definition(
             None
         }
     }
+}
+
+/// The `def` named `name` in the file at `path` or what it imports.
+pub fn find_def(tree: &Tree, source: &str, path: &Path, name: &str, read: Read) -> Option<Target> {
+    let mut search = Search {
+        name,
+        lookup: Lookup::Def,
+        read,
+        visited: HashSet::from([path.to_path_buf()]),
+    };
+    search.top_level(tree.root_node(), source, path, None)
 }
 
 /// Identifiers that are themselves the binding: definition is the name.

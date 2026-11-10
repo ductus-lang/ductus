@@ -25,6 +25,16 @@ pub fn symbols(tree: &Tree, source: &str) -> Vec<Symbol> {
         .collect()
 }
 
+/// True when `query`'s characters occur in `name` in order, ignoring
+/// case: `bnp` matches `broad_nib_pen`. An empty query matches all.
+pub fn matches(query: &str, name: &str) -> bool {
+    let mut name = name.chars().map(|c| c.to_ascii_lowercase());
+    query
+        .chars()
+        .map(|c| c.to_ascii_lowercase())
+        .all(|wanted| name.any(|c| c == wanted))
+}
+
 fn top_level(statement: Node, source: &str) -> Vec<Symbol> {
     match statement.kind() {
         "params_block" => binding_symbols(statement, source, SymbolKind::CONSTANT, Some("param")),
@@ -203,6 +213,15 @@ glyph o : U+006F {
         let stem = &symbols[3];
         assert_eq!(&SOURCE[stem.selection.clone()], "stem");
         assert_eq!(&SOURCE[stem.range.clone()], "stem = 40 + 0.14 * weight;");
+    }
+
+    #[test]
+    fn query_matches_a_subsequence_ignoring_case() {
+        assert!(matches("", "stem"));
+        assert!(matches("bnp", "broad_nib_pen"));
+        assert!(matches("STEM", "stem_width"));
+        assert!(!matches("pnb", "broad_nib_pen"));
+        assert!(!matches("stems", "stem"));
     }
 
     #[test]

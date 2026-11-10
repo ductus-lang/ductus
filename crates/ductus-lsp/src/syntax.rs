@@ -2,6 +2,14 @@
 
 use tree_sitter::Node;
 
+/// Spec.md §2. Keywords cannot name a binding; `pen`, `draw` and `fill`
+/// are also built-in functions.
+pub const KEYWORDS: &[&str] = &[
+    "params", "in", "glyph", "contour", "guide", "anchor", "node", "dir", "pen", "cycle", "corner",
+    "def", "for", "if", "else", "and", "or", "not", "import", "shifted", "scaled", "xscaled",
+    "yscaled", "rotated", "slanted", "reversed", "metrics", "draw", "fill",
+];
+
 pub fn text<'a>(node: Node, source: &'a str) -> &'a str {
     &source[node.byte_range()]
 }
