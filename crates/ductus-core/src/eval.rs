@@ -7,7 +7,7 @@ use crate::value::{NodeValue, PathJoint, PathPoint, PathValue, PenValue, Value, 
 use kurbo::{Affine, Point, Vec2};
 use std::collections::{HashMap, HashSet};
 
-const BUILTIN_FUNCTIONS: &[&str] = &[
+pub const BUILTIN_FUNCTIONS: &[&str] = &[
     "min",
     "max",
     "clamp",

@@ -15,7 +15,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Tree};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Target {
     pub path: PathBuf,
     /// In bytes, in the target file.
@@ -79,14 +79,13 @@ pub fn definition(
                         if let Some(found) = find_in(scope, name, limit, source) {
                             return here(found);
                         }
+                        let owned = syntax::owner_bindings(scope);
+                        if let Some(found) = owned.into_iter().find(|n| text(*n, source) == name) {
+                            return here(found);
+                        }
                         let owner = scope.parent().filter(|_| scope.kind() == "block");
-                        if let Some(owner) = owner {
-                            if let Some(found) = owner_binding(owner, name, source) {
-                                return here(found);
-                            }
-                            if owner.kind() == "def_declaration" {
-                                limit = None;
-                            }
+                        if owner.is_some_and(|owner| owner.kind() == "def_declaration") {
+                            limit = None;
                         }
                     }
                     "source_file" => return search.top_level(scope, source, path, limit),
@@ -130,21 +129,6 @@ fn find_in<'tree>(
         .filter(|binding| limit.is_none_or(|limit| binding.declaration.end_byte() <= limit))
         .map(|binding| binding.name)
         .find(|binding| text(*binding, source) == name)
-}
-
-/// A `for` loop variable or `def` parameter, bound for the body only.
-fn owner_binding<'tree>(owner: Node<'tree>, name: &str, source: &str) -> Option<Node<'tree>> {
-    let candidates = match owner.kind() {
-        "for_statement" => owner.child_by_field_name("name").into_iter().collect(),
-        "def_declaration" => owner
-            .child_by_field_name("parameters")
-            .map(syntax::children)
-            .unwrap_or_default(),
-        _ => Vec::new(),
-    };
-    candidates
-        .into_iter()
-        .find(|candidate| text(*candidate, source) == name)
 }
 
 #[derive(Clone, Copy, PartialEq)]

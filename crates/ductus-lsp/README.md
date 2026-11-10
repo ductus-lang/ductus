@@ -19,6 +19,12 @@ ductus lsp
   contours, guides, anchors, nodes and bindings, and top-level bindings.
 - **Go to definition** for names, `def` calls, `def` return names, and
   the path in an `import` statement. Follows imports into other files.
+- **Find references** and **rename**, across every `.ductus` file under
+  the workspace folder (hidden directories, `target/` and
+  `node_modules/` are skipped), or the file's directory when there is no
+  workspace folder. A rename that would change what any name refers to,
+  or bind a name twice in one scope, is refused with the place it would
+  break.
 
 Imports read unsaved text from open buffers before the file on disk.
 
@@ -45,8 +51,10 @@ vim.lsp.enable("ductus")
 
 With that, `:checkhealth vim.lsp` lists the server for a `.ductus`
 buffer. Neovim's default mappings then work: `gO` for the document
-outline, `]d` / `[d` for diagnostics, and `vim.lsp.buf.definition()` and
-`vim.lsp.buf.format()` for the rest. To format on save:
+outline, `grr` for references, `grn` to rename, `]d` / `[d` for
+diagnostics, and `vim.lsp.buf.definition()` and `vim.lsp.buf.format()`
+for the rest. The workspace folder is the directory holding `.git`, as
+set by `root_markers`. To format on save:
 
 ```lua
 vim.api.nvim_create_autocmd("BufWritePre", {

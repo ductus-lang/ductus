@@ -92,7 +92,23 @@ fn session() {
         json!({ "line": 0, "character": 0 })
     );
 
-    client.request(5, "shutdown", Value::Null);
+    let at_use = json!({ "textDocument": document, "position": { "line": 1, "character": 4 } });
+    let mut with_context = at_use.clone();
+    with_context["context"] = json!({ "includeDeclaration": true });
+    let locations = client.request(5, "textDocument/references", with_context);
+    assert_eq!(locations.as_array().unwrap().len(), 2, "{locations}");
+
+    let range = client.request(6, "textDocument/prepareRename", at_use.clone());
+    assert_eq!(range["start"], json!({ "line": 1, "character": 4 }));
+
+    let mut rename = at_use;
+    rename["newName"] = json!("w");
+    let edit = client.request(7, "textDocument/rename", rename);
+    let edits = edit["changes"][URI].as_array().unwrap();
+    assert_eq!(edits.len(), 2, "{edit}");
+    assert!(edits.iter().all(|edit| edit["newText"] == "w"));
+
+    client.request(8, "shutdown", Value::Null);
     client.notify("exit", Value::Null);
     thread.join().unwrap().unwrap();
 }

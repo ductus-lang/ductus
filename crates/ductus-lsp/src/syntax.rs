@@ -57,6 +57,42 @@ pub fn bindings<'tree>(statement: Node<'tree>) -> Vec<Binding<'tree>> {
     }
 }
 
+/// Names a block's owner binds for the block only: a `for` loop variable,
+/// or a `def`'s parameters. Empty for any other node.
+pub fn owner_bindings(block: Node) -> Vec<Node> {
+    let Some(owner) = block.parent().filter(|_| block.kind() == "block") else {
+        return Vec::new();
+    };
+    match owner.kind() {
+        "for_statement" => owner.child_by_field_name("name").into_iter().collect(),
+        "def_declaration" => owner
+            .child_by_field_name("parameters")
+            .map(children)
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    }
+}
+
+/// Every identifier under `root` spelled `name`, in document order.
+pub fn identifiers<'tree>(root: Node<'tree>, source: &str, name: &str) -> Vec<Node<'tree>> {
+    let mut found = Vec::new();
+    let mut cursor = root.walk();
+    loop {
+        let node = cursor.node();
+        if node.kind() == "identifier" && text(node, source) == name {
+            found.push(node);
+        }
+        if cursor.goto_first_child() {
+            continue;
+        }
+        while !cursor.goto_next_sibling() {
+            if !cursor.goto_parent() {
+                return found;
+            }
+        }
+    }
+}
+
 /// Named children of `node`, collected so callers can recurse freely.
 pub fn children(node: Node) -> Vec<Node> {
     let mut cursor = node.walk();

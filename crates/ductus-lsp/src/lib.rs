@@ -8,22 +8,29 @@ mod definition;
 mod diagnostics;
 mod importer;
 mod position;
+mod references;
+mod rename;
 mod symbols;
 mod syntax;
+mod workspace;
 
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, Response};
 use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, LogMessage,
     Notification as _, PublishDiagnostics,
 };
-use lsp_types::request::{DocumentSymbolRequest, Formatting, GotoDefinition, Request as _};
+use lsp_types::request::{
+    DocumentSymbolRequest, Formatting, GotoDefinition, PrepareRenameRequest, References, Rename,
+    Request as _,
+};
 use lsp_types::{
     Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams,
     DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, InitializeParams,
-    InitializeResult, Location, LogMessageParams, MessageType, OneOf, PublishDiagnosticsParams,
-    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit,
-    Uri,
+    InitializeResult, Location, LogMessageParams, MessageType, OneOf, PrepareRenameResponse,
+    PublishDiagnosticsParams, ReferenceParams, RenameOptions, RenameParams, ServerCapabilities,
+    ServerInfo, TextDocumentPositionParams, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextEdit, Uri, WorkDoneProgressOptions, WorkspaceEdit,
 };
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, utf8_percent_encode};
 use position::Encoding;
@@ -53,6 +60,19 @@ pub fn serve(connection: Connection) -> Result<()> {
         .as_ref()
         .and_then(|general| general.position_encodings.as_deref());
     let encoding = Encoding::negotiate(offered);
+    #[allow(deprecated, reason = "older clients send only root_uri")]
+    let roots = match params.workspace_folders {
+        Some(folders) => folders
+            .iter()
+            .filter_map(|folder| path_of(&folder.uri))
+            .collect(),
+        None => params
+            .root_uri
+            .as_ref()
+            .and_then(path_of)
+            .into_iter()
+            .collect(),
+    };
 
     let result = InitializeResult {
         capabilities: ServerCapabilities {
@@ -61,6 +81,11 @@ pub fn serve(connection: Connection) -> Result<()> {
             document_formatting_provider: Some(OneOf::Left(true)),
             document_symbol_provider: Some(OneOf::Left(true)),
             definition_provider: Some(OneOf::Left(true)),
+            references_provider: Some(OneOf::Left(true)),
+            rename_provider: Some(OneOf::Right(RenameOptions {
+                prepare_provider: Some(true),
+                work_done_progress_options: WorkDoneProgressOptions::default(),
+            })),
             ..ServerCapabilities::default()
         },
         server_info: Some(ServerInfo {
@@ -73,6 +98,7 @@ pub fn serve(connection: Connection) -> Result<()> {
     Server {
         connection,
         encoding,
+        roots,
         documents: HashMap::new(),
     }
     .main_loop()
@@ -88,6 +114,8 @@ struct Document {
 struct Server {
     connection: Connection,
     encoding: Encoding,
+    /// Workspace folders; references and rename search their files.
+    roots: Vec<PathBuf>,
     /// Open documents by canonical path, the identity imports resolve to.
     documents: HashMap<PathBuf, Document>,
 }
@@ -113,11 +141,23 @@ impl Server {
 
     fn request(&self, request: Request) -> Result<()> {
         let response = match request.method.as_str() {
-            Formatting::METHOD => self.respond::<Formatting>(request, Self::formatting),
-            DocumentSymbolRequest::METHOD => {
-                self.respond::<DocumentSymbolRequest>(request, Self::symbols)
+            Formatting::METHOD => {
+                self.respond::<Formatting>(request, |server, params| Ok(server.formatting(params)))
             }
-            GotoDefinition::METHOD => self.respond::<GotoDefinition>(request, Self::definition),
+            DocumentSymbolRequest::METHOD => self
+                .respond::<DocumentSymbolRequest>(request, |server, params| {
+                    Ok(server.symbols(params))
+                }),
+            GotoDefinition::METHOD => self
+                .respond::<GotoDefinition>(request, |server, params| Ok(server.definition(params))),
+            References::METHOD => {
+                self.respond::<References>(request, |server, params| Ok(server.references(params)))
+            }
+            PrepareRenameRequest::METHOD => self
+                .respond::<PrepareRenameRequest>(request, |server, params| {
+                    Ok(server.prepare_rename(params))
+                }),
+            Rename::METHOD => self.respond::<Rename>(request, Self::rename),
             method => Response::new_err(
                 request.id,
                 ErrorCode::MethodNotFound as i32,
@@ -131,10 +171,13 @@ impl Server {
     fn respond<R: lsp_types::request::Request>(
         &self,
         request: Request,
-        handler: fn(&Self, R::Params) -> R::Result,
+        handler: fn(&Self, R::Params) -> std::result::Result<R::Result, String>,
     ) -> Response {
-        match serde_json::from_value(request.params) {
-            Ok(params) => Response::new_ok(request.id, handler(self, params)),
+        match serde_json::from_value(request.params).map(|params| handler(self, params)) {
+            Ok(Ok(result)) => Response::new_ok(request.id, result),
+            Ok(Err(message)) => {
+                Response::new_err(request.id, ErrorCode::RequestFailed as i32, message)
+            }
             Err(error) => Response::new_err(
                 request.id,
                 ErrorCode::InvalidParams as i32,
@@ -194,14 +237,53 @@ impl Server {
         let offset = position::offset(&document.text, at.position, self.encoding);
         let read = |path: &Path| self.read(path);
         let target = definition::definition(&document.tree, &document.text, &path, offset, &read)?;
+        self.location(&target).map(GotoDefinitionResponse::Scalar)
+    }
 
-        let text = self.read(&target.path)?;
-        let range = position::range(&text, target.range.start, target.range.end, self.encoding);
-        let uri = match self.documents.get(&target.path) {
-            Some(open) => open.uri.clone(),
-            None => uri_of(&target.path)?,
-        };
-        Some(GotoDefinitionResponse::Scalar(Location { uri, range }))
+    fn references(&self, params: ReferenceParams) -> Option<Vec<Location>> {
+        let binding = self.binding_at(&params.text_document_position)?;
+        let read = |path: &Path| self.read(path);
+        let found = references::references(&binding, &self.files(&binding.path), &read);
+        let include = params.context.include_declaration;
+        Some(
+            found
+                .iter()
+                .filter(|site| include || **site != binding)
+                .filter_map(|site| self.location(site))
+                .collect(),
+        )
+    }
+
+    fn prepare_rename(&self, at: TextDocumentPositionParams) -> Option<PrepareRenameResponse> {
+        let (path, document) = self.document(&at.text_document.uri)?;
+        let offset = position::offset(&document.text, at.position, self.encoding);
+        let read = |path: &Path| self.read(path);
+        let range = rename::prepare(&document.tree, &document.text, &path, offset, &read)?;
+        let range = position::range(&document.text, range.start, range.end, self.encoding);
+        Some(PrepareRenameResponse::Range(range))
+    }
+
+    fn rename(&self, params: RenameParams) -> std::result::Result<Option<WorkspaceEdit>, String> {
+        let binding = self
+            .binding_at(&params.text_document_position)
+            .ok_or("nothing to rename here")?;
+        let read = |path: &Path| self.read(path);
+        let files = self.files(&binding.path);
+        let edits = rename::rename(&binding, &params.new_name, &files, &read)?;
+        #[allow(clippy::mutable_key_type, reason = "WorkspaceEdit is keyed by Uri")]
+        let mut changes = HashMap::new();
+        for (path, ranges) in edits {
+            let text = self.read(&path).ok_or("cannot read a renamed file")?;
+            let edits = ranges
+                .into_iter()
+                .map(|range| {
+                    let range = position::range(&text, range.start, range.end, self.encoding);
+                    TextEdit::new(range, params.new_name.clone())
+                })
+                .collect();
+            changes.insert(self.uri(&path).ok_or("cannot name a renamed file")?, edits);
+        }
+        Ok(Some(WorkspaceEdit::new(changes)))
     }
 
     // ---- Notifications -----------------------------------------------------
@@ -283,6 +365,46 @@ impl Server {
         let path = path_of(uri)?;
         let document = self.documents.get(&path)?;
         Some((path, document))
+    }
+
+    /// The binding the identifier at a position resolves to. Built-ins and
+    /// import paths have no binding.
+    fn binding_at(&self, at: &TextDocumentPositionParams) -> Option<definition::Target> {
+        let (path, document) = self.document(&at.text_document.uri)?;
+        let offset = position::offset(&document.text, at.position, self.encoding);
+        let read = |path: &Path| self.read(path);
+        definition::definition(&document.tree, &document.text, &path, offset, &read)
+            .filter(|target| !target.range.is_empty())
+    }
+
+    /// Files that may use a binding in `path`: the `.ductus` files under
+    /// the workspace folders (or `path`'s directory without any), the open
+    /// documents, and `path` itself.
+    fn files(&self, path: &Path) -> Vec<PathBuf> {
+        let roots = match self.roots.is_empty() {
+            true => path.parent().map(Path::to_path_buf).into_iter().collect(),
+            false => self.roots.clone(),
+        };
+        let mut files = workspace::ductus_files(&roots);
+        files.extend(self.documents.keys().cloned());
+        files.push(path.to_path_buf());
+        files.sort();
+        files.dedup();
+        files
+    }
+
+    fn location(&self, target: &definition::Target) -> Option<Location> {
+        let text = self.read(&target.path)?;
+        let range = position::range(&text, target.range.start, target.range.end, self.encoding);
+        Some(Location::new(self.uri(&target.path)?, range))
+    }
+
+    /// The URI the client knows an open document by, else one for the path.
+    fn uri(&self, path: &Path) -> Option<Uri> {
+        match self.documents.get(path) {
+            Some(open) => Some(open.uri.clone()),
+            None => uri_of(path),
+        }
     }
 
     /// The open document's text, else the file on disk.
