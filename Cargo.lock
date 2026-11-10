@@ -213,6 +213,7 @@ name = "ductus-lsp"
 version = "0.1.0"
 dependencies = [
  "ductus-core",
+ "kurbo",
  "lsp-server",
  "lsp-types",
  "percent-encoding",

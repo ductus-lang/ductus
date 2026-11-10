@@ -148,7 +148,29 @@ fn session() {
     // This client announced no snippet support.
     assert_eq!(min.get("insertText"), None);
 
-    client.request(11, "shutdown", Value::Null);
+    client.notify(
+        "textDocument/didChange",
+        json!({ "textDocument": { "uri": URI, "version": 3 }, "contentChanges": [{ "text": "a = 2;\nb = a * 3;\n" }] }),
+    );
+    client.wait_for("textDocument/publishDiagnostics");
+    let hover = client.request(
+        11,
+        "textDocument/hover",
+        json!({ "textDocument": document, "position": { "line": 1, "character": 4 } }),
+    );
+    assert_eq!(hover["contents"]["value"], "```ductus\na = 2;\n```\n**2**");
+    let hints = client.request(
+        12,
+        "textDocument/inlayHint",
+        json!({ "textDocument": document, "range": {
+            "start": { "line": 0, "character": 0 }, "end": { "line": 2, "character": 0 } } }),
+    );
+    assert_eq!(
+        hints,
+        json!([{ "position": { "line": 1, "character": 10 }, "label": "▸ 6", "paddingLeft": true }])
+    );
+
+    client.request(13, "shutdown", Value::Null);
     client.notify("exit", Value::Null);
     thread.join().unwrap().unwrap();
 }

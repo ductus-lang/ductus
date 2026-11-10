@@ -1,8 +1,10 @@
 //! Problems in one document: syntax errors, then lowering and evaluation
-//! errors. Evaluation runs with default params and stops at its first error.
+//! errors. Evaluation runs with default params and stops at its first error;
+//! without errors, the evaluated document is the result.
 
 use crate::importer::{Read, WorkspaceImporter};
 use ductus_core::ast::Span;
+use ductus_core::doc::Document;
 use ductus_core::{eval, lower, parse};
 use std::collections::HashMap;
 use std::ops::Range;
@@ -16,27 +18,23 @@ pub struct Problem {
     pub message: String,
 }
 
-pub fn check(tree: &Tree, source: &str, path: &Path, read: Read) -> Vec<Problem> {
+pub fn check(tree: &Tree, source: &str, path: &Path, read: Read) -> Result<Document, Vec<Problem>> {
     let errors = parse::syntax_errors(tree, source);
     if !errors.is_empty() {
         // Lowering an ERROR tree fails anyway; the syntax errors say why.
-        return errors
+        return Err(errors
             .into_iter()
             .map(|error| Problem {
                 range: error.start_byte..error.end_byte,
                 message: error.message,
             })
-            .collect();
+            .collect());
     }
-    let program = match lower::lower(tree, source) {
-        Ok(program) => program,
-        Err(error) => return vec![at(tree, source, error.span, error.message)],
-    };
+    let program = lower::lower(tree, source)
+        .map_err(|error| vec![at(tree, source, error.span, error.message)])?;
     let importer = WorkspaceImporter { root: path, read };
-    match eval::evaluate(&program, &HashMap::new(), &importer) {
-        Ok(_) => Vec::new(),
-        Err(error) => vec![at(tree, source, error.span, error.message)],
-    }
+    eval::evaluate(&program, &HashMap::new(), &importer)
+        .map_err(|error| vec![at(tree, source, error.span, error.message)])
 }
 
 /// A `Span` holds only where a construct starts. Underline the smallest
@@ -66,6 +64,8 @@ mod tests {
         let tree = parse_lenient(source);
         let read = |_: &Path| None;
         check(&tree, source, Path::new("/virtual/main.ductus"), &read)
+            .err()
+            .unwrap_or_default()
             .into_iter()
             .map(|problem| (source[problem.range].to_string(), problem.message))
             .collect()

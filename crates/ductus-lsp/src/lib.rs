@@ -8,6 +8,8 @@ mod builtins;
 mod completion;
 mod definition;
 mod diagnostics;
+mod hints;
+mod hover;
 mod importer;
 mod position;
 mod references;
@@ -16,6 +18,7 @@ mod scope;
 mod signature;
 mod symbols;
 mod syntax;
+mod values;
 mod workspace;
 
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, Response};
@@ -23,7 +26,7 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, LogMessage,
     Notification as _, PublishDiagnostics,
 };
-use lsp_types::request::Completion;
+use lsp_types::request::{Completion, HoverRequest, InlayHintRequest};
 use lsp_types::request::{
     DocumentSymbolRequest, Formatting, GotoDefinition, PrepareRenameRequest, References, Rename,
     Request as _, SignatureHelpRequest, WorkspaceSymbolRequest,
@@ -44,6 +47,10 @@ use lsp_types::{
     Documentation, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel, SignatureHelp,
     SignatureHelpOptions, SignatureHelpParams, SignatureInformation, SymbolInformation,
     WorkspaceSymbolParams, WorkspaceSymbolResponse,
+};
+use lsp_types::{
+    Hover, HoverContents, HoverParams, HoverProviderCapability, InlayHint, InlayHintLabel,
+    InlayHintParams,
 };
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, utf8_percent_encode};
 use position::Encoding;
@@ -108,6 +115,8 @@ pub fn serve(connection: Connection) -> Result<()> {
                 work_done_progress_options: WorkDoneProgressOptions::default(),
             })),
             workspace_symbol_provider: Some(OneOf::Left(true)),
+            hover_provider: Some(HoverProviderCapability::Simple(true)),
+            inlay_hint_provider: Some(OneOf::Left(true)),
             completion_provider: Some(CompletionOptions {
                 trigger_characters: Some(vec![".".to_string()]),
                 ..CompletionOptions::default()
@@ -141,6 +150,14 @@ struct Document {
     uri: Uri,
     text: String,
     tree: Tree,
+    /// The last evaluation without errors, for hover values and hints.
+    evaluation: Option<Evaluation>,
+}
+
+struct Evaluation {
+    document: ductus_core::doc::Document,
+    /// The text has changed since, and the change has errors.
+    stale: bool,
 }
 
 struct Server {
@@ -196,6 +213,13 @@ impl Server {
             WorkspaceSymbolRequest::METHOD => self
                 .respond::<WorkspaceSymbolRequest>(request, |server, params| {
                     Ok(server.workspace_symbols(params))
+                }),
+            HoverRequest::METHOD => {
+                self.respond::<HoverRequest>(request, |server, params| Ok(server.hover(params)))
+            }
+            InlayHintRequest::METHOD => self
+                .respond::<InlayHintRequest>(request, |server, params| {
+                    Ok(server.inlay_hints(params))
                 }),
             Completion::METHOD => {
                 self.respond::<Completion>(request, |server, params| Ok(server.completion(params)))
@@ -365,6 +389,62 @@ impl Server {
         Some(WorkspaceSymbolResponse::Flat(found))
     }
 
+    fn hover(&self, params: HoverParams) -> Option<Hover> {
+        let at = params.text_document_position_params;
+        let (path, document) = self.document(&at.text_document.uri)?;
+        let offset = position::offset(&document.text, at.position, self.encoding);
+        let read = |path: &Path| self.read(path);
+        let evaluated = document
+            .evaluation
+            .as_ref()
+            .map(|evaluation| hover::Evaluated {
+                document: &evaluation.document,
+                stale: evaluation.stale,
+            });
+        let (markdown, range) = hover::hover(
+            &document.tree,
+            &document.text,
+            &path,
+            offset,
+            &read,
+            evaluated,
+        )?;
+        Some(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: markdown,
+            }),
+            range: Some(position::range(
+                &document.text,
+                range.start,
+                range.end,
+                self.encoding,
+            )),
+        })
+    }
+
+    fn inlay_hints(&self, params: InlayHintParams) -> Option<Vec<InlayHint>> {
+        let (_, document) = self.document(&params.text_document.uri)?;
+        let evaluation = document.evaluation.as_ref()?;
+        let text = &document.text;
+        let range = position::offset(text, params.range.start, self.encoding)
+            ..position::offset(text, params.range.end, self.encoding);
+        let hints = hints::hints(&document.tree, text, &evaluation.document, range)
+            .into_iter()
+            .map(|hint| InlayHint {
+                position: position::position(text, hint.offset, self.encoding),
+                label: InlayHintLabel::String(hint.label),
+                kind: None,
+                text_edits: None,
+                tooltip: None,
+                padding_left: Some(true),
+                padding_right: None,
+                data: None,
+            })
+            .collect();
+        Some(hints)
+    }
+
     fn completion(&self, params: CompletionParams) -> Option<CompletionResponse> {
         let at = params.text_document_position;
         let (path, document) = self.document(&at.text_document.uri)?;
@@ -477,13 +557,40 @@ impl Server {
         };
         let started = Instant::now();
         let tree = ductus_core::parse::parse_lenient(&text);
-        self.documents
-            .insert(path.clone(), Document { uri, text, tree });
+        let evaluation = self
+            .documents
+            .remove(&path)
+            .and_then(|previous| previous.evaluation);
+        let document = Document {
+            uri,
+            text,
+            tree,
+            evaluation,
+        };
+        self.documents.insert(path.clone(), document);
 
         let document = &self.documents[&path];
         let read = |path: &Path| self.read(path);
-        let problems = diagnostics::check(&document.tree, &document.text, &path, &read);
+        let checked = diagnostics::check(&document.tree, &document.text, &path, &read);
         let elapsed = started.elapsed();
+
+        let document = self.documents.get_mut(&path).expect("inserted above");
+        let problems = match checked {
+            Ok(evaluated) => {
+                document.evaluation = Some(Evaluation {
+                    document: evaluated,
+                    stale: false,
+                });
+                Vec::new()
+            }
+            Err(problems) => {
+                if let Some(evaluation) = &mut document.evaluation {
+                    evaluation.stale = true;
+                }
+                problems
+            }
+        };
+        let document = &self.documents[&path];
 
         let diagnostics = problems
             .into_iter()

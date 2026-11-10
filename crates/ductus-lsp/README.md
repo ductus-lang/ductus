@@ -31,6 +31,16 @@ ductus lsp
 - **Signature help** for built-in functions and `def`s, with the
   argument under the cursor highlighted. A `def`'s description is the
   comment directly above it.
+- **Hover**: a name's declaration and its value for the default params,
+  e.g. `stem = 40 + 0.14 * weight;` with **96**. Values are shown for
+  numbers, params, metrics and, in glyphs, nodes (position, direction,
+  width), contours, guides and anchors; points, pens and plain paths have
+  none yet. While the file has an error, the values of the last
+  evaluation without errors are shown, marked as such. Built-ins and
+  `def`s show their signatures.
+- **Inlay hints**: the value at the end of each computed numeric binding,
+  `stem = 40 + 0.14 * weight;  ▸ 96`. Bindings written as a literal get
+  none.
 - **Completion** by context: the statements that can start where a
   statement starts (`contour`, `guide` and `anchor` only in a glyph);
   names in scope, functions and the direction constants inside an
@@ -63,8 +73,8 @@ vim.lsp.enable("ductus")
 
 With that, `:checkhealth vim.lsp` lists the server for a `.ductus`
 buffer. Neovim's default mappings then work: `gO` for the document
-outline, `grr` for references, `grn` to rename, `<C-s>` in insert mode
-for signature help, and `]d` / `[d` for diagnostics. For the rest there
+outline, `K` to hover, `grr` for references, `grn` to rename, `<C-s>` in
+insert mode for signature help, and `]d` / `[d` for diagnostics. For the rest there
 are `vim.lsp.buf.definition()`, `vim.lsp.buf.workspace_symbol()` and
 `vim.lsp.buf.format()`. The workspace folder is the directory holding
 `.git`, as set by `root_markers`.
@@ -78,6 +88,13 @@ vim.api.nvim_create_autocmd("LspAttach", {
     vim.lsp.completion.enable(true, args.data.client_id, args.buf, { autotrigger = true })
   end,
 })
+```
+
+Inlay hints are off until enabled, for example in the same `LspAttach`
+callback:
+
+```lua
+vim.lsp.inlay_hint.enable(true, { bufnr = args.buf })
 ```
 
 To format on save:

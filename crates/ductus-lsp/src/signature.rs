@@ -11,7 +11,7 @@ use crate::syntax::{self, text};
 use ductus_core::parse::parse_lenient;
 use std::ops::Range;
 use std::path::Path;
-use tree_sitter::Tree;
+use tree_sitter::{Node, Tree};
 
 #[derive(Debug, PartialEq)]
 pub struct Signature {
@@ -101,19 +101,26 @@ fn def_signature(
         .root_node()
         .descendant_for_byte_range(target.range.start, target.range.end)?
         .parent()?;
+    def_label(def, &def_source)
+}
+
+/// `name(a, b) -> (x, y)` of a `def_declaration`, described by the comment
+/// above it.
+pub fn def_label(def: Node, source: &str) -> Option<Signature> {
+    let name = text(def.child_by_field_name("name")?, source);
     let parameters: Vec<&str> = def
         .child_by_field_name("parameters")
         .map(syntax::children)
         .unwrap_or_default()
         .into_iter()
-        .map(|parameter| text(parameter, &def_source))
+        .map(|parameter| text(parameter, source))
         .collect();
     let returns = def
         .child_by_field_name("returns")
-        .map(|returns| format!(" -> {}", text(returns, &def_source)))
+        .map(|returns| format!(" -> {}", text(returns, source)))
         .unwrap_or_default();
     let mut signature = signature(name, &parameters, &returns);
-    signature.doc = syntax::leading_comments(def, &def_source);
+    signature.doc = syntax::leading_comments(def, source);
     Some(signature)
 }
 
