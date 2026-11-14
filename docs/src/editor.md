@@ -23,9 +23,15 @@ vim.lsp.config("ductus", {
   root_markers = { ".git" },
 })
 vim.lsp.enable("ductus")
+
+-- Comments are `#` to the end of the line; `gc` needs to know.
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "ductus",
+  callback = function() vim.bo.commentstring = "# %s" end,
+})
 ```
 
-That is enough for everything in this chapter except the preview, which needs two more pieces: a `:DuctusPreview` command, and an autocmd that tells the server where your cursor is, since the protocol has no standard message for that. Both are about twenty lines; the [ductus-lsp README](https://github.com/ductus-lang/ductus/tree/master/crates/ductus-lsp) has them, along with inlay hints and completion as you type. Any other editor that speaks the Language Server Protocol can run `ductus lsp` too; only the preview's cursor-following needs that one editor-side addition.
+The last few lines are for Neovim rather than the language server: `gc` comments lines out with the buffer's `commentstring`, which Neovim leaves empty for a language it doesn't know. That is enough for everything in this chapter except the preview, which needs two more pieces: a `:DuctusPreview` command, and an autocmd that tells the server where your cursor is, since the protocol has no standard message for that. Both are about twenty lines; the [ductus-lsp README](https://github.com/ductus-lang/ductus/tree/master/crates/ductus-lsp) has them, along with inlay hints and completion as you type. Any other editor that speaks the Language Server Protocol can run `ductus lsp` too; only the preview's cursor-following needs that one editor-side addition.
 
 ## Two windows
 

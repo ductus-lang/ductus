@@ -73,10 +73,18 @@ vim.lsp.config("ductus", {
   root_markers = { ".git" },
 })
 vim.lsp.enable("ductus")
+
+-- Comments are `#` to the end of the line; `gc` needs to know.
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "ductus",
+  callback = function() vim.bo.commentstring = "# %s" end,
+})
 ```
 
-With that, `:checkhealth vim.lsp` lists the server for a `.ductus`
-buffer. Neovim's default mappings then work: `gO` for the document
+The `commentstring` line is not part of the language server: it is what
+Neovim's `gc` uses to comment out lines, and Neovim has no default for
+Ductus. With that, `:checkhealth vim.lsp` lists the server for a
+`.ductus` buffer. Neovim's default mappings then work: `gO` for the document
 outline, `K` to hover, `grr` for references, `grn` to rename, `<C-s>` in
 insert mode for signature help, and `]d` / `[d` for diagnostics. For the rest there
 are `vim.lsp.buf.definition()`, `vim.lsp.buf.workspace_symbol()` and
