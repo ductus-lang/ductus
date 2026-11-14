@@ -1051,6 +1051,37 @@ impl Evaluator {
                 )),
             }
         };
+        let expect_arity_range = |min: usize, max: usize| -> Result<(), EvalError> {
+            if (min..=max).contains(&values.len()) {
+                Ok(())
+            } else {
+                Err(err(
+                    span,
+                    format!(
+                        "{function}() expects {min} or {max} arguments, got {}",
+                        values.len()
+                    ),
+                ))
+            }
+        };
+        // An optional trailing 0-based match index; absent means the first
+        // match.
+        let index_at = |index: usize| -> Result<usize, EvalError> {
+            if values.len() <= index {
+                return Ok(0);
+            }
+            let number = number_at(index)?;
+            if number < 0.0 || number.fract() != 0.0 {
+                return Err(err(
+                    span,
+                    format!(
+                        "{function}() index must be a non-negative integer, \
+                         got {number}"
+                    ),
+                ));
+            }
+            Ok(number as usize)
+        };
 
         match function {
             "min" => {
@@ -1135,15 +1166,14 @@ impl Evaluator {
             // Path queries observe the fitted curve — the geometry that
             // renders; see render.rs.
             "intersection" => {
-                expect_arity(2)?;
+                expect_arity_range(2, 3)?;
                 let (a, b) = (&values[0], &values[1]);
                 let (Value::Path(a), Value::Path(b)) = (a, b) else {
                     return Err(err(span, "intersection() expects two paths"));
                 };
-                crate::render::intersection(a, b)
-                    .map_err(|error| err(span, error.message))?
+                crate::render::intersection(a, b, index_at(2)?)
                     .map(Value::Point)
-                    .ok_or_else(|| err(span, "paths do not intersect"))
+                    .map_err(|error| err(span, error.message))
             }
             "point" => {
                 expect_arity(2)?;
@@ -1158,33 +1188,8 @@ impl Evaluator {
                     .map_err(|error| err(span, error.message))
             }
             "directionpoint" => {
-                if !(2..=3).contains(&values.len()) {
-                    return Err(err(
-                        span,
-                        format!(
-                            "directionpoint() expects 2 or 3 arguments, got {}",
-                            values.len()
-                        ),
-                    ));
-                }
-                // Optional 0-based index selects a later match; the two
-                // argument form is the first match.
-                let index = if values.len() == 3 {
-                    let index = number_at(2)?;
-                    if index < 0.0 || index.fract() != 0.0 {
-                        return Err(err(
-                            span,
-                            format!(
-                                "directionpoint() index must be a \
-                                 non-negative integer, got {index}"
-                            ),
-                        ));
-                    }
-                    index as usize
-                } else {
-                    0
-                };
-                crate::render::direction_point(path_at(0)?, number_at(1)?, index)
+                expect_arity_range(2, 3)?;
+                crate::render::direction_point(path_at(0)?, number_at(1)?, index_at(2)?)
                     .map(Value::Point)
                     .map_err(|error| err(span, error.message))
             }
@@ -2166,6 +2171,95 @@ mod tests {
         let error = eval_err("p = intersection((0, 0) -- (1, 0), (0, 5) -- (1, 5));\n");
         assert!(
             error.message.contains("do not intersect"),
+            "{}",
+            error.message
+        );
+    }
+
+    #[test]
+    fn intersection_index_selects_later_crossings() {
+        // A line cutting a symmetric arch twice, once on each side.
+        let evaluator = eval_ok(concat!(
+            "arch = (0, 0) {up} .. (100, 100) {right} .. {down} (200, 0);\n",
+            "cut = (-50, 50) -- (250, 50);\n",
+            "a = intersection(arch, cut);\n",
+            "b = intersection(arch, cut, 0);\n",
+            "c = intersection(arch, cut, 1);\n",
+        ));
+        let (a, b, c) = (
+            point(&evaluator, "a"),
+            point(&evaluator, "b"),
+            point(&evaluator, "c"),
+        );
+        assert_eq!(a, b);
+        assert!(a.x < 100.0 && (a.y - 50.0).abs() < 1e-6, "{a:?}");
+        assert!((a.x + c.x - 200.0).abs() < 1e-3, "{a:?} {c:?}");
+        assert!((c.y - 50.0).abs() < 1e-6, "{c:?}");
+        let error = eval_err(concat!(
+            "arch = (0, 0) {up} .. (100, 100) {right} .. {down} (200, 0);\n",
+            "cut = (-50, 50) -- (250, 50);\n",
+            "p = intersection(arch, cut, 2);\n",
+        ));
+        assert!(error.message.contains("only 2 points"), "{}", error.message);
+    }
+
+    #[test]
+    fn intersection_of_two_curves_in_order() {
+        // `a` starts at (100, 0) travelling up, so it meets `b` above the
+        // axis first.
+        let source = concat!(
+            "a = (100, 0) {up} .. (0, 100) {left}",
+            " .. (-100, 0) {down} .. (0, -100) {right} .. cycle;\n",
+            "b = (200, 0) {up} .. (100, 100) {left}",
+            " .. (0, 0) {down} .. (100, -100) {right} .. cycle;\n",
+        );
+        let evaluator = eval_ok(&format!("{source}p = intersection(a, b, 1);\n"));
+        let p = point(&evaluator, "p");
+        assert!((p.x - 50.0).abs() < 0.05, "{p:?}");
+        assert!((p.y + 86.6025403784).abs() < 0.05, "{p:?}");
+        let error = eval_err(&format!("{source}p = intersection(a, b, 2);\n"));
+        assert!(error.message.contains("only 2 points"), "{}", error.message);
+    }
+
+    #[test]
+    fn intersection_counts_a_crossing_on_a_joint_once() {
+        // On a joint of the second path.
+        let error = eval_err(
+            "p = intersection((100, -50) -- (100, 50), (0, 0) -- (100, 0) -- (200, 0), 1);\n",
+        );
+        assert!(error.message.contains("only 1 point"), "{}", error.message);
+        // On a joint of the first path.
+        let error = eval_err(
+            "p = intersection((0, 0) -- (100, 0) -- (100, 100), (50, -50) -- (150, 50), 1);\n",
+        );
+        assert!(error.message.contains("only 1 point"), "{}", error.message);
+    }
+
+    #[test]
+    fn intersection_counts_a_closed_path_start_once() {
+        // The axis meets the circle at its start point (100, 0), which is
+        // also the closing joint, and at the joint (-100, 0).
+        let source = "c = circle((0, 0), 100);\naxis = (-200, 0) -- (200, 0);\n";
+        let evaluator = eval_ok(&format!(
+            "{source}a = intersection(c, axis);\nb = intersection(c, axis, 1);\n"
+        ));
+        assert_point(point(&evaluator, "a"), 100.0, 0.0);
+        assert_point(point(&evaluator, "b"), -100.0, 0.0);
+        let error = eval_err(&format!("{source}p = intersection(c, axis, 2);\n"));
+        assert!(error.message.contains("only 2 points"), "{}", error.message);
+    }
+
+    #[test]
+    fn intersection_argument_errors() {
+        let error = eval_err("p = intersection((0, 0) -- (1, 1), (0, 1) -- (1, 0), 0.5);\n");
+        assert!(
+            error.message.contains("non-negative integer"),
+            "{}",
+            error.message
+        );
+        let error = eval_err("p = intersection((0, 0) -- (1, 1), (0, 1) -- (1, 0), 0, 1);\n");
+        assert!(
+            error.message.contains("expects 2 or 3 arguments"),
             "{}",
             error.message
         );

@@ -54,8 +54,9 @@ pub const BUILTINS: &[Builtin] = &[
     fixed("distance", &[&["a", "b"]], "`length(b - a)`."),
     fixed(
         "intersection",
-        &[&["p", "q"]],
-        "The first intersection of paths `p` and `q`. An error when they don't meet.",
+        &[&["p", "q"], &["p", "q", "i"]],
+        "The first intersection of paths `p` and `q` along `p`, or the `i`-th, \
+         counting from 0. An error when there are not that many.",
     ),
     fixed(
         "point",

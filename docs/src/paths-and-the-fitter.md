@@ -86,4 +86,22 @@ draw(hit + (-15, -15) -- hit + (15, 15));
 draw(hit + (-15, 15) -- hit + (15, -15));
 ```
 
+A line cutting across an arch meets it twice, and just like `directionpoint`, `intersection` accepts an optional 0-based index to reach the later crossings. They're counted along `p`, so `intersection(arch, cut)` is the crossing on the arch's rising side and `intersection(arch, cut, 1)` the one on its falling side. Asking for a third crossing that doesn't exist is an error.
+
+```ductus
+u = 100;
+arch = (0, 0) {up} .. (2u, 3u) {right} .. {down} (4u, 0);
+cut = (-u, 2u) -- (5u, 2u);
+
+draw(arch);
+draw(cut);
+
+rise = intersection(arch, cut);
+fall = intersection(arch, cut, 1);
+draw(rise + (-15, -15) -- rise + (15, 15));
+draw(rise + (-15, 15) -- rise + (15, -15));
+draw(fall + (-15, -15) -- fall + (15, 15));
+draw(fall + (-15, 15) -- fall + (15, -15));
+```
+
 Because these clever queries employ the very same fitter as the renderer, you can trust that a curved path is always 'cut' precisely where it's *drawn*. It's a wonderful principle: what you measure is truly what you see. You'll find Part III relies on this constantly — `directionpoint` becomes your go-to for finding perfect pen waists, and `intersection` is invaluable for building elegant joints. For now, just tuck away this  thought: a path in ductus isn't just a line on a page; it's a rich source of information you can always inquire about.

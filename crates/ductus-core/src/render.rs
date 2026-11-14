@@ -393,25 +393,55 @@ const FLATNESS: f64 = 1e-4;
 /// Depth cap for the curve/curve subdivision.
 const MAX_SUBDIVISION: u32 = 24;
 
-/// First intersection of two paths. "First" is the least position along
-/// `a`: its segments in path order, then the least parameter within a
-/// segment. `Ok(None)` means they do not meet.
-pub fn intersection(a: &PathValue, b: &PathValue) -> Result<Option<Point>, RenderError> {
+/// Two reported intersections closer than this are one crossing. The
+/// subdivision solver is only good to about `FLATNESS`, so a crossing on a
+/// piece boundary can come back twice with slightly different positions.
+const SAME_CROSSING: f64 = 10.0 * FLATNESS;
+
+/// The `index`-th (0-based) intersection of two paths. Intersections are
+/// ordered by position along `a`: its segments in path order, then
+/// ascending parameter within a segment.
+pub fn intersection(
+    a: &PathValue,
+    b: &PathValue,
+    index: usize,
+) -> Result<Point, RenderError> {
     let b_segments = fitted_segments(b)?;
+    let mut found = 0;
+    let mut first: Option<Point> = None;
+    let mut previous: Option<Point> = None;
     for a_segment in fitted_segments(a)? {
-        let mut first: Option<(f64, Point)> = None;
-        for b_segment in &b_segments {
-            for (t, point) in segment_intersections(&a_segment, b_segment) {
-                if first.is_none_or(|(best, _)| t < best) {
-                    first = Some((t, point));
-                }
+        let mut hits: Vec<(f64, Point)> = b_segments
+            .iter()
+            .flat_map(|b_segment| segment_intersections(&a_segment, b_segment))
+            .collect();
+        hits.sort_by(|x, y| x.0.total_cmp(&y.0));
+        for (_, point) in hits {
+            // One crossing can be reported more than once: on a joint of
+            // either path, on a subdivision boundary, and on a closed
+            // path's start point. Count it once.
+            let coincides = |seen: Option<Point>| {
+                seen.is_some_and(|seen| seen.distance(point) < SAME_CROSSING)
+            };
+            if coincides(previous) || (a.closed && coincides(first)) {
+                continue;
             }
-        }
-        if let Some((_, point)) = first {
-            return Ok(Some(point));
+            if found == index {
+                return Ok(point);
+            }
+            found += 1;
+            first.get_or_insert(point);
+            previous = Some(point);
         }
     }
-    Ok(None)
+    if found == 0 {
+        Err(render_err("paths do not intersect"))
+    } else {
+        let plural = if found == 1 { "point" } else { "points" };
+        Err(render_err(format!(
+            "the paths meet at only {found} {plural}"
+        )))
+    }
 }
 
 /// Intersections of two fitted segments, as (parameter on `a`, point).
