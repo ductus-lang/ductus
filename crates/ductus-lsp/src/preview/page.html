@@ -252,7 +252,7 @@
 
     const events = new EventSource("/events");
     events.addEventListener("open", () => {
-      status.value = "live";
+      status.value = "🟢";
       send();
     });
     events.addEventListener("error", () => {
