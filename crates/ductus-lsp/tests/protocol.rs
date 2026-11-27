@@ -72,7 +72,7 @@ fn session() {
     assert_eq!(initialized["capabilities"]["positionEncoding"], "utf-8");
     client.notify("initialized", json!({}));
 
-    let text = "u =   1;\nv = u;\nv = 2;\n";
+    let text = "u =   1;\nv = u;\nv = 2;\nglyph o {\n  advance = 500;\n}\n";
     client.notify(
         "textDocument/didOpen",
         json!({ "textDocument": { "uri": URI, "languageId": "ductus", "version": 1, "text": text } }),
@@ -91,14 +91,14 @@ fn session() {
         "textDocument/formatting",
         json!({ "textDocument": document, "options": { "tabSize": 2, "insertSpaces": true } }),
     );
-    assert_eq!(edits[0]["newText"], "u = 1;\nv = u;\nv = 2;\n");
+    assert_eq!(edits[0]["newText"], "u = 1;\nv = u;\nv = 2;\n\nglyph o {\n  advance = 500;\n}\n");
 
     let symbols = client.request(
         3,
         "textDocument/documentSymbol",
         json!({ "textDocument": document }),
     );
-    assert_eq!(symbols.as_array().unwrap().len(), 3);
+    assert_eq!(symbols.as_array().unwrap().len(), 1);
 
     let location = client.request(
         4,
@@ -127,14 +127,14 @@ fn session() {
     assert_eq!(edits.len(), 2, "{edit}");
     assert!(edits.iter().all(|edit| edit["newText"] == "w"));
 
-    let symbols = client.request(8, "workspace/symbol", json!({ "query": "u" }));
+    let symbols = client.request(8, "workspace/symbol", json!({ "query": "o" }));
     let names: Vec<&Value> = symbols
         .as_array()
         .unwrap()
         .iter()
         .map(|s| &s["name"])
         .collect();
-    assert_eq!(names, [&json!("u")]);
+    assert_eq!(names, [&json!("o")]);
 
     client.notify(
         "textDocument/didChange",

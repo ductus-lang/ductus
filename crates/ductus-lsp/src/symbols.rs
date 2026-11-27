@@ -1,7 +1,6 @@
-//! The document outline: params, metrics, defs, glyphs and top-level
-//! bindings, with each glyph's own bindings nested under it.
+//! The document outline: top-level `def` functions and `glyph` blocks.
 
-use crate::syntax::{self, Binding, text};
+use crate::syntax::{self, text};
 use lsp_types::SymbolKind;
 use std::ops::Range;
 use tree_sitter::{Node, Tree};
@@ -37,8 +36,6 @@ pub fn matches(query: &str, name: &str) -> bool {
 
 fn top_level(statement: Node, source: &str) -> Vec<Symbol> {
     match statement.kind() {
-        "params_block" => binding_symbols(statement, source, SymbolKind::CONSTANT, Some("param")),
-        "metrics_block" => binding_symbols(statement, source, SymbolKind::CONSTANT, Some("metric")),
         "def_declaration" => {
             let field = |name| statement.child_by_field_name(name);
             let Some(name) = field("name") else {
@@ -69,60 +66,10 @@ fn top_level(statement: Node, source: &str) -> Vec<Symbol> {
                 .map(|unicode| text(unicode, source).to_string());
             let mut glyph = symbol(statement, name, source, SymbolKind::CLASS, detail);
             glyph.name = glyph.name.trim_matches('"').to_string();
-            glyph.children = syntax::children(statement)
-                .into_iter()
-                .flat_map(|child| glyph_child(child, source))
-                .collect();
             vec![glyph]
         }
-        "import_statement" => statement
-            .child_by_field_name("path")
-            .map(|path| {
-                let mut import = symbol(statement, path, source, SymbolKind::FILE, None);
-                import.name = import.name.trim_matches('"').to_string();
-                import
-            })
-            .into_iter()
-            .collect(),
-        "node_declaration" => {
-            binding_symbols(statement, source, SymbolKind::VARIABLE, Some("node"))
-        }
-        _ => binding_symbols(statement, source, SymbolKind::VARIABLE, None),
+        _ => Vec::new(),
     }
-}
-
-fn glyph_child(statement: Node, source: &str) -> Vec<Symbol> {
-    let detail = match statement.kind() {
-        "contour_declaration" => Some("contour"),
-        "guide_declaration" => Some("guide"),
-        "node_declaration" => Some("node"),
-        "anchor_declaration" => {
-            return statement
-                .child_by_field_name("name")
-                .map(|name| {
-                    let detail = Some("anchor".to_string());
-                    symbol(statement, name, source, SymbolKind::VARIABLE, detail)
-                })
-                .into_iter()
-                .collect();
-        }
-        _ => None,
-    };
-    binding_symbols(statement, source, SymbolKind::VARIABLE, detail)
-}
-
-fn binding_symbols(
-    statement: Node,
-    source: &str,
-    kind: SymbolKind,
-    detail: Option<&str>,
-) -> Vec<Symbol> {
-    syntax::bindings(statement)
-        .into_iter()
-        .map(|Binding { name, declaration }| {
-            symbol(declaration, name, source, kind, detail.map(str::to_string))
-        })
-        .collect()
 }
 
 fn symbol(
@@ -184,35 +131,20 @@ glyph o : U+006F {
         let symbols = symbols(&parse_lenient(SOURCE), SOURCE);
         assert_eq!(
             outline(&symbols),
-            [
-                "common.ductus File -",
-                "weight Constant param",
-                "x Constant metric",
-                "stem Variable -",
-                "a Variable -",
-                "b Variable -",
-                "bar Function (c, r) -> p",
-                "o Class U+006F",
-            ]
+            ["bar Function (c, r) -> p", "o Class U+006F"]
         );
-        assert_eq!(
-            outline(&symbols[7].children),
-            [
-                "advance Variable -",
-                "n Variable node",
-                "main Variable contour",
-                "g Variable guide",
-                "top Variable anchor",
-            ]
-        );
+        assert!(symbols[1].children.is_empty());
     }
 
     #[test]
     fn selection_is_the_name_inside_the_declaration() {
         let symbols = symbols(&parse_lenient(SOURCE), SOURCE);
-        let stem = &symbols[3];
-        assert_eq!(&SOURCE[stem.selection.clone()], "stem");
-        assert_eq!(&SOURCE[stem.range.clone()], "stem = 40 + 0.14 * weight;");
+        let bar = &symbols[0];
+        assert_eq!(&SOURCE[bar.selection.clone()], "bar");
+        assert_eq!(
+            &SOURCE[bar.range.clone()],
+            "def bar(c, r) -> p {\n  p = c;\n}"
+        );
     }
 
     #[test]
@@ -231,7 +163,6 @@ glyph o : U+006F {
             .into_iter()
             .map(|symbol| symbol.name)
             .collect();
-        assert!(names.contains(&"a".to_string()), "{names:?}");
-        assert!(names.contains(&"o".to_string()), "{names:?}");
+        assert_eq!(names, ["o"]);
     }
 }
