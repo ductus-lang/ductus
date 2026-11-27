@@ -162,7 +162,7 @@ impl NodeValue {
         let mut params = vec![start];
         for target in [mid, end] {
             let from = *params.last().expect("params start non-empty");
-            if target - from > FRAC_PI_2 {
+            if target - from > FRAC_PI_2 + 1e-9 {
                 params.push((from + target) / 2.0);
             }
             params.push(target);
@@ -221,7 +221,7 @@ impl NodeValue {
         let start = pen.contact(from);
         let end = start + (pen.contact(to) - start).rem_euclid(TAU);
         let mut params = vec![start];
-        if end - start > FRAC_PI_2 {
+        if end - start > FRAC_PI_2 + 1e-9 {
             params.push((start + end) / 2.0);
         }
         params.push(end);
