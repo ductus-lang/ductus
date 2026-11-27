@@ -100,11 +100,19 @@
           gap: 0.75rem;
           align-content: start;
 
-          article {
+          button {
+            all: unset;
+            box-sizing: border-box;
             display: grid;
             gap: 0.35rem;
             padding: 0.5rem;
             border: 1px solid var(--rule);
+            cursor: pointer;
+
+            &:hover,
+            &:focus-visible {
+              border-color: currentColor;
+            }
 
             svg {
               width: 100%;
@@ -264,11 +272,17 @@
       if (frame.tiles && frame.tiles.length > 0) {
         figure.classList.add("tiles");
         figure.replaceChildren(...frame.tiles.map((tile) => {
-          const card = document.createElement("article");
+          const card = document.createElement("button");
+          card.type = "button";
           card.innerHTML = tile.svg;
           const label = document.createElement("span");
           label.textContent = tile.name;
           card.append(label);
+          card.addEventListener("click", () => {
+            glyphChoice.value = tile.name;
+            settings.glyph = tile.name;
+            send();
+          });
           return card;
         }));
       } else if (frame.svg) {
