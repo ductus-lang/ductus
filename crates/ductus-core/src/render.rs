@@ -810,7 +810,19 @@ fn debug_layer(
             fmt(-y)
         ));
     }
-    let _ = extent;
+    // Vertical origin (x=0) and advance (x=advance) guidelines.
+    let y0 = -extent.ascent - 20.0;
+    let y1 = -extent.descent + 20.0;
+    for x in [x_offset, x_offset + glyph.advance] {
+        body.push_str(&format!(
+            "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"1\"/>\n",
+            fmt(x),
+            fmt(y0),
+            fmt(x),
+            fmt(y1),
+            MOCHA.metrics
+        ));
+    }
 
     // Guides.
     for (name, guide) in &glyph.guides {
