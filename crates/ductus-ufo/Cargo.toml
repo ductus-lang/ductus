@@ -1,0 +1,9 @@
+[package]
+name = "ductus-ufo"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ductus-core = { path = "../ductus-core" }
+kurbo = { workspace = true }
+norad = "0.19.0"

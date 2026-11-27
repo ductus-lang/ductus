@@ -10,4 +10,5 @@ path = "src/main.rs"
 [dependencies]
 ductus-core = { path = "../ductus-core" }
 ductus-lsp = { path = "../ductus-lsp" }
+ductus-ufo = { path = "../ductus-ufo" }
 clap = { workspace = true }

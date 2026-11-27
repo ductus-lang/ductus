@@ -56,6 +56,23 @@ enum Command {
         #[arg(long)]
         glyph: Option<String>,
     },
+    /// Evaluate a source file and export a UFO directory.
+    Ufo {
+        /// Path to the .ductus file
+        file: PathBuf,
+        /// Override a param, e.g. --set weight=700 (repeatable)
+        #[arg(long = "set", value_name = "PARAM=VALUE")]
+        set: Vec<String>,
+        /// Family name for fontinfo.plist
+        #[arg(long)]
+        family: Option<String>,
+        /// Style name for fontinfo.plist
+        #[arg(long)]
+        style: Option<String>,
+        /// Output .ufo directory path
+        #[arg(short, long, default_value = "output.ufo")]
+        output: PathBuf,
+    },
     /// Run the language server on stdin/stdout.
     Lsp,
 }
@@ -133,6 +150,22 @@ fn run(cli: Cli) -> Result<String, String> {
 
             std::fs::write(&output, svg)
                 .map_err(|error| format!("error writing {}: {}", output.display(), error))?;
+            Ok(format!("{} -> {}", file.display(), output.display()))
+        }
+        Command::Ufo {
+            file,
+            set,
+            family,
+            style,
+            output,
+        } => {
+            let document = evaluate(&file, &set)?;
+            let options = ductus_ufo::UfoOptions {
+                family_name: family,
+                style_name: style,
+            };
+            ductus_ufo::save_ufo(&document, &options, &output)
+                .map_err(|error| format!("{}: {error}", file.display()))?;
             Ok(format!("{} -> {}", file.display(), output.display()))
         }
         Command::Lsp => unreachable!("handled in main"),
