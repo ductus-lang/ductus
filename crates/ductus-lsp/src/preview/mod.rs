@@ -145,18 +145,34 @@ pub fn shown(choice: &Choice, focus: &Focus) -> Option<String> {
 #[derive(Debug, Clone)]
 pub struct Rendered {
     pub svg: String,
+    pub tiles: Vec<Value>,
     pub glyphs: Vec<String>,
     pub params: Vec<Value>,
 }
 
 pub fn render(document: &Document, glyph: Option<&str>, debug: bool) -> Result<Rendered, String> {
-    let options = RenderOptions {
-        glyph: glyph.map(str::to_string),
-        debug,
+    let (svg, tiles) = if glyph.is_none() && !document.glyphs.is_empty() {
+        let mut tiles = Vec::with_capacity(document.glyphs.len());
+        for g in &document.glyphs {
+            let options = RenderOptions {
+                glyph: Some(g.name.clone()),
+                debug,
+            };
+            let tile_svg = render::render(document, &options).map_err(|error| error.message)?;
+            tiles.push(json!({ "name": g.name, "svg": tile_svg }));
+        }
+        (String::new(), tiles)
+    } else {
+        let options = RenderOptions {
+            glyph: glyph.map(str::to_string),
+            debug,
+        };
+        let svg = render::render(document, &options).map_err(|error| error.message)?;
+        (svg, Vec::new())
     };
-    let svg = render::render(document, &options).map_err(|error| error.message)?;
     Ok(Rendered {
         svg,
+        tiles,
         glyphs: document
             .glyphs
             .iter()
@@ -197,6 +213,7 @@ pub fn frame(
         "glyph": glyph,
         "debug": debug,
         "svg": rendered.map(|rendered| &rendered.svg),
+        "tiles": rendered.map(|rendered| &rendered.tiles),
         "glyphs": rendered.map(|rendered| &rendered.glyphs),
         "params": rendered.map(|rendered| &rendered.params),
         "stale": failure.is_some(),
@@ -300,5 +317,11 @@ mod tests {
         assert_eq!(frame["stale"], true);
         assert_eq!(frame["error"]["line"], 3);
         assert!(frame["svg"].as_str().unwrap().starts_with("<svg"));
+
+        let all = render(&document, None, false).unwrap();
+        assert!(all.svg.is_empty());
+        assert_eq!(all.tiles.len(), 2);
+        assert_eq!(all.tiles[0]["name"], "o");
+        assert!(all.tiles[0]["svg"].as_str().unwrap().starts_with("<svg"));
     }
 }
