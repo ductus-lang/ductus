@@ -548,8 +548,8 @@ struct DebugPalette {
 const MOCHA: DebugPalette = DebugPalette {
     background: "#1e1e2e",
     glyph: "#f5e0dc",
-    metrics: "#45475a",
-    baseline: "#585b70",
+    metrics: "#74c7ec",
+    baseline: "#89b4fa",
     guide: "#9399b2",
     node: "#f38ba8",
     edge: "#89b4fa",
@@ -803,7 +803,7 @@ fn debug_layer(
             MOCHA.metrics
         };
         body.push_str(&format!(
-            "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{color}\" stroke-width=\"1\"/>\n",
+            "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{color}\" stroke-width=\"1\" stroke-opacity=\"0.7\"/>\n",
             fmt(x0),
             fmt(-y),
             fmt(x1),
@@ -815,7 +815,7 @@ fn debug_layer(
     let y1 = -extent.descent + 20.0;
     for x in [x_offset, x_offset + glyph.advance] {
         body.push_str(&format!(
-            "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"1\"/>\n",
+            "      <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{}\" stroke-width=\"1\" stroke-opacity=\"0.7\"/>\n",
             fmt(x),
             fmt(y0),
             fmt(x),
