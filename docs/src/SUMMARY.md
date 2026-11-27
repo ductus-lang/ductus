@@ -28,6 +28,7 @@
 - [Interpolation compatibility](interpolation-compatibility.md)
 - [Working in an editor](editor.md)
 - [Debugging and inspecting](debugging.md)
+- [From Ductus to a compiled font (Draft)](ductus-to-font.md)
 - [Case studies](case-studies.md)
   - [A slab-serifed stem](case-slab.md)
   - [A broad-nib o](case-broad-nib-o.md)

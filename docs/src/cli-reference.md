@@ -45,6 +45,15 @@ ductus inspect file.ductus [--set PARAM=VALUE ...] [--glyph NAME]
 Curious about the nitty-gritty details of your evaluated file? This command spills all the numeric beans, presenting every number as plain text. You'll see parameters complete with their ranges, metrics, and top-level bindings presented in source order. After that, it dives into each glyph's advance, its numeric bindings (yes, even your handy [probes](debugging.md#probing-numbers) are included), the point counts for each contour and guide, and all your anchor positions.
 
 ```sh
+ductus ufo file.ductus [--set PARAM=VALUE ...] [--family NAME] [--style NAME] [-o OUT.ufo]
+```
+
+This command evaluates your `file.ductus` and exports it directly as a UFO directory (`output.ufo` by default). Unlike SVG export, there is no intermediate vector round-trip: `ductus` converts the fitted cubic Bézier contours, glyph advance widths, Unicode codepoints, anchors, and `metrics` (`upm`, `asc`, `desc`, `x`, `cap`) straight into `norad` UFO structures.
+
+- `--set PARAM=VALUE` — Override parameters to export a specific master or instance (repeatable).
+- `--family NAME` / `--style NAME` — Set `familyName` and `styleName` in `fontinfo.plist`.
+
+```sh
 ductus lsp
 ```
 
